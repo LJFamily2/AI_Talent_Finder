@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
+const routes = require("../routes");
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, "../config/.env") });
@@ -21,7 +22,13 @@ mongoose
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Routes
-app.use("/api/auth", require("../routes/auth"));
+routes.forEach((routeConfig, index) => {
+  if (!routeConfig.path || !routeConfig.route) {
+    console.error(`Invalid route configuration at index ${index}:`, routeConfig);
+    return;
+  }
+  app.use(routeConfig.path, routeConfig.route);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
