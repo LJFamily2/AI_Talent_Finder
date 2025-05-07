@@ -1,10 +1,10 @@
-const authRoutes = require("./auth");
+const express = require('express');
+const router = express.Router();
 
-const routes = [
-  {
-    path: "/api/auth",
-    route: authRoutes,
-  },
-];
+// Import route files
+const authRoutes = require('./auth');
 
-module.exports = routes;
+// Mount routes
+router.use('/api/auth', authRoutes);
+
+module.exports = router;
