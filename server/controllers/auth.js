@@ -59,8 +59,8 @@ exports.refresh = async (req, res) => {
       return res.status(400).json({ message: "Please provide refresh token" });
     }
 
-    // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    // Verify refresh token with refresh secret
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
 
     if (!user) {

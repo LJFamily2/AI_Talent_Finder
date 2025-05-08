@@ -49,7 +49,7 @@ userSchema.methods.getSignedJwtToken = function () {
     accessToken: jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
       expiresIn: "15m", // shorter expiry for access token
     }),
-    refreshToken: jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+    refreshToken: jwt.sign({ id: this._id }, process.env.JWT_REFRESH_SECRET, {
       expiresIn: "7d", // longer expiry for refresh token
     }),
   };
