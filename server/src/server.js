@@ -21,14 +21,8 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Routes
-routes.forEach((routeConfig, index) => {
-  if (!routeConfig.path || !routeConfig.route) {
-    console.error(`Invalid route configuration at index ${index}:`, routeConfig);
-    return;
-  }
-  app.use(routeConfig.path, routeConfig.route);
-});
+// Mount routes
+app.use(routes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

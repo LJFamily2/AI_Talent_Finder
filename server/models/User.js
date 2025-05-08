@@ -45,9 +45,14 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Sign JWT and return
 userSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
+  return {
+    accessToken: jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+      expiresIn: "15m", // shorter expiry for access token
+    }),
+    refreshToken: jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d", // longer expiry for refresh token
+    }),
+  };
 };
 
 module.exports = mongoose.model("User", userSchema);

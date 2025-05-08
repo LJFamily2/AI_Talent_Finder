@@ -1,4 +1,10 @@
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+
+const sendTokenResponse = (user, res) => {
+  const { accessToken, refreshToken } = user.getSignedJwtToken();
+  res.json({ success: true, accessToken, refreshToken });
+};
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -7,9 +13,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const user = await User.create({ name, email, password });
-    const token = user.getSignedJwtToken();
-
-    res.status(201).json({ success: true, token });
+    sendTokenResponse(user, res);
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -38,10 +42,41 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = user.getSignedJwtToken();
-    res.json({ success: true, token });
+    sendTokenResponse(user, res);
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh
+// @access  Public
+exports.refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Please provide refresh token" });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Generate new access token
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      user.getSignedJwtToken();
+    res.json({
+      success: true,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (err) {
+    res.status(401).json({ success: false, message: "Invalid refresh token" });
   }
 };
 
