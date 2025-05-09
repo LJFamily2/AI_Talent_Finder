@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext();
 
@@ -33,12 +34,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error("No refresh token available");
       }
 
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/refresh",
-        {
-          refreshToken,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+        refreshToken,
+      });
 
       const { accessToken, refreshToken: newRefreshToken } = response.data;
       setupTokens(accessToken, newRefreshToken);
@@ -71,14 +69,14 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/auth/me");
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
       setUser(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
         const refreshSuccess = await refreshAccessToken();
         if (refreshSuccess) {
           // Retry the original request
-          const response = await axios.get("http://localhost:5000/api/auth/me");
+          const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
           setUser(response.data.data);
         } else {
           logout();
@@ -93,13 +91,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        {
-          email,
-          password,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email,
+        password,
+      });
       const { accessToken, refreshToken } = response.data;
       setupTokens(accessToken, refreshToken);
       await checkAuthStatus();
@@ -114,14 +109,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/register",
-        {
-          name,
-          email,
-          password,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+        name,
+        email,
+        password,
+      });
       const { accessToken, refreshToken } = response.data;
       setupTokens(accessToken, refreshToken);
       await checkAuthStatus();
