@@ -7,7 +7,7 @@ const axios = require("axios");
  * @body { title, author, doi }
  */
 exports.verifyPublication = async (req, res) => {
-  const { title, author, doi } = req.body;
+  const { title, author, doi, maxResultsToCheck } = req.body;
   if (!title && !author && !doi) {
     return res
       .status(400)
@@ -18,6 +18,30 @@ exports.verifyPublication = async (req, res) => {
   let scholarStatus = "unable to verify";
   let scholarDetails = null;
   let scholarApiUrl = null;
+  let scholarResult = null;
+ 
+  // Helper: calculate percentage similarity between two strings
+  function getTitleSimilarity(a, b) {
+    if (!a || !b) return 0;
+    a = a.trim().toLowerCase();
+    b = b.trim().toLowerCase();
+    if (a === b) return 100;
+    // Simple: count matching chars in order (can be replaced with Levenshtein for more accuracy)
+    let matchCount = 0;
+    let i = 0,
+      j = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) {
+        matchCount++;
+        i++;
+        j++;
+      } else {
+        j++;
+      }
+    }
+    return (matchCount / a.length) * 100;
+  }
+
   try {
     const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
     let scholarQuery = [title, author, doi].filter(Boolean).join(" ");
@@ -25,15 +49,28 @@ exports.verifyPublication = async (req, res) => {
       scholarQuery
     )}&api_key=${serpApiKey}`;
     const scholarRes = await axios.get(scholarApiUrl);
-    const scholarResult = scholarRes.data;
-    if (scholarResult?.items?.length > 0) {
-      const found = scholarResult.items.find(
-        (item) =>
-          (doi && item.doi && item.doi.toLowerCase() === doi?.toLowerCase()) ||
-          (title &&
-            item.title &&
-            item.title.toLowerCase() === title.toLowerCase())
-      );
+    scholarResult = scholarRes.data;
+    const organicResults =
+      scholarResult?.organic_results || scholarResult?.items || [];
+    if (organicResults.length > 0) {
+      const found = organicResults.slice(0, maxResultsToCheck).find((item) => {
+        // DOI check
+        if (
+          doi &&
+          item.link &&
+          item.link.toLowerCase().includes(doi.toLowerCase())
+        ) {
+          return true;
+        }
+        // Title similarity check
+        if (title && item.title) {
+          const similarity = getTitleSimilarity(title, item.title);
+          if (similarity > 90) {
+            return true;
+          }
+        }
+        return false;
+      });
       if (found) {
         scholarStatus = "verified";
         scholarDetails = found;
@@ -61,18 +98,27 @@ exports.verifyPublication = async (req, res) => {
     const scopusRes = await axios.get(scopusApiUrl);
     const scopusResult = scopusRes.data;
     if (scopusResult?.organic_results?.length > 0) {
-      const found = scopusResult.organic_results.find(item => {
-        if (doi && item.link && item.link.toLowerCase().includes(doi.toLowerCase())) {
+      const found = scopusResult.organic_results.find((item) => {
+        if (
+          doi &&
+          item.link &&
+          item.link.toLowerCase().includes(doi.toLowerCase())
+        ) {
           return true;
         }
         if (title && item.title) {
           // Calculate percentage match between title and item.title
-          const normalize = str => str.replace(/\s+/g, ' ').trim().toLowerCase();
+          const normalize = (str) =>
+            str.replace(/\s+/g, " ").trim().toLowerCase();
           const userTitle = normalize(title);
           const resultTitle = normalize(item.title);
           // Simple similarity: count matching chars in order
           let matchCount = 0;
-          for (let i = 0, j = 0; i < userTitle.length && j < resultTitle.length;) {
+          for (
+            let i = 0, j = 0;
+            i < userTitle.length && j < resultTitle.length;
+
+          ) {
             if (userTitle[i] === resultTitle[j]) {
               matchCount++;
               i++;
@@ -118,9 +164,14 @@ exports.verifyPublication = async (req, res) => {
   );
 
   return res.json({
-    google_scholar_url: scholarApiUrl,
-    scopus_url: scopusApiUrl,
-    google_scholar: { status: scholarStatus, details: scholarDetails },
+    google_scholar: {
+      status: scholarStatus,
+      details: scholarDetails,
+      link:
+        scholarStatus === "verified" && scholarDetails && scholarDetails.link
+          ? scholarDetails.link
+          : null,
+    },
     scopus: { status: scopusStatus, details: scopusDetails },
     summary: summary.join(". "),
   });
