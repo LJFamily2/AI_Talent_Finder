@@ -19,27 +19,89 @@ exports.verifyPublication = async (req, res) => {
   let scholarDetails = null;
   let scholarApiUrl = null;
   let scholarResult = null;
- 
-  // Helper: calculate percentage similarity between two strings
-  function getTitleSimilarity(a, b) {
-    if (!a || !b) return 0;
-    a = a.trim().toLowerCase();
-    b = b.trim().toLowerCase();
-    if (a === b) return 100;
-    // Simple: count matching chars in order (can be replaced with Levenshtein for more accuracy)
-    let matchCount = 0;
-    let i = 0,
-      j = 0;
-    while (i < a.length && j < b.length) {
-      if (a[i] === b[j]) {
-        matchCount++;
-        i++;
-        j++;
-      } else {
-        j++;
-      }
+
+  // Helper: create n-grams from text
+  function getNGrams(text, n = 2) {
+    const ngrams = [];
+    for (let i = 0; i < text.length - n + 1; i++) {
+      ngrams.push(text.slice(i, i + n));
     }
-    return (matchCount / a.length) * 100;
+    return ngrams;
+  }
+
+  // Helper: calculate word-based similarity
+  function getWordSimilarity(str1, str2) {
+    const words1 = str1.split(/\s+/);
+    const words2 = str2.split(/\s+/);
+    const commonWords = words1.filter((word) => words2.includes(word));
+    return (2.0 * commonWords.length) / (words1.length + words2.length);
+  }
+
+  // Helper: normalize academic text (preserving important characters)
+  function normalizeText(text) {
+    if (!text) return "";
+    return (
+      text
+        .toLowerCase()
+        // Preserve important academic symbols but standardize them
+        .replace(/[−–—]/g, "-") // Standardize different types of hyphens
+        .replace(/['′´`]/g, "'") // Standardize apostrophes
+        .replace(/[""″]/g, '"') // Standardize quotes
+        .replace(/\s*[-/]\s*/g, "-") // Standardize spacing around hyphens and slashes
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .trim()
+    );
+  }
+
+  // Helper: calculate efficient similarity between two strings
+  function getTitleSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+
+    // Normalize both strings
+    const normalizedStr1 = normalizeText(str1);
+    const normalizedStr2 = normalizeText(str2);
+
+    if (normalizedStr1 === normalizedStr2) return 100;
+
+    // Get word-level similarity
+    const wordSim = getWordSimilarity(normalizedStr1, normalizedStr2) * 100;
+
+    // If word similarity is very high, return it
+    if (wordSim > 90) return wordSim;
+
+    // Otherwise, use n-gram similarity for more detailed comparison
+    const ngrams1 = getNGrams(normalizedStr1);
+    const ngrams2 = getNGrams(normalizedStr2);
+
+    // Create frequency maps
+    const freq1 = {};
+    const freq2 = {};
+
+    ngrams1.forEach((ng) => (freq1[ng] = (freq1[ng] || 0) + 1));
+    ngrams2.forEach((ng) => (freq2[ng] = (freq2[ng] || 0) + 1));
+
+    // Calculate cosine similarity
+    let dotProduct = 0;
+    let magnitude1 = 0;
+    let magnitude2 = 0;
+
+    // Compute dot product and magnitudes
+    Object.keys(freq1).forEach((ng) => {
+      if (freq2[ng]) {
+        dotProduct += freq1[ng] * freq2[ng];
+      }
+      magnitude1 += freq1[ng] * freq1[ng];
+    });
+
+    Object.keys(freq2).forEach((ng) => {
+      magnitude2 += freq2[ng] * freq2[ng];
+    });
+
+    const similarity =
+      (dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2))) * 100;
+
+    // Return weighted average of word and n-gram similarities
+    return wordSim * 0.6 + similarity * 0.4;
   }
 
   try {
@@ -65,7 +127,7 @@ exports.verifyPublication = async (req, res) => {
         // Title similarity check
         if (title && item.title) {
           const similarity = getTitleSimilarity(title, item.title);
-          if (similarity > 90) {
+          if (similarity > 80) {
             return true;
           }
         }
@@ -89,6 +151,7 @@ exports.verifyPublication = async (req, res) => {
   let scopusStatus = "unable to verify";
   let scopusDetails = null;
   let scopusApiUrl = null;
+  let scopusRes = null;
   try {
     const scopusAPIKey = process.env.SCOPUS_API_KEY;
     let scopusQuery = [title, author, doi].filter(Boolean).join(" ");
@@ -172,7 +235,7 @@ exports.verifyPublication = async (req, res) => {
           ? scholarDetails.link
           : null,
     },
-    scopus: { status: scopusStatus, details: scopusDetails },
+    scopus: { status: scopusStatus, details: scopusDetails,scopusRes: scopusRes, scopusApiUrl },
     summary: summary.join(". "),
   });
 };
