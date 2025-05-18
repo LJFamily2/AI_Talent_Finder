@@ -105,81 +105,112 @@ const verifyWithScopus = async (title, author, doi, maxResultsToCheck) => {
 };
 
 /**
- * Receives publication details and verifies them using Google Scholar and Scopus APIs.
+ * Receives an array of publication details and verifies them using Google Scholar and Scopus APIs.
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
- * @body { title, author, doi, maxResultsToCheck, googleScholar, scopus }
+ * @body {Array<{publication: string, title: string, author: string, doi: string}>} publications
+ * @body {Object} options - { maxResultsToCheck, googleScholar, scopus }
  */
 exports.verifyPublication = async (req, res) => {
   const {
-    title,
-    author,
-    doi,
+    publications = [],
     maxResultsToCheck = 5,
     googleScholar = true,
     scopus = true,
   } = req.body;
 
-  if (!title && !author && !doi) {
+  if (!Array.isArray(publications) || publications.length === 0) {
     return res.status(400).json({
       status: "unable to verify",
-      message: "No key fields provided.",
+      message: "No publications provided or invalid format.",
     });
   }
 
-  const [scholarVerification, scopusVerification] = await Promise.all([
-    googleScholar
-      ? verifyWithGoogleScholar(title, author, doi, maxResultsToCheck)
-      : null,
-    scopus ? verifyWithScopus(title, author, doi, maxResultsToCheck) : null,
-  ]);
+  try {
+    const verificationResults = await Promise.all(
+      publications.map(async (pub) => {
+        const { title, author, doi } = pub;
 
-  const summary = [];
-  if (googleScholar) {
-    summary.push(
-      scholarVerification.status === "verified"
-        ? "Verified in Google Scholar"
-        : `${
-            scholarVerification.status === "not existed"
-              ? "Not found"
-              : "Unable to verify"
-          } in Google Scholar`
-    );
-  }
-
-  if (scopus) {
-    summary.push(
-      scopusVerification.status === "verified"
-        ? "Verified in Scopus"
-        : `${
-            scopusVerification.status === "not existed"
-              ? "Not found"
-              : "Unable to verify"
-          } in Scopus`
-    );
-  }
-
-  return res.json({
-    google_scholar: googleScholar
-      ? {
-          status: scholarVerification.status,
-          details: scholarVerification.details,
-          scholarResult: scholarVerification.result,
-          link:
-            (scholarVerification.status === "verified" &&
-              scholarVerification.details?.link) ||
-            null,
+        if (!title && !author && !doi) {
+          return {
+            publication: pub.publication,
+            status: "unable to verify",
+            message: "No key fields provided for this publication",
+            google_scholar: null,
+            scopus: null,
+            summary: "Missing required fields",
+          };
         }
-      : null,
-    scopus: scopus
-      ? {
-          status: scopusVerification.status,
-          details: scopusVerification.details,
-          scopusResult: scopusVerification.result,
-          scopusApiUrl: scopusVerification.apiUrl,
-          link: scopusVerification.details?.link || null,
+
+        const [scholarVerification, scopusVerification] = await Promise.all([
+          googleScholar
+            ? verifyWithGoogleScholar(title, author, doi, maxResultsToCheck)
+            : null,
+          scopus
+            ? verifyWithScopus(title, author, doi, maxResultsToCheck)
+            : null,
+        ]);
+
+        const summary = [];
+        if (googleScholar) {
+          summary.push(
+            scholarVerification.status === "verified"
+              ? "Verified in Google Scholar"
+              : `${
+                  scholarVerification.status === "not existed"
+                    ? "Not found"
+                    : "Unable to verify"
+                } in Google Scholar`
+          );
         }
-      : null,
-    summary: summary.join(". "),
-  });
+
+        if (scopus) {
+          summary.push(
+            scopusVerification.status === "verified"
+              ? "Verified in Scopus"
+              : `${
+                  scopusVerification.status === "not existed"
+                    ? "Not found"
+                    : "Unable to verify"
+                } in Scopus`
+          );
+        }
+
+        return {
+          publication: pub.publication,
+          google_scholar: googleScholar
+            ? {
+                status: scholarVerification.status,
+                details: scholarVerification.details,
+                scholarResult: scholarVerification.result,
+                link:
+                  (scholarVerification.status === "verified" &&
+                    scholarVerification.details?.link) ||
+                  null,
+              }
+            : null,
+          scopus: scopus
+            ? {
+                status: scopusVerification.status,
+                details: scopusVerification.details,
+                scopusResult: scopusVerification.result,
+                scopusApiUrl: scopusVerification.apiUrl,
+                link: scopusVerification.details?.link || null,
+              }
+            : null,
+          summary: summary.join(". "),
+        };
+      })
+    );
+
+    return res.json({
+      results: verificationResults,
+    });
+  } catch (error) {
+    console.error("Error verifying publications:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while verifying publications",
+    });
+  }
 };
