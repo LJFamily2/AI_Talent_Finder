@@ -6,7 +6,7 @@ const path = require("path");
 const routes = require("../routes");
 
 // Load env vars
-dotenv.config({ path: path.join(__dirname, "../config/.env") });
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 // Create Express app
 const app = express();

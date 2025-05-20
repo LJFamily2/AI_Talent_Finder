@@ -22,6 +22,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/upload-cv" element={<CVUpload />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
