@@ -1,16 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const parseRoutes = require('./parse'); 
 
 // Import route files
 const authRoutes = require("./auth");
-const verifyRoutes = require("./verify");
+const cvVerificationRoutes = require("./cvVerification");
 
 // Mount routes
-router.use('/api/auth', authRoutes);
-router.use('/parse-cv', parseRoutes);
-router.use("/api", verifyRoutes);
+router.use("/api/cv", cvVerificationRoutes);
 router.use("/api/auth", authRoutes);
 
-
+// Export router
 module.exports = router;

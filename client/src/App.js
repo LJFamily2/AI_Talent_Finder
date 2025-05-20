@@ -10,8 +10,6 @@ import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./components/Dashboard";
 import { CssBaseline } from "@mui/material";
-import CVUpload from "./components/CVUpload"; 
-
 
 function App() {
   return (
@@ -28,14 +26,8 @@ function App() {
                 <Dashboard />
               </ProtectedRoute>
             }
-          />  
-          <Route path="/upload-cv"
-            element={
-              <ProtectedRoute>
-                <CVUpload />
-              </ProtectedRoute>
-            }
           />
+          <Route path="/upload-cv" element={<CVUpload />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
