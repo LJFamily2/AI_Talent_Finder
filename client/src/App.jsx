@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
+import CVUpload from "./pages/CVUpload";
 
 function App() {
   return (
