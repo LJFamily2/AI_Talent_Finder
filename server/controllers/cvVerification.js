@@ -3,6 +3,9 @@ const pdfParse = require("pdf-parse");
 const axios = require("axios");
 const { getTitleSimilarity } = require("../utils/textUtils");
 
+// Cache for author data to avoid duplicate API calls
+const authorCache = new Map();
+
 const verifyWithGoogleScholar = async (
   title,
   author,
@@ -12,14 +15,11 @@ const verifyWithGoogleScholar = async (
   try {
     const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
     const scholarQuery = title;
-    const scholarApiUrl = "https://api.scrapingdog.com/google";
+    const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
+      scholarQuery
+    )}&hl=en&api_key=${serpApiKey}`;
 
-    const params = {
-      query: scholarQuery,
-      api_key: serpApiKey,
-    };
-
-    const { data: scholarResult } = await axios.get(scholarApiUrl, { params });
+    const { data: scholarResult } = await axios.get(scholarApiUrl);
     const organicResults =
       scholarResult?.organic_results || scholarResult?.items || [];
 
@@ -48,10 +48,36 @@ const verifyWithGoogleScholar = async (
       return false;
     });
 
-    return found
-      ? { status: "verified", details: found, result: scholarResult }
-      : { status: "not existed", details: null, result: scholarResult };
+    if (!found) {
+      return { status: "not existed", details: null, result: scholarResult };
+    } // Get author information if available
+    let authorDetails = null;
+    let publicationYear = null;
+    if (found.publication_info?.authors?.length > 0) {
+      const authorId = found.publication_info.authors[0].author_id;
+      if (authorId) {
+        const authorInfo = await getAuthorDetails(
+          authorId,
+          serpApiKey,
+          found.title
+        );
+        if (authorInfo) {
+          publicationYear = authorInfo.year;
+          authorDetails = authorInfo.details;
+        }
+      }
+    }
+    return {
+      status: "verified",
+      details: {
+        ...found,
+        year: publicationYear,
+        authorDetails,
+      },
+      result: scholarResult,
+    };
   } catch (err) {
+    console.error("Google Scholar verification error:", err);
     return { status: "unable to verify", details: null, result: null };
   }
 };
@@ -277,6 +303,74 @@ const verifyCV = async (file) => {
   } catch (error) {
     throw error;
   }
+};
+
+const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
+  // Check cache first
+  if (authorCache.has(authorId)) {
+    const cachedAuthor = authorCache.get(authorId);
+    // Find the matching article in cached author's publications
+    const matchingArticle = cachedAuthor.articles?.find((article) => {
+      const articleTitle = article.title.toLowerCase().trim();
+      const normalizedSearchTitle = searchTitle.toLowerCase().trim();
+      return (
+        articleTitle === normalizedSearchTitle ||
+        articleTitle.includes(normalizedSearchTitle) ||
+        normalizedSearchTitle.includes(articleTitle)
+      );
+    });
+
+    if (matchingArticle) {
+      return {
+        year: matchingArticle.year,
+        details: {
+          name: cachedAuthor.name,
+          affiliations: cachedAuthor.affiliations,
+          interests: cachedAuthor.interests,
+          citedBy: matchingArticle.cited_by,
+        },
+      };
+    }
+  }
+
+  try {
+    const authorApiUrl = `https://serpapi.com/search?engine=google_scholar_author&author_id=${authorId}&api_key=${serpApiKey}`;
+    const { data: authorResult } = await axios.get(authorApiUrl);
+
+    // Cache the full author result
+    authorCache.set(authorId, {
+      name: authorResult.author?.name,
+      affiliations: authorResult.author?.affiliations,
+      interests: authorResult.author?.interests,
+      articles: authorResult.articles,
+    });
+
+    // Find the matching article
+    const matchingArticle = authorResult.articles?.find((article) => {
+      const articleTitle = article.title.toLowerCase().trim();
+      const normalizedSearchTitle = searchTitle.toLowerCase().trim();
+      return (
+        articleTitle === normalizedSearchTitle ||
+        articleTitle.includes(normalizedSearchTitle) ||
+        normalizedSearchTitle.includes(articleTitle)
+      );
+    });
+
+    if (matchingArticle) {
+      return {
+        year: matchingArticle.year,
+        details: {
+          author: authorResult.author,
+          articles: authorResult.articles,
+          citedBy: authorResult.cited_by,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching author details:", error);
+  }
+
+  return null;
 };
 
 module.exports = {
