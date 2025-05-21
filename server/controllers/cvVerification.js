@@ -288,15 +288,23 @@ const verifyCV = async (file) => {
               details: scopusResult.details,
               link: scopusLink || fallbackLink,
             },
+            authorDetails: scholarResult.authorDetails || null,
           },
         };
       })
-    );
+    ); // Get author details from the first verified publication that has Google Scholar details
+    const authorDetails =
+      verificationResults.find(
+        (result) =>
+          result.verification.google_scholar.status === "verified" &&
+          result.verification.google_scholar.details?.authorDetails
+      )?.verification.google_scholar.details.authorDetails || null;
 
     return {
       success: true,
       total: verificationResults.length,
       results: verificationResults,
+      authorDetails: authorDetails,
     };
   } catch (error) {
     throw error;
@@ -304,19 +312,56 @@ const verifyCV = async (file) => {
 };
 
 const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
+  // Helper function to find matching article
+  const findMatchingArticle = (articles, title) => {
+    if (!articles || !title) return null;
+
+    const normalizedSearchTitle = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, "");
+
+    return articles.find((article) => {
+      if (!article.title) return false;
+
+      const normalizedArticleTitle = article.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, "");
+
+      // Try exact match first
+      if (normalizedArticleTitle === normalizedSearchTitle) return true;
+
+      // Try fuzzy matching using getTitleSimilarity
+      const similarity = getTitleSimilarity(
+        normalizedArticleTitle,
+        normalizedSearchTitle
+      );
+      if (similarity > 70) return true;
+
+      // Try partial matching in either direction
+      if (
+        normalizedArticleTitle.length > 20 &&
+        normalizedSearchTitle.length > 20
+      ) {
+        if (
+          normalizedArticleTitle.includes(normalizedSearchTitle) ||
+          normalizedSearchTitle.includes(normalizedArticleTitle)
+        )
+          return true;
+      }
+
+      return false;
+    });
+  };
+
   // Check cache first
   if (authorCache.has(authorId)) {
     const cachedAuthor = authorCache.get(authorId);
-    // Find the matching article in cached author's publications
-    const matchingArticle = cachedAuthor.articles?.find((article) => {
-      const articleTitle = article.title.toLowerCase().trim();
-      const normalizedSearchTitle = searchTitle.toLowerCase().trim();
-      return (
-        articleTitle === normalizedSearchTitle ||
-        articleTitle.includes(normalizedSearchTitle) ||
-        normalizedSearchTitle.includes(articleTitle)
-      );
-    });
+    const matchingArticle = findMatchingArticle(
+      cachedAuthor.articles,
+      searchTitle
+    );
 
     if (matchingArticle) {
       return {
@@ -336,23 +381,19 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
     const { data: authorResult } = await axios.get(authorApiUrl);
 
     // Cache the full author result
-    authorCache.set(authorId, {
+    const authorData = {
       name: authorResult.author?.name,
       affiliations: authorResult.author?.affiliations,
       interests: authorResult.author?.interests,
       articles: authorResult.articles,
-    });
+    };
+    authorCache.set(authorId, authorData);
 
     // Find the matching article
-    const matchingArticle = authorResult.articles?.find((article) => {
-      const articleTitle = article.title.toLowerCase().trim();
-      const normalizedSearchTitle = searchTitle.toLowerCase().trim();
-      return (
-        articleTitle === normalizedSearchTitle ||
-        articleTitle.includes(normalizedSearchTitle) ||
-        normalizedSearchTitle.includes(articleTitle)
-      );
-    });
+    const matchingArticle = findMatchingArticle(
+      authorResult.articles,
+      searchTitle
+    );
 
     if (matchingArticle) {
       return {
