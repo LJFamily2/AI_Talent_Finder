@@ -1,19 +1,15 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import Login from "./components/Login";
-import Register from "./components/Register";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
+import CVUpload from "./pages/CVUpload";
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <CssBaseline />
       <AuthProvider>
         <Routes>
@@ -31,7 +27,7 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
-    </Router>
+    </BrowserRouter>
   );
 }
 

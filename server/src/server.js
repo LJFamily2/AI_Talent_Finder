@@ -4,6 +4,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 const routes = require("../routes");
+const cvVerificationRoutes = require("../routes/cvVerification");
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, "../.env") });
@@ -30,5 +31,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Server Error" });
 });
 
-const PORT = process.env.PORT || 5000;
+app.use("/api/cv", cvVerificationRoutes);
+
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
