@@ -204,18 +204,16 @@ const extractPublicationsFromCV = async (cvText) => {
 You are an expert academic CV analyzer focusing on publications.
 From the text below, which contains the Publications section of an academic CV, extract all publication entries.
 Each publication must be returned as an object inside a JSON array, with the following keys:
-- "publication": the full original line or paragraph as given
-- "author": the name(s) of the author(s) - look for patterns like "(with [Name])" or before the first quote
-- "title": the text between quotes that represents the publication title
-- "doi": the DOI if it is written (starts with 10.), otherwise null
+- "publication": the full original text of the publication entry
+- "title": the publication title (can be in quotes or the main text before publication details)
+- "doi": the DOI if written (starts with 10.), otherwise null
 
-Format: [{"publication": "...", "author": "...", "title": "...", "doi": "10.xxxx/..." or null}]
+Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
 
 Rules:
-- Focus on extracting publications that have titles in quotes
-- For author fields, include both the primary author and any co-authors mentioned with "with"
-- Look for titles enclosed in quotes (either straight " or curly " ")
-- DO NOT fabricate or invent DOI. Only extract if explicitly written and starts with 10.
+- Extract ALL publications, even if titles are not in quotes
+- Extract titles from text whether they appear in quotes or as main text before publication details
+- DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
 - Return only valid JSON. No markdown, no explanation, no extra output.
 
 TEXT:
