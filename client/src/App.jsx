@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
+import CVUpload from "./pages/CVUpload";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/upload-cv" element={<CVUpload />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
