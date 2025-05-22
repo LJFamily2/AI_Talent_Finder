@@ -79,7 +79,7 @@ export default function CVVerification() {
                     {/* <h2 className="text-lg font-semibold mb-5">Filters</h2> */}
                     <div>
                         {/* Sort By Date */}
-                        <div className="mb-4">
+                        <div className="mb-5">
                             <FormControl component="fieldset">
                                 <FormLabel component="legend" sx={{ fontSize: 14, fontWeight: 500 }}>Sort By</FormLabel>
                                 <RadioGroup
@@ -106,9 +106,25 @@ export default function CVVerification() {
 
                         {/* Year Range */}
                         <div className='mb-10'>
-                            <FormLabel component="legend" sx={{ fontSize: 14, fontWeight: 500, mb: 1 }}>
-                                Year Range
-                            </FormLabel>
+                            <div className="flex items-center justify-between mb-2">
+                                <FormLabel component="legend" sx={{ fontSize: 14, fontWeight: 500 }}>
+                                    Year Range
+                                </FormLabel>
+                                <button
+                                    className="text-xs bg-gray-300 px-3 py-1 rounded hover:bg-gray-400 hover:cursor-pointer"
+                                    onClick={() => {
+                                        setInputStartYear('');
+                                        setInputEndYear('');
+                                        setFilterStartYear('');
+                                        setFilterEndYear('');
+                                        setYearFilterActive(false);
+                                        setPage(1);
+                                    }}
+                                >
+                                    Any time
+                                </button>
+                            </div>
+
                             <div className="flex gap-2 mb-2">
                                 <input
                                     type="number"
@@ -117,7 +133,7 @@ export default function CVVerification() {
                                     onChange={e => setInputStartYear(e.target.value)}
                                     className="w-full border px-2 py-1 rounded text-sm"
                                 />
-                                <span className='flex items-center'> - </span>
+                                <span className='flex items-center'>-</span>
                                 <input
                                     type="number"
                                     placeholder="End"
@@ -125,11 +141,10 @@ export default function CVVerification() {
                                     onChange={e => setInputEndYear(e.target.value)}
                                     className="w-full border px-2 py-1 rounded text-sm"
                                 />
-
                             </div>
                             <div className="flex gap-2 justify-center">
                                 <button
-                                    className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                                    className="text-sm bg-blue-400 text-white px-3 py-1 w-full rounded hover:bg-blue-500 hover:cursor-pointer"
                                     onClick={() => {
                                         let start = parseInt(inputStartYear);
                                         let end = parseInt(inputEndYear);
@@ -153,29 +168,27 @@ export default function CVVerification() {
                                 >
                                     Search
                                 </button>
-                                <button
-                                    className="text-sm bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
-                                    onClick={() => {
-                                        setInputStartYear('');
-                                        setInputEndYear('');
-                                        setFilterStartYear('');
-                                        setFilterEndYear('');
-                                        setYearFilterActive(false);
-                                        setPage(1);
-                                    }}
-                                >
-                                    Any Time
-                                </button>
-
                             </div>
                         </div>
 
                         {/* Type Selection */}
-                        <div className="mb-4">
-                            <FormControl component="fieldset" sx={{ mb: 2 }}>
+                        <div className="mb-10">
+                            {/* Full-width flex container for label + reset */}
+                            <div className="flex items-center justify-between mb-2">
                                 <FormLabel component="legend" sx={{ fontSize: 14, fontWeight: 500 }}>
                                     Type
                                 </FormLabel>
+                                <button
+                                    onClick={handleResetTypes}
+                                    className="text-xs bg-gray-300 px-3 py-1 rounded hover:bg-gray-400 hover:cursor-pointer"
+                                >
+                                    Reset
+                                </button>
+
+                            </div>
+
+                            {/* Actual form control content */}
+                            <FormControl component="fieldset" sx={{ width: '100%' }}>
                                 <FormGroup>
                                     {typeOptions.map((type) => (
                                         <FormControlLabel
@@ -196,14 +209,6 @@ export default function CVVerification() {
                                         />
                                     ))}
                                 </FormGroup>
-                                <Button
-                                    onClick={handleResetTypes}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ fontSize: 12, textTransform: 'none' }}
-                                >
-                                    Reset
-                                </Button>
                             </FormControl>
                         </div>
 
@@ -259,28 +264,32 @@ export default function CVVerification() {
                         />
                     </div>
                     {paginated.map((pub, idx) => (
-                        <div key={idx} className="grid grid-cols-1 md:grid-cols-6 mb-2 p-4 h-fit bg-white rounded-md">
-                            <div className="md:col-span-5">
+                        <div key={idx} className="grid grid-cols-1 md:grid-cols-10 mb-2 p-4 h-fit bg-white rounded-md shadow">
+                            <div className="md:col-span-9">
 
-                                <h3 className="text-sm font-semibold mb-2">{pub.parsed_text}</h3>
+                                <h3 className="text-md font-light mb-5">{pub.parsed_text}</h3>
 
-                                <div className="mb-2">
-                                    <span className="text-xs font-semibold text-gray-700">Title:</span>{' '}
-                                    <span className="text-xs text-gray-600">{pub.title}</span>
+                                <div className="mb-2 text-sm text-gray-700">
+                                    <span className=" font-semibold">Title:</span>{' '}
+                                    <span className="">{pub.title}</span>
                                 </div>
 
-                                <div className="flex flex-wrap gap-4">
+                                <div className="flex flex-wrap gap-10 text-sm text-gray-700">
                                     <div>
-                                        <span className="text-xs font-semibold text-gray-700">Author:</span>{' '}
-                                        <span className="text-xs text-gray-600">{pub.author}</span>
+                                        <span className="font-semibold">Author:</span>{' '}
+                                        <span className="">{pub.author}</span>
                                     </div>
                                     <div>
-                                        <span className="text-xs font-semibold text-gray-700">Published Year:</span>{' '}
-                                        <span className="text-xs text-gray-600">{pub.published_year}</span>
+                                        <span className="font-semibold">Published Year:</span>{' '}
+                                        <span className="">{pub.published_year}</span>
                                     </div>
                                     <div>
-                                        <span className="text-xs font-semibold text-gray-700">Type:</span>{' '}
-                                        <span className="text-xs text-gray-600">{pub.type}</span>
+                                        <span className="font-semibold">Type:</span>{' '}
+                                        <span className="">{pub.type}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Cited By:</span>{' '}
+                                        <span className="">{pub.cited_by}</span>
                                     </div>
                                 </div>
                             </div>
@@ -299,7 +308,7 @@ export default function CVVerification() {
 
                                     </>
                                 ) : (
-                                    <p className="text-xs text-red-600">Status: {pub.status}</p>
+                                    <p className="text-xs text-red-600 md:text-right">{pub.status}</p>
                                 )}
                             </div>
                         </div>
