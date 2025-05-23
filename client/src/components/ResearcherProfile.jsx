@@ -5,7 +5,7 @@ export default function ResearcherProfile() {
 
     const researcher = sampleResearcher.author;
     return (
-        <div className="bg-white p-4 rounded shadow sticky top-4 flex flex-col items-center">
+        <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col items-center">
             <h2 className="text-lg font-bold mb-4">Researcher Profile</h2>
             <Avatar
                 alt="Scholar Avatar"
