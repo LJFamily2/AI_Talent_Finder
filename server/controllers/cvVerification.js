@@ -8,7 +8,6 @@ const authorCache = new Map();
 
 const verifyWithGoogleScholar = async (
   title,
-  author,
   doi,
   maxResultsToCheck = 10
 ) => {
@@ -24,7 +23,7 @@ const verifyWithGoogleScholar = async (
       scholarResult?.organic_results || scholarResult?.items || [];
 
     if (!organicResults.length) {
-      return { status: "not existed", details: null, result: scholarResult };
+      return { status: "unable to verify", details: null, result: scholarResult };
     }
 
     const found = organicResults.slice(0, maxResultsToCheck).find((item) => {
@@ -49,7 +48,7 @@ const verifyWithGoogleScholar = async (
     });
 
     if (!found) {
-      return { status: "not existed", details: null, result: scholarResult };
+      return { status: "unable to verify", details: null, result: scholarResult };
     } // Get author information if available
     let authorDetails = null;
     let publicationYear = null;
@@ -82,7 +81,7 @@ const verifyWithGoogleScholar = async (
   }
 };
 
-const verifyWithScopus = async (title, author, doi, maxResultsToCheck = 10) => {
+const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
   try {
     const scopusAPIKey = process.env.SCOPUS_API_KEY;
     const scopusQuery = title;
@@ -95,7 +94,7 @@ const verifyWithScopus = async (title, author, doi, maxResultsToCheck = 10) => {
 
     if (!entries.length) {
       return {
-        status: "not existed",
+        status: "unable to verify",
         details: null,
         result: scopusResult,
         apiUrl: scopusApiUrl,
@@ -125,7 +124,7 @@ const verifyWithScopus = async (title, author, doi, maxResultsToCheck = 10) => {
 
     if (!found) {
       return {
-        status: "not existed",
+        status: "unable to verify",
         details: null,
         result: scopusResult,
         apiUrl: scopusApiUrl,
@@ -261,8 +260,8 @@ const verifyCV = async (file) => {
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult] = await Promise.all([
-          verifyWithGoogleScholar(pub.title, pub.author, pub.doi),
-          verifyWithScopus(pub.title, pub.author, pub.doi),
+          verifyWithGoogleScholar(pub.title,  pub.doi),
+          verifyWithScopus(pub.title,  pub.doi),
         ]);
 
         // Get the best available link or create a Google Scholar search link
@@ -273,22 +272,52 @@ const verifyCV = async (file) => {
         return {
           publication: {
             title: pub.title?.trim() || "",
-            author: pub.author?.trim() || "",
             doi: pub.doi?.trim() || null,
             fullText: pub.publication?.trim() || "",
           },
           verification: {
             google_scholar: {
-              status: scholarResult.status,
               details: scholarResult.details,
-              link: scholarLink || fallbackLink,
             },
             scopus: {
-              status: scopusResult.status,
               details: scopusResult.details,
-              link: scopusLink || fallbackLink,
             },
-            authorDetails: scholarResult.authorDetails || null,
+            displayData: {
+              publication: pub.publication || "Unable to verify",
+              title:
+                scholarResult.details?.title ||
+                scopusResult.details?.title ||
+                "Unable to verify",
+              author: scholarResult.details?.publication_info?.summary
+                ? scholarResult.details.publication_info.summary
+                    .split("-")[0]
+                    .trim()
+                : scholarResult.details?.publication_info?.authors
+                ? scholarResult.details.publication_info.authors
+                    .map((a) => a.name)
+                    .join(", ")
+                : scopusResult.details?.["dc:creator"] || "Unable to verify",
+              type: scopusResult.details?.subtypeDescription || "Not specified",
+              year:
+                scholarResult.details?.year ||
+                (scopusResult.details?.["prism:coverDate"]
+                  ? scopusResult.details["prism:coverDate"].substring(0, 4)
+                  : "Unable to verify"),
+              citedBy:
+                scholarResult.details?.inline_links?.cited_by?.total ||
+                scopusResult.details?.["citedby-count"] ||
+                "0",
+              link:
+                scholarLink ||
+                scopusLink ||
+                fallbackLink ||
+                "No link available",
+              status:
+                scholarResult.status === "verified" ||
+                scopusResult.status === "verified"
+                  ? "verified"
+                  : "not verified",
+            },
           },
         };
       })
