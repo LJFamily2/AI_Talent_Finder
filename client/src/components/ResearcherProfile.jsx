@@ -14,20 +14,20 @@ export default function ResearcherProfile({ researcherData }) {
     const researcher = researcherData.author;
 
     // set up table
-    const statsTable = researcherData.cited_by.table;
+    const statsTable = researcherData.citedBy.table;
 
-    function createData(name, all, since2020) {
-        return { name, all, since2020 };
+    function createData(name, all, since_2020) {
+        return { name, all, since_2020 };
     }
 
     const rows = [
-        createData('Citations', statsTable[0].citations?.all, statsTable[0].citations?.depuis_2016),
-        createData('h-index', statsTable[1].indice_h?.all, statsTable[1].indice_h?.depuis_2016),
-        createData('i10-index', statsTable[2].indice_i10?.all, statsTable[2].indice_i10?.depuis_2016),
+        createData('Citations', statsTable[0].citations?.all, statsTable[0].citations?.since_2020),
+        createData('h-index', statsTable[1].h_index?.all, statsTable[1].h_index?.since_2020),
+        createData('i10-index', statsTable[2].i10_index?.all, statsTable[2].i10_index?.since_2020),
     ];
 
     // set up graph
-    const statsGraph = researcherData.cited_by.graph;
+    const statsGraph = researcherData.citedBy.graph;
     const dataMap = new Map();
     statsGraph.forEach(d => dataMap.set(d.year, Number(d.citations)));
 
@@ -86,7 +86,7 @@ export default function ResearcherProfile({ researcherData }) {
                                             {row.name}
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontSize: 13 }}>{row.all}</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: 13 }}>{row.since2020}</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: 13 }}>{row.since_2020}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
