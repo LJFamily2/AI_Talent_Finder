@@ -6,11 +6,7 @@ const { getTitleSimilarity } = require("../utils/textUtils");
 // Cache for author data to avoid duplicate API calls
 const authorCache = new Map();
 
-const verifyWithGoogleScholar = async (
-  title,
-  doi,
-  maxResultsToCheck = 10
-) => {
+const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
   try {
     const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
     const scholarQuery = title;
@@ -23,7 +19,11 @@ const verifyWithGoogleScholar = async (
       scholarResult?.organic_results || scholarResult?.items || [];
 
     if (!organicResults.length) {
-      return { status: "unable to verify", details: null, result: scholarResult };
+      return {
+        status: "unable to verify",
+        details: null,
+        result: scholarResult,
+      };
     }
 
     const found = organicResults.slice(0, maxResultsToCheck).find((item) => {
@@ -48,10 +48,12 @@ const verifyWithGoogleScholar = async (
     });
 
     if (!found) {
-      return { status: "unable to verify", details: null, result: scholarResult };
+      return {
+        status: "unable to verify",
+        details: null,
+        result: scholarResult,
+      };
     } // Get author information if available
-    let authorDetails = null;
-    let publicationYear = null;
     if (found.publication_info?.authors?.length > 0) {
       const authorId = found.publication_info.authors[0].author_id;
       if (authorId) {
@@ -70,13 +72,10 @@ const verifyWithGoogleScholar = async (
       status: "verified",
       details: {
         ...found,
-        year: publicationYear,
-        authorDetails,
       },
       result: scholarResult,
     };
   } catch (err) {
-    console.error("Google Scholar verification error:", err);
     return { status: "unable to verify", details: null, result: null };
   }
 };
@@ -85,13 +84,12 @@ const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
   try {
     const scopusAPIKey = process.env.SCOPUS_API_KEY;
     const scopusQuery = title;
-    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&query=${encodeURIComponent(
+    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&query=TITLE-ABS-KEY(${encodeURIComponent(
       scopusQuery
-    )}&page=1&sortBy=relevance`;
+    )})&page=1&sortBy=relevance`;
 
     const { data: scopusResult } = await axios.get(scopusApiUrl);
     const entries = scopusResult?.["search-results"]?.entry || [];
-
     if (!entries.length) {
       return {
         status: "unable to verify",
@@ -100,7 +98,6 @@ const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
         apiUrl: scopusApiUrl,
       };
     }
-
     const found = entries.slice(0, maxResultsToCheck).find((item) => {
       if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
         return true;
@@ -121,7 +118,6 @@ const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
       }
       return false;
     });
-
     if (!found) {
       return {
         status: "unable to verify",
@@ -131,17 +127,18 @@ const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
       };
     }
 
+    // Get the Scopus link from the array of links
     const scopusLink = found.link?.find((link) => link["@ref"] === "scopus")?.[
       "@href"
-    ];
+    ]; // Keep all original fields from the Scopus API response
     const details = {
-      title: found["dc:title"],
-      doi: found["prism:doi"],
-      authors: found["dc:creator"],
-      publicationName: found["prism:publicationName"],
-      link: scopusLink || null,
+      ...found,
+      // Ensure the scopus link is properly set if available
+      link: found.link?.map((link) => ({
+        ...link,
+        "@href": link["@ref"] === "scopus" ? scopusLink : link["@href"],
+      })),
     };
-
     return {
       status: "verified",
       details,
@@ -260,8 +257,8 @@ const verifyCV = async (file) => {
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult] = await Promise.all([
-          verifyWithGoogleScholar(pub.title,  pub.doi),
-          verifyWithScopus(pub.title,  pub.doi),
+          verifyWithGoogleScholar(pub.title, pub.doi),
+          verifyWithScopus(pub.title, pub.doi),
         ]);
 
         // Get the best available link or create a Google Scholar search link
@@ -286,37 +283,103 @@ const verifyCV = async (file) => {
               publication: pub.publication || "Unable to verify",
               title:
                 scholarResult.details?.title ||
-                scopusResult.details?.title ||
+                scopusResult.details?.["dc:title"] ||
                 "Unable to verify",
-              author: scholarResult.details?.publication_info?.summary
-                ? scholarResult.details.publication_info.summary
+              author: (() => {
+                // Try Google Scholar author info first
+                if (scholarResult.details?.publication_info?.summary) {
+                  return scholarResult.details.publication_info.summary
                     .split("-")[0]
-                    .trim()
-                : scholarResult.details?.publication_info?.authors
-                ? scholarResult.details.publication_info.authors
+                    .trim();
+                }
+                if (scholarResult.details?.publication_info?.authors) {
+                  return scholarResult.details.publication_info.authors
                     .map((a) => a.name)
-                    .join(", ")
-                : scopusResult.details?.["dc:creator"] || "Unable to verify",
-              type: scopusResult.details?.subtypeDescription || "Not specified",
-              year:
-                scholarResult.details?.year ||
-                (scopusResult.details?.["prism:coverDate"]
-                  ? scopusResult.details["prism:coverDate"].substring(0, 4)
-                  : "Unable to verify"),
-              citedBy:
-                scholarResult.details?.inline_links?.cited_by?.total ||
-                scopusResult.details?.["citedby-count"] ||
-                "0",
-              link:
-                scholarLink ||
-                scopusLink ||
-                fallbackLink ||
-                "No link available",
+                    .join(", ");
+                }
+                // Then try Scopus author info
+                if (scopusResult.details?.["dc:creator"]) {
+                  return scopusResult.details["dc:creator"];
+                }
+                return "Unable to verify";
+              })(),
+              type: (() => {
+                // Use type from either source
+                const scopusType = scopusResult.details?.subtypeDescription;
+                const scholarType = scholarResult.details?.type;
+                return scopusType || scholarType || "Not specified";
+              })(),
+              year: (() => {
+                const currentYear = new Date().getFullYear();
+
+                // Try Scopus coverDate first as it's usually more reliable
+                const scopusDate = scopusResult.details?.["prism:coverDate"];
+                if (scopusDate) {
+                  const year = scopusDate.substring(0, 4);
+                  if (
+                    parseInt(year) >= 1700 &&
+                    parseInt(year) <= currentYear + 1
+                  ) {
+                    return year;
+                  }
+                }
+
+                // Then try Google Scholar summary
+                const summary =
+                  scholarResult.details?.publication_info?.summary;
+                if (summary) {
+                  const match = summary.match(/[,-]?\s*(\d{4})\b/);
+                  const year = match?.[1];
+                  if (
+                    year &&
+                    parseInt(year) >= 1700 &&
+                    parseInt(year) <= currentYear + 1
+                  ) {
+                    return year;
+                  }
+                }
+
+                return "Unable to verify";
+              })(),
+              citedBy: (() => {
+                // Get citation counts from both sources
+                const scholarCitations = parseInt(
+                  scholarResult.details?.inline_links?.cited_by?.total || "0"
+                );
+                const scopusCitations = parseInt(
+                  scopusResult.details?.["citedby-count"] || "0"
+                );
+
+                // Return the higher citation count
+                return Math.max(scholarCitations, scopusCitations).toString();
+              })(),
+              link: (() => {
+                // Try to get Scopus link first
+                if (scopusResult.details?.link) {
+                  const scopusLink = scopusResult.details.link.find(
+                    (link) => link["@ref"] === "scopus"
+                  );
+                  if (scopusLink) return scopusLink["@href"];
+                }
+
+                // Then try Google Scholar link
+                if (scholarLink) return scholarLink;
+
+                // Finally use the fallback
+                return fallbackLink || "No link available";
+              })(),
               status:
                 scholarResult.status === "verified" ||
                 scopusResult.status === "verified"
                   ? "verified"
                   : "not verified",
+              // Additional Scopus fields
+              publicationName:
+                scopusResult.details?.["prism:publicationName"] || null,
+              volume: scopusResult.details?.["prism:volume"] || null,
+              issue: scopusResult.details?.["prism:issueIdentifier"] || null,
+              pageRange: scopusResult.details?.["prism:pageRange"] || null,
+              doi: scopusResult.details?.["prism:doi"] || null,
             },
           },
         };
@@ -435,7 +498,7 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
       };
     }
   } catch (error) {
-    console.error("Error fetching author details:", error);
+    // Error handled silently
   }
 
   return null;
