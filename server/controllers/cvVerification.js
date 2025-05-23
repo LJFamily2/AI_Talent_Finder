@@ -53,7 +53,9 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
         details: null,
         result: scholarResult,
       };
-    } // Get author information if available
+    }
+    let authorDetails = null;
+
     if (found.publication_info?.authors?.length > 0) {
       const authorId = found.publication_info.authors[0].author_id;
       if (authorId) {
@@ -63,15 +65,16 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
           found.title
         );
         if (authorInfo) {
-          publicationYear = authorInfo.year;
           authorDetails = authorInfo.details;
         }
       }
     }
+
     return {
       status: "verified",
       details: {
         ...found,
+        authorDetails,
       },
       result: scholarResult,
     };
@@ -274,9 +277,11 @@ const verifyCV = async (file) => {
           },
           verification: {
             google_scholar: {
+              status: scholarResult.status,
               details: scholarResult.details,
             },
             scopus: {
+              status: scopusResult.status,
               details: scopusResult.details,
             },
             displayData: {
