@@ -1,13 +1,20 @@
-import { sampleResearcher } from "../pages/seed"
-import { Avatar, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Typography } from "@mui/material";
+import { Avatar, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { BarChart } from "@mui/x-charts";
 
-export default function ResearcherProfile() {
+export default function ResearcherProfile({ researcherData }) {
 
-    const researcher = sampleResearcher.author;
+    if (!researcherData) {
+        return (
+            <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col items-center justify-center min-h-[200px]">
+                <p className="text-gray-500">No Researcher profile found.</p>
+            </div>
+        );
+    }
+
+    const researcher = researcherData.author;
 
     // set up table
-    const statsTable = sampleResearcher.cited_by.table;
+    const statsTable = researcherData.cited_by.table;
 
     function createData(name, all, since2020) {
         return { name, all, since2020 };
@@ -20,7 +27,7 @@ export default function ResearcherProfile() {
     ];
 
     // set up graph
-    const statsGraph = sampleResearcher.cited_by.graph;
+    const statsGraph = researcherData.cited_by.graph;
     const dataMap = new Map();
     statsGraph.forEach(d => dataMap.set(d.year, Number(d.citations)));
 
@@ -31,28 +38,32 @@ export default function ResearcherProfile() {
     const citations = fullYears.map(year => dataMap.get(year) || 0);
 
     return (
-        <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col items-center">
-            <h2 className="text-lg font-bold mb-4">Researcher Profile</h2>
-            <Avatar
-                alt="Scholar Avatar"
-                src={researcher.thumbnail}
-                sx={{ width: 100, height: 100, marginBottom: 2 }}
-            />
-            <p className="font-bold">{researcher.name}</p>
-            <p className="text-center">{researcher.affiliations}</p>
+        <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col">
+            {/* <h2 className="text-xl font-bold mb-4 text-center">Researcher Profile</h2> */}
+            <div className="flex items-center gap-5">
+                <Avatar
+                    alt="Scholar Avatar"
+                    src={researcher.thumbnail}
+                    sx={{ width: 80, height: 80 }}
+                />
+                <div>
+                    <p className="font-bold text-md">{researcher.name}</p>
+                    <p className="text-sm text-gray-600">{researcher.affiliations}</p>
+                </div>
+            </div>
             <div className="mt-4">
-                <h3 className="font-semibold text-lg mb-2">
+                <h3 className="font-semibold text-sm mb-2">
                     Expertise
                 </h3>
                 <div className="flex flex-wrap gap-2">
                     {researcher.interests.map((interest, index) => (
-                        <Chip key={index} label={interest.title} color="primary" variant="outlined" />
+                        <Chip key={index} label={interest.title} color="primary" variant="outlined" size="small" />
                     ))}
                 </div>
             </div>
 
-            <div className="mt-8 md:w-full">
-                <h3 className="font-semibold text-lg mb-2">
+            <div className="mt-4 md:w-full">
+                <h3 className="font-semibold text-sm mb-2">
                     Cited By
                 </h3>
                 <div className="mb-2">
@@ -61,8 +72,8 @@ export default function ResearcherProfile() {
                             <TableHead>
                                 <TableRow>
                                     <TableCell></TableCell>
-                                    <TableCell align="right">All</TableCell>
-                                    <TableCell align="right">Since 2020</TableCell>
+                                    <TableCell align="right" sx={{ fontSize: 13 }}>All</TableCell>
+                                    <TableCell align="right" sx={{ fontSize: 13 }}>Since 2020</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -71,11 +82,11 @@ export default function ResearcherProfile() {
                                         key={row.name}
                                         sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                     >
-                                        <TableCell component="th" scope="row">
+                                        <TableCell component="th" scope="row" sx={{ fontSize: 13 }}>
                                             {row.name}
                                         </TableCell>
-                                        <TableCell align="right">{row.all}</TableCell>
-                                        <TableCell align="right">{row.since2020}</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: 13 }}>{row.all}</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: 13 }}>{row.since2020}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -85,13 +96,13 @@ export default function ResearcherProfile() {
 
                 <div>
                     {/* <Box className="bg-white shadow rounded"> */}
-                    <Typography variant="subtitle1" gutterBottom>
+                    <h3 className="font-semilight text-sm text-gray-500">
                         Citations per Year
-                    </Typography>
+                    </h3>
                     <BarChart
                         xAxis={[{ scaleType: 'band', data: years }]}
                         series={[{ data: citations, color: '#1a73e8' }]}
-                        height={250}
+                        height={230}
                     />
                     {/* </Box> */}
                 </div>

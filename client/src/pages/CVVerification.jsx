@@ -4,6 +4,7 @@ import { Pagination, FormControl, FormGroup, FormLabel, RadioGroup, FormControlL
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import Header from '../components/Header';
 import { useLocation, useNavigate } from 'react-router-dom';
+// import { sampleResearcher } from './seed';      // sample researcher data
 
 export default function CVVerification() {
 
@@ -37,6 +38,8 @@ export default function CVVerification() {
     }
 
     const allDisplayData = publications.results.map(r => r.verification.displayData);
+    const researcherData = publications.authorDetails;
+    // const researcherData = sampleResearcher;
 
     // Type Selection - Handle toggle
     const handleTypeChange = (type) => {
@@ -329,12 +332,11 @@ export default function CVVerification() {
                             </div>
                         ))
                     )}
-
                 </div>
 
                 {/* Researcher Profile */}
                 <aside className="md:col-span-3">
-                    <ResearcherProfile />
+                    <ResearcherProfile researcherData={researcherData} />
                 </aside>
             </div>
 
