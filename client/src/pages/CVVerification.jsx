@@ -2,8 +2,8 @@ import { useState } from 'react'
 import ResearcherProfile from "../components/ResearcherProfile";
 import { Pagination, FormControl, FormGroup, FormLabel, RadioGroup, FormControlLabel, Radio, Checkbox, Button } from "@mui/material";
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import { samplePublications } from './seed';
 import Header from '../components/Header';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function CVVerification() {
 
@@ -15,13 +15,28 @@ export default function CVVerification() {
     const [filterEndYear, setFilterEndYear] = useState('');
     const [yearFilterActive, setYearFilterActive] = useState(false);
 
-    const typeOptions = ["Journal", "Conference", "Book", "Other"];
+    const typeOptions = ["Article", "Conference Paper", "Book", "Webpage", "Other"];
     const [selectedTypes, setSelectedTypes] = useState([]);
 
     const [filterStatus, setFilterStatus] = useState('All')
 
     const [page, setPage] = useState(1)
     const itemsPerPage = 3
+
+    // Navigation and state logic
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    const publications = location.state?.publications;
+
+    if (!publications) {
+        navigate("/upload-cv");
+        return null;
+    } else {
+        console.log(publications);
+    }
+
+    const allDisplayData = publications.results.map(r => r.verification.displayData);
 
     // Type Selection - Handle toggle
     const handleTypeChange = (type) => {
@@ -40,19 +55,16 @@ export default function CVVerification() {
     };
 
 
-    const filtered = samplePublications
+    const filtered = allDisplayData
         .filter(pub => {
             if (filterStatus === 'All') return true;
-            if (filterStatus === 'unable') {
-                return pub.status === 'unable to verify' || pub.status === 'not existed';
-            }
             return pub.status === filterStatus;
         })
         .filter(pub => selectedTypes.length === 0 || selectedTypes.includes(pub.type))
         .filter(pub => {
             if (!yearFilterActive) return true;
 
-            const year = parseInt(pub.published_year);
+            const year = parseInt(pub.year);
             const start = parseInt(filterStartYear);
             const end = parseInt(filterEndYear);
 
@@ -64,8 +76,8 @@ export default function CVVerification() {
         })
         .sort((a, b) =>
             sortOrder === 'Newest'
-                ? b.published_year.localeCompare(a.published_year)
-                : a.published_year.localeCompare(b.published_year)
+                ? b.year.localeCompare(a.year)
+                : a.year.localeCompare(b.year)
         )
 
     const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage)
@@ -239,9 +251,9 @@ export default function CVVerification() {
                                         slotProps={{ typography: { fontSize: 13 } }}
                                     />
                                     <FormControlLabel
-                                        value="unable"
+                                        value="not verified"
                                         control={<Radio size="small" />}
-                                        label="Unable To Verify"
+                                        label="Not Verified"
                                         slotProps={{ typography: { fontSize: 13 } }}
                                     />
                                 </RadioGroup>
@@ -263,56 +275,61 @@ export default function CVVerification() {
                             shape='rounded'
                         />
                     </div>
-                    {paginated.map((pub, idx) => (
-                        <div key={idx} className="grid grid-cols-1 md:grid-cols-10 mb-2 p-4 h-fit bg-white rounded-md shadow">
-                            <div className="md:col-span-9">
-
-                                <h3 className="text-md font-light mb-5">{pub.parsed_text}</h3>
-
-                                <div className="mb-2 text-sm text-gray-700">
-                                    <span className=" font-semibold">Title:</span>{' '}
-                                    <span className="">{pub.title}</span>
-                                </div>
-
-                                <div className="flex flex-wrap gap-10 text-sm text-gray-700">
-                                    <div>
-                                        <span className="font-semibold">Author:</span>{' '}
-                                        <span className="">{pub.author}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-semibold">Published Year:</span>{' '}
-                                        <span className="">{pub.published_year}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-semibold">Type:</span>{' '}
-                                        <span className="">{pub.type}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-semibold">Cited By:</span>{' '}
-                                        <span className="">{pub.cited_by}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className='md:col-span-1 md:ml-auto'>
-                                {pub.status === 'verified' ? (
-                                    <>
-                                        <p className='md:text-center'><CheckCircleOutlinedIcon color='success' /></p>
-                                        <a
-                                            href={pub.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-600 underline hover:text-blue-800"
-                                        >
-                                            View Source
-                                        </a>
-
-                                    </>
-                                ) : (
-                                    <p className="text-xs text-red-600 md:text-right">{pub.status}</p>
-                                )}
-                            </div>
+                    {paginated.length === 0 ? (
+                        <div className="text-center text-gray-500 mt-10">
+                            No results were found that fit the filters.
                         </div>
-                    ))}
+                    ) : (
+                        paginated.map((pub, idx) => (
+                            <div key={idx} className="grid grid-cols-1 md:grid-cols-10 mb-2 p-4 h-fit bg-white rounded-md shadow">
+                                <div className="md:col-span-9">
+                                    <h3 className="text-md font-light mb-5">{pub.publication}</h3>
+
+                                    <div className="mb-2 text-sm text-gray-700">
+                                        <span className=" font-semibold">Title:</span>{' '}
+                                        <span className="">{pub.title}</span>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-10 text-sm text-gray-700">
+                                        <div>
+                                            <span className="font-semibold">Author:</span>{' '}
+                                            <span className="">{pub.author}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Published Year:</span>{' '}
+                                            <span className="">{pub.year}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Type:</span>{' '}
+                                            <span className="">{pub.type}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Cited By:</span>{' '}
+                                            <span className="">{pub.citedBy}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className='md:col-span-1 md:ml-auto'>
+                                    {pub.status === 'verified' ? (
+                                        <>
+                                            <p className='md:text-center'><CheckCircleOutlinedIcon color='success' /></p>
+                                            <a
+                                                href={pub.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-600 underline hover:text-blue-800"
+                                            >
+                                                View Source
+                                            </a>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-red-600 md:text-right">{pub.status}</p>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+
                 </div>
 
                 {/* Researcher Profile */}
