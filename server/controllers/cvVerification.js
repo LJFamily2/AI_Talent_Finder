@@ -55,7 +55,6 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
       };
     }
     let authorDetails = null;
-    let publicationYear = null;
 
     if (found.publication_info?.authors?.length > 0) {
       const authorId = found.publication_info.authors[0].author_id;
@@ -66,7 +65,6 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
           found.title
         );
         if (authorInfo) {
-          publicationYear = authorInfo.year;
           authorDetails = authorInfo.details;
         }
       }
@@ -76,7 +74,6 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
       status: "verified",
       details: {
         ...found,
-        year: publicationYear,
         authorDetails,
       },
       result: scholarResult,
