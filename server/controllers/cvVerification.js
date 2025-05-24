@@ -1,6 +1,7 @@
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const axios = require("axios");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { getTitleSimilarity } = require("../utils/textUtils");
 
 // Cache for author data to avoid duplicate API calls
@@ -165,50 +166,105 @@ const createGoogleScholarSearchUrl = (title) => {
 };
 
 const extractPublicationsFromCV = async (cvText) => {
-  const cohereApiKey = process.env.COHERE_API_KEY;
-  if (!cohereApiKey) {
-    throw new Error("Cohere API key is not configured");
+  const googleApiKey = process.env.GEMINI_API_KEY;
+  if (!googleApiKey) {
+    throw new Error("Google AI API key is not configured");
+  } // Regular expressions for identifying publication sections and their boundaries
+  const PUBLICATION_PATTERNS = [
+    /publications?$/i,
+    /selected publications/i,
+    /journal (?:articles|publications)/i,
+    /conference (?:papers|publications)/i,
+    /peer[- ]reviewed publications/i,
+    /book chapters/i,
+    /research publications/i,
+    /articles/i,
+    /published works/i,
+    /scholarly publications/i,
+  ];
+
+  // Function to identify publication headers and section boundaries
+  const analyzeSection = (line) => {
+    const upperLine = line.toUpperCase().trim();
+    // Skip empty lines
+    if (!line.trim()) return null;
+
+    // Check if this is a publication section header
+    const isHeader = PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
+
+    // Check if this is a new section (all caps, but not a publication header)
+    const isNewSection = line === upperLine && !isHeader;
+
+    return { isHeader, isNewSection, text: line };
+  };
+
+  // Process the CV text more efficiently
+  const lines = cvText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const allPublicationSections = [];
+  let currentSection = { header: "", content: [] };
+
+  for (const line of lines) {
+    const section = analyzeSection(line);
+    if (!section) continue;
+
+    if (section.isHeader) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0) {
+        allPublicationSections.push({
+          header: currentSection.header,
+          content: currentSection.content.join("\n"),
+        });
+      }
+      // Start new section
+      currentSection = { header: line, content: [] };
+    } else if (section.isNewSection && currentSection.content.length > 0) {
+      // End current section
+      allPublicationSections.push({
+        header: currentSection.header,
+        content: currentSection.content.join("\n"),
+      });
+      currentSection = { header: "", content: [] };
+    } else if (currentSection.header) {
+      // Add content to current section
+      currentSection.content.push(line);
+    }
   }
 
-  // Find the publications section
-  const lines = cvText.split(/[\n]+/);
-  let publicationSection = "";
-  let isPublicationSection = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (line.toUpperCase() === "PUBLICATIONS") {
-      isPublicationSection = true;
-      continue;
-    }
-    if (
-      isPublicationSection &&
-      line.length > 0 &&
-      line === line.toUpperCase() &&
-      line !== "PUBLICATIONS"
-    ) {
-      break;
-    }
-    if (isPublicationSection && line.length > 0) {
-      publicationSection += line + "\n";
-    }
+  // Add the last section if it has content
+  if (currentSection.content.length > 0) {
+    allPublicationSections.push({
+      header: currentSection.header,
+      content: currentSection.content.join("\n"),
+    });
   }
 
-  // Get publications from Cohere AI
-  const cohereResponse = await axios.post(
-    "https://api.cohere.ai/v1/generate",
-    {
-      model: "command",
-      prompt: `
-You are an expert academic CV analyzer focusing on publications.
+  // Combine all publication sections with headers for context
+  const combinedPublicationSection = allPublicationSections
+    .map((section) => `${section.header}\n${section.content}`)
+    .join("\n\n");
+
+  // Initialize Google AI
+  const genAI = new GoogleGenerativeAI(googleApiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemma-3n-e4b-it",
+    generationConfig: {
+      temperature: 0.1,
+      topP: 1,
+      maxOutputTokens: 2048,
+    },
+  });
+
+  // Prepare the prompt
+  const prompt = `You are an expert academic CV analyzer focusing on publications.
 From the text below, which contains the Publications section of an academic CV, extract all publication entries.
 Each publication must be returned as an object inside a JSON array, with the following keys:
 - "publication": the full original text of the publication entry
 - "title": the publication title (can be in quotes or the main text before publication details)
 - "doi": the DOI if written (starts with 10.), otherwise null
-
 Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
-
 Rules:
 - Extract ALL publications, even if titles are not in quotes
 - Extract titles from text whether they appear in quotes or as main text before publication details
@@ -216,22 +272,16 @@ Rules:
 - Return only valid JSON. No markdown, no explanation, no extra output.
 
 TEXT:
-"""
-${publicationSection}
-"""`,
-      max_tokens: 1000,
-      temperature: 0.3,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${cohereApiKey}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+${combinedPublicationSection}`;
 
+  // Generate response from Google AI
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+
+  // Parse and clean the response
   return JSON.parse(
-    cohereResponse.data.generations[0].text
+    text
       .trim()
       .replace(/```json|```/g, "")
       .replace(/^[^[{]*(\[.*\])[^}\]]*$/s, "$1")
@@ -239,6 +289,7 @@ ${publicationSection}
   );
 };
 
+// Main function
 const verifyCV = async (file) => {
   try {
     // Parse PDF to text
@@ -389,7 +440,8 @@ const verifyCV = async (file) => {
           },
         };
       })
-    ); // Get author details from the first verified publication that has Google Scholar details
+    ); 
+    // Get author details from the first verified publication that has Google Scholar details
     const authorDetails =
       verificationResults.find(
         (result) =>
