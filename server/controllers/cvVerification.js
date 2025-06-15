@@ -343,11 +343,34 @@ const extractPublicationsFromCV = async (cvText) => {
       allPublications.push(...fallbackPubs);
     }
   }
-
-  // Remove duplicates (based on title similarity)
+  // Remove duplicates (based on title similarity) and validate publications
   const uniquePublications = [];
   for (const pub of allPublications) {
     if (!pub.title) continue;
+
+    // Additional validation to filter out fabricated publications
+    if (
+      /\[([0-9]+|P[0-9]+|TR[0-9]+)\]/.test(pub.publication) ||
+      /^[A-Z]\.\s*Author/.test(pub.publication) ||
+      (/et al\./.test(pub.publication) && !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
+    ) {
+      console.log("Filtered out likely hallucination:", pub.publication);
+      continue;
+    }
+    
+    // Check if title has reasonable length and not generic words
+    if (
+      pub.title && 
+      (pub.title.length < 10 || 
+       (/study|framework|analysis|research|impact/i.test(pub.title) && pub.title.length < 25))
+    ) {
+      // If title is too generic and short, verify it appears in the original text
+      const titleInText = new RegExp(pub.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      if (!titleInText.test(cvText)) {
+        console.log("Filtered out publication with title not found in text:", pub.title);
+        continue;
+      }
+    }
 
     const isDuplicate = uniquePublications.some((existingPub) => {
       if (!existingPub.title) return false;
@@ -362,6 +385,14 @@ const extractPublicationsFromCV = async (cvText) => {
   }
 
   console.log(`Extracted ${uniquePublications.length} unique publications`);
+  
+  // Additional logging for debugging
+  if (uniquePublications.length === 0 && cvText.length > 2000) {
+    console.warn("No publications found in a large CV. This may indicate extraction issues.");
+  } else if (uniquePublications.length < 3 && cvText.length > 2000) {
+    console.warn("Few publications found in a large CV. Extraction may be incomplete.");
+  }
+  
   return uniquePublications;
 };
 
@@ -371,47 +402,26 @@ async function extractPublicationsFromChunk(
   chunkText,
   isFallback = false
 ) {
-  // Create a more specific prompt based on the CV format
-  let prompt;
-
-  if (isFallback) {
-    prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, which is part of an academic CV, extract any publication entries.
+  // Create a more specific prompt with strong anti-hallucination instructions
+  let prompt = `You are an expert academic CV analyzer focusing on publications.
+From the text below, which contains part of an academic CV, extract ONLY ACTUAL publications that appear in the text.
 Each publication must be returned as an object inside a JSON array, with the following keys:
-- "publication": the full original text of the publication entry
-- "title": the publication title (can be in quotes or the main text before publication details)
+- "publication": the full original text of the publication entry exactly as it appears
+- "title": the publication title extracted from the publication text
 - "doi": the DOI if written (starts with 10.), otherwise null
 Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
 
-Rules:
-- Extract ALL publications, even if titles are not in quotes
-- Make sure to capture publication numbers/identifiers like [1], [P1], [TR1] as part of the publication text
-- Extract titles, which usually appear after the numbering and before the author list or publication details
-- DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
+IMPORTANT RULES:
+- ONLY extract publications that are explicitly written in the text
+- DO NOT create or invent ANY publications that aren't explicitly in the text
+- Return an EMPTY array [] if you can't find actual publications
+- If you're uncertain if something is a publication, DO NOT include it
+- DO NOT include example, template or placeholder publications with generic author names like "A. Author"
+- DO NOT fabricate ANY content or publications
 - Return only valid JSON. No markdown, no explanation, no extra output.
 
 TEXT:
 ${chunkText}`;
-  } else {
-    prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, which contains publication entries from an academic CV, extract all publication entries.
-Each publication must be returned as an object inside a JSON array, with the following keys:
-- "publication": the full original text of the publication entry
-- "title": the publication title (can be in quotes or the main text before publication details)
-- "doi": the DOI if written (starts with 10.), otherwise null
-Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
-
-Rules:
-- For academic papers, the title usually follows the authors, or appears after the reference number
-- In entries marked like [1], [P1], [TR1], these are publication identifiers - include them in the "publication" field
-- Each paragraph or multi-line entry typically represents one publication
-- If entries follow the pattern "[1] Authors. Title. Journal..." extract the title accordingly
-- DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
-- Return only valid JSON. No markdown, no explanation, no extra output.
-
-TEXT:
-${chunkText}`;
-  }
 
   try {
     const result = await model.generateContent(prompt);
@@ -431,7 +441,40 @@ ${chunkText}`;
       cleanedText = cleanedText.replace(/,\s*\]/g, "]");
       cleanedText = cleanedText.replace(/([^\\])\\([^\\"])/g, "$1\\\\$2");
 
-      return JSON.parse(cleanedText);
+      const publications = JSON.parse(cleanedText);
+      
+      // Post-processing to filter out obviously hallucinated entries
+      return publications.filter(pub => {
+        // Filter out entries with generic author patterns
+        if (
+          /A\.\s*Author|B\.\s*Author|C\.\s*Author/.test(pub.publication) ||
+          /\[1\]|\[P1\]|\[TR1\]/.test(pub.publication) ||
+          /example|template|placeholder/i.test(pub.publication)
+        ) {
+          console.log("Filtered out likely hallucination:", pub.publication);
+          return false;
+        }
+        
+        // Filter out publications with extremely short text (likely hallucinations)
+        if (pub.publication.length < 15) {
+          console.log("Filtered out short publication:", pub.publication);
+          return false;
+        }
+        
+        // Only keep publications with specific publication details
+        const hasPublicationMetadata = (
+          pub.publication.includes("(") || // Has year or volume info
+          pub.publication.includes(":") || // Has page numbers
+          /vol|volume|issue|journal|proceedings/i.test(pub.publication) // Has publication metadata
+        );
+        
+        if (!hasPublicationMetadata) {
+          console.log("Filtered out publication without metadata:", pub.publication);
+          return false;
+        }
+        
+        return true;
+      });
     } catch (e) {
       console.error("Failed to parse JSON from model response:", e.message);
       console.error("Response was:", cleanedText);
@@ -481,7 +524,6 @@ const verifyCV = async (file) => {
 
         // Get the best available link or create a Google Scholar search link
         const scholarLink = scholarResult.details?.link;
-        const scopusLink = scopusResult.details?.link;
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
         return {
