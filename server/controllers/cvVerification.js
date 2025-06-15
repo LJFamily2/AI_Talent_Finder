@@ -169,82 +169,91 @@ const extractPublicationsFromCV = async (cvText) => {
   const googleApiKey = process.env.GEMINI_API_KEY;
   if (!googleApiKey) {
     throw new Error("Google AI API key is not configured");
-  } // Regular expressions for identifying publication sections and their boundaries
+  }
+
+  // Enhanced patterns for academic publication sections
   const PUBLICATION_PATTERNS = [
     /publications?$/i,
     /selected publications/i,
     /journal (?:articles|publications)/i,
     /conference (?:papers|publications)/i,
     /peer[- ]reviewed publications/i,
+    /in-progress manuscripts/i,
+    /peer-reviewed publications/i,
+    /policy-related publications/i,
+    /workshop papers/i,
+    /technical reports/i,
     /book chapters/i,
+    /book reviews/i,
     /research publications/i,
     /articles/i,
     /published works/i,
     /scholarly publications/i,
+    /papers/i,
+    /\[.*\]/i, // Matches publication entries with reference numbers like [1], [P1]
   ];
 
-  // Function to identify publication headers and section boundaries
-  const analyzeSection = (line) => {
-    const upperLine = line.toUpperCase().trim();
-    // Skip empty lines
-    if (!line.trim()) return null;
-
-    // Check if this is a publication section header
-    const isHeader = PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
-
-    // Check if this is a new section (all caps, but not a publication header)
-    const isNewSection = line === upperLine && !isHeader;
-
-    return { isHeader, isNewSection, text: line };
-  };
-
-  // Process the CV text more efficiently
+  // Process the CV text to find sections
   const lines = cvText
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const allPublicationSections = [];
-  let currentSection = { header: "", content: [] };
 
-  for (const line of lines) {
-    const section = analyzeSection(line);
-    if (!section) continue;
-
-    if (section.isHeader) {
-      // Save previous section if it has content
-      if (currentSection.content.length > 0) {
-        allPublicationSections.push({
-          header: currentSection.header,
-          content: currentSection.content.join("\n"),
-        });
-      }
-      // Start new section
-      currentSection = { header: line, content: [] };
-    } else if (section.isNewSection && currentSection.content.length > 0) {
-      // End current section
-      allPublicationSections.push({
-        header: currentSection.header,
-        content: currentSection.content.join("\n"),
-      });
-      currentSection = { header: "", content: [] };
-    } else if (currentSection.header) {
-      // Add content to current section
-      currentSection.content.push(line);
+  // Identify potential publication sections
+  const sectionHeaders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (
+      (line === line.toUpperCase() && line.length > 3) || // All caps headers
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) || // Publication patterns
+      /^\[.*\]/.test(line) || // Publication entries starting with [x]
+      /^[0-9]+\./.test(line) // Numbered entries
+    ) {
+      sectionHeaders.push({ index: i, text: line });
     }
   }
 
-  // Add the last section if it has content
-  if (currentSection.content.length > 0) {
-    allPublicationSections.push({
-      header: currentSection.header,
-      content: currentSection.content.join("\n"),
-    });
+  // Extract sections that appear to be publication lists
+  const publicationSections = [];
+  for (let i = 0; i < sectionHeaders.length; i++) {
+    const header = sectionHeaders[i];
+    const nextHeader = sectionHeaders[i + 1];
+
+    const sectionEnd = nextHeader ? nextHeader.index : lines.length;
+    const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
+
+    if (
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(header.text)) ||
+      /publications|papers|manuscripts|reports/i.test(header.text)
+    ) {
+      publicationSections.push({
+        header: header.text,
+        content: sectionContent,
+      });
+
+      console.log(`Found publication section: ${header.text}`);
+    }
   }
 
-  // Combine all publication sections with headers for context
-  const combinedPublicationSection = allPublicationSections
-    .map((section) => `${section.header}\n${section.content}`)
-    .join("\n\n");
+  if (publicationSections.length === 0) {
+    console.log(
+      "No publication sections found - falling back to full text analysis"
+    );
+    // If no sections found, look for entries with common publication patterns
+    const pubEntries = lines.filter(
+      (line) =>
+        /^\[\w+\]/.test(line) || // [1], [P1], etc.
+        /^[0-9]+\./.test(line) || // Numbered entries
+        /(19|20)[0-9]{2}/.test(line) // Contains a year
+    );
+
+    if (pubEntries.length > 0) {
+      publicationSections.push({
+        header: "Publications",
+        content: pubEntries.join("\n"),
+      });
+    }
+  }
 
   // Initialize Google AI
   const genAI = new GoogleGenerativeAI(googleApiKey);
@@ -257,39 +266,187 @@ const extractPublicationsFromCV = async (cvText) => {
     },
   });
 
-  // Prepare the prompt
-  const prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, which contains the Publications section of an academic CV, extract all publication entries.
+  // Process each section in chunks
+  const allPublications = [];
+  const MAX_CHUNK_SIZE = 4000; // Characters per chunk
+
+  for (const section of publicationSections) {
+    console.log(
+      `Processing section: ${section.header} (${section.content.length} chars)`
+    );
+
+    // Split section into chunks if needed
+    if (section.content.length > MAX_CHUNK_SIZE) {
+      const chunks = [];
+      let currentChunk = section.header + "\n\n";
+      let currentSize = currentChunk.length;
+
+      // Split at logical boundaries (lines)
+      const contentLines = section.content.split("\n");
+      for (const line of contentLines) {
+        if (
+          currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
+          currentChunk.length > 0
+        ) {
+          chunks.push(currentChunk);
+          currentChunk = section.header + " (continued)\n\n";
+          currentSize = currentChunk.length;
+        }
+
+        currentChunk += line + "\n";
+        currentSize += line.length + 1;
+      }
+
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
+      }
+
+      console.log(`Split into ${chunks.length} chunks`);
+
+      // Process each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`Processing chunk ${i + 1}/${chunks.length}`);
+        const chunkPubs = await extractPublicationsFromChunk(model, chunks[i]);
+        allPublications.push(...chunkPubs);
+      }
+    } else {
+      // Process entire section
+      const sectionText = `${section.header}\n\n${section.content}`;
+      const sectionPubs = await extractPublicationsFromChunk(
+        model,
+        sectionText
+      );
+      allPublications.push(...sectionPubs);
+    }
+  }
+
+  // If nothing was found, try a general extraction as a fallback
+  if (allPublications.length === 0 && cvText.length > 0) {
+    console.log(
+      "No publications found in sections - attempting general extraction"
+    );
+
+    // Split the full text into manageable chunks
+    const chunks = [];
+    for (let i = 0; i < cvText.length; i += MAX_CHUNK_SIZE) {
+      chunks.push(cvText.substring(i, i + MAX_CHUNK_SIZE));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`Processing general chunk ${i + 1}/${chunks.length}`);
+      const fallbackPubs = await extractPublicationsFromChunk(
+        model,
+        chunks[i],
+        true
+      );
+      allPublications.push(...fallbackPubs);
+    }
+  }
+
+  // Remove duplicates (based on title similarity)
+  const uniquePublications = [];
+  for (const pub of allPublications) {
+    if (!pub.title) continue;
+
+    const isDuplicate = uniquePublications.some((existingPub) => {
+      if (!existingPub.title) return false;
+
+      const similarity = getTitleSimilarity(pub.title, existingPub.title);
+      return similarity > 80; // Adjust threshold as needed
+    });
+
+    if (!isDuplicate) {
+      uniquePublications.push(pub);
+    }
+  }
+
+  console.log(`Extracted ${uniquePublications.length} unique publications`);
+  return uniquePublications;
+};
+
+// Helper function to extract publications from a chunk of text
+async function extractPublicationsFromChunk(
+  model,
+  chunkText,
+  isFallback = false
+) {
+  // Create a more specific prompt based on the CV format
+  let prompt;
+
+  if (isFallback) {
+    prompt = `You are an expert academic CV analyzer focusing on publications.
+From the text below, which is part of an academic CV, extract any publication entries.
 Each publication must be returned as an object inside a JSON array, with the following keys:
 - "publication": the full original text of the publication entry
 - "title": the publication title (can be in quotes or the main text before publication details)
 - "doi": the DOI if written (starts with 10.), otherwise null
 Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
+
 Rules:
 - Extract ALL publications, even if titles are not in quotes
-- Extract titles from text whether they appear in quotes or as main text before publication details
+- Make sure to capture publication numbers/identifiers like [1], [P1], [TR1] as part of the publication text
+- Extract titles, which usually appear after the numbering and before the author list or publication details
 - DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
 - Return only valid JSON. No markdown, no explanation, no extra output.
 
 TEXT:
-${combinedPublicationSection}`;
+${chunkText}`;
+  } else {
+    prompt = `You are an expert academic CV analyzer focusing on publications.
+From the text below, which contains publication entries from an academic CV, extract all publication entries.
+Each publication must be returned as an object inside a JSON array, with the following keys:
+- "publication": the full original text of the publication entry
+- "title": the publication title (can be in quotes or the main text before publication details)
+- "doi": the DOI if written (starts with 10.), otherwise null
+Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
 
-  // Generate response from Google AI
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+Rules:
+- For academic papers, the title usually follows the authors, or appears after the reference number
+- In entries marked like [1], [P1], [TR1], these are publication identifiers - include them in the "publication" field
+- Each paragraph or multi-line entry typically represents one publication
+- If entries follow the pattern "[1] Authors. Title. Journal..." extract the title accordingly
+- DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
+- Return only valid JSON. No markdown, no explanation, no extra output.
 
-  // Parse and clean the response
-  return JSON.parse(
-    text
+TEXT:
+${chunkText}`;
+  }
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse and clean the response
+    let cleanedText = text
       .trim()
       .replace(/```json|```/g, "")
       .replace(/^[^[{]*(\[.*\])[^}\]]*$/s, "$1")
-      .trim()
-  );
-};
+      .trim();
+
+    // Handle edge cases where the model doesn't return valid JSON
+    try {
+      // Fix common JSON issues - sometimes the model returns malformed JSON
+      cleanedText = cleanedText.replace(/,\s*\]/g, "]");
+      cleanedText = cleanedText.replace(/([^\\])\\([^\\"])/g, "$1\\\\$2");
+
+      return JSON.parse(cleanedText);
+    } catch (e) {
+      console.error("Failed to parse JSON from model response:", e.message);
+      console.error("Response was:", cleanedText);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error processing publication chunk:", error);
+    return [];
+  }
+}
 
 // Main function
+// 1. parse the CV PDF to text
+// 2. extract publications using the Google AI model
+// 3. verify each publication with Google Scholar and Scopus
+// 4. return the results
 const verifyCV = async (file) => {
   try {
     // Parse PDF to text
@@ -297,11 +454,17 @@ const verifyCV = async (file) => {
     const parsedData = await pdfParse(pdfBuffer);
     const cvText = parsedData.text;
 
+    console.log(cvText); // Log the CV text for debugging
+
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Extract publications
     const publications = await extractPublicationsFromCV(cvText);
+    console.log(
+      "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    );
+    console.log(publications); // Log the extracted publications for debugging
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
