@@ -84,11 +84,12 @@ const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
   }
 };
 
-const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
+const verifyWithScopus = async (title, doi, maxResultsToCheck = 5) => {
   try {
     const scopusAPIKey = process.env.SCOPUS_API_KEY;
+    const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
     const scopusQuery = title;
-    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&query=TITLE-ABS-KEY(${encodeURIComponent(
+    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
       scopusQuery
     )})&page=1&sortBy=relevance`;
 
