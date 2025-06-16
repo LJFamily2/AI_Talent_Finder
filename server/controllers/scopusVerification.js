@@ -25,17 +25,10 @@ const verifyWithScopus = async (
         result: scopusResult,
         apiUrl: scopusApiUrl,
       };
-    }
-
-    // Log search query and result count for debugging
-    console.log(
-      `Scopus search for: "${title}" returned ${entries.length} results`
-    );
-
+    } // Log search query and result count for debugging
     const found = entries.find((item) => {
       // Exact DOI match takes precedence
       if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
-        console.log(`✓ DOI exact match: ${doi}`);
         return true;
       }
 
@@ -48,21 +41,12 @@ const verifyWithScopus = async (
         );
 
         // Log similarity for debugging
-        console.log(
-          `Title similarity (${similarity.toFixed(
-            2
-          )}%): "${normalizedTitle}" vs "${normalizedItemTitle}"`
-        );
 
         // Only verify if the similarity is very high (98%+) and titles have reasonable length
         const titleLengthRatio =
           Math.min(normalizedTitle.length, normalizedItemTitle.length) /
           Math.max(normalizedTitle.length, normalizedItemTitle.length);
-
         if (similarity >= 98 && titleLengthRatio >= 0.8) {
-          console.log(
-            `✓ High similarity title match (${similarity.toFixed(2)}%)`
-          );
           return true;
         }
       }

@@ -110,12 +110,8 @@ const verifyWithGoogleScholar = async (
           if (!author.name) return false;
           return checkAuthorNameMatch(candidateName, [author.name]);
         });
-
         if (matchedAuthor && matchedAuthor.author_id) {
           matchedAuthorId = matchedAuthor.author_id;
-          console.log(
-            `✓ Found matching author in Google Scholar: "${matchedAuthor.name}" (ID: ${matchedAuthorId}) for candidate "${candidateName}"`
-          );
         } else {
           // Fallback: if we can't find the exact match in the authors array,
           // but we know there's a match somewhere, use the first author with an ID
@@ -124,9 +120,6 @@ const verifyWithGoogleScholar = async (
           );
           if (firstAuthorWithId) {
             matchedAuthorId = firstAuthorWithId.author_id;
-            console.log(
-              `⚠ Using fallback author ID: ${matchedAuthorId} for candidate "${candidateName}"`
-            );
           }
         }
       }
@@ -155,7 +148,7 @@ const verifyWithGoogleScholar = async (
         ...found,
         extractedAuthors,
         hasAuthorMatch,
-        authorDetails
+        authorDetails,
       },
       result: scholarResult,
     };

@@ -60,7 +60,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
 
     const sectionEnd = nextHeader ? nextHeader.index : lines.length;
     const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
-
     if (
       PUBLICATION_PATTERNS.some((pattern) => pattern.test(header.text)) ||
       /publications|papers|manuscripts|reports/i.test(header.text)
@@ -69,15 +68,9 @@ const extractPublicationsFromCV = async (model, cvText) => {
         header: header.text,
         content: sectionContent,
       });
-
-      console.log(`Found publication section: ${header.text}`);
     }
   }
-
   if (publicationSections.length === 0) {
-    console.log(
-      "No publication sections found - falling back to full text analysis"
-    );
     // If no sections found, look for entries with common publication patterns
     const pubEntries = lines.filter(
       (line) =>
@@ -93,16 +86,11 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   }
-
   // Process each section in chunks
   const allPublications = [];
   const MAX_CHUNK_SIZE = 4000; // Characters per chunk
 
   for (const section of publicationSections) {
-    console.log(
-      `Processing section: ${section.header} (${section.content.length} chars)`
-    );
-
     // Split section into chunks if needed
     if (section.content.length > MAX_CHUNK_SIZE) {
       const chunks = [];
@@ -124,16 +112,12 @@ const extractPublicationsFromCV = async (model, cvText) => {
         currentChunk += line + "\n";
         currentSize += line.length + 1;
       }
-
       if (currentChunk.length > 0) {
         chunks.push(currentChunk);
       }
 
-      console.log(`Split into ${chunks.length} chunks`);
-
       // Process each chunk
       for (let i = 0; i < chunks.length; i++) {
-        console.log(`Processing chunk ${i + 1}/${chunks.length}`);
         const chunkPubs = await extractPublicationsFromChunk(model, chunks[i]);
         allPublications.push(...chunkPubs);
       }
@@ -147,21 +131,14 @@ const extractPublicationsFromCV = async (model, cvText) => {
       allPublications.push(...sectionPubs);
     }
   }
-
   // If nothing was found, try a general extraction as a fallback
   if (allPublications.length === 0 && cvText.length > 0) {
-    console.log(
-      "No publications found in sections - attempting general extraction"
-    );
-
     // Split the full text into manageable chunks
     const chunks = [];
     for (let i = 0; i < cvText.length; i += MAX_CHUNK_SIZE) {
       chunks.push(cvText.substring(i, i + MAX_CHUNK_SIZE));
     }
-
     for (let i = 0; i < chunks.length; i++) {
-      console.log(`Processing general chunk ${i + 1}/${chunks.length}`);
       const fallbackPubs = await extractPublicationsFromChunk(
         model,
         chunks[i],
@@ -169,8 +146,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
       );
       allPublications.push(...fallbackPubs);
     }
-  }
-  // Remove duplicates (based on title similarity) and validate publications
+  } // Remove duplicates (based on title similarity) and validate publications
   const uniquePublications = [];
   for (const pub of allPublications) {
     if (!pub.title) continue;
@@ -182,7 +158,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       (/et al\./.test(pub.publication) &&
         !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
     ) {
-      console.log("Filtered out likely hallucination:", pub.publication);
       continue;
     }
 
@@ -199,10 +174,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
         "i"
       );
       if (!titleInText.test(cvText)) {
-        console.log(
-          "Filtered out publication with title not found in text:",
-          pub.title
-        );
         continue;
       }
     }
@@ -213,23 +184,9 @@ const extractPublicationsFromCV = async (model, cvText) => {
       const similarity = getTitleSimilarity(pub.title, existingPub.title);
       return similarity > 80; // Adjust threshold as needed
     });
-
     if (!isDuplicate) {
       uniquePublications.push(pub);
     }
-  }
-
-  console.log(`Extracted ${uniquePublications.length} unique publications`);
-
-  // Additional logging for debugging
-  if (uniquePublications.length === 0 && cvText.length > 2000) {
-    console.warn(
-      "No publications found in a large CV. This may indicate extraction issues."
-    );
-  } else if (uniquePublications.length < 3 && cvText.length > 2000) {
-    console.warn(
-      "Few publications found in a large CV. Extraction may be incomplete."
-    );
   }
 
   return uniquePublications;
@@ -280,9 +237,7 @@ ${chunkText}`;
       cleanedText = cleanedText.replace(/,\s*\]/g, "]");
       cleanedText = cleanedText.replace(/([^\\])\\([^\\"])/g, "$1\\\\$2");
 
-      const publications = JSON.parse(cleanedText);
-
-      // Post-processing to filter out obviously hallucinated entries
+      const publications = JSON.parse(cleanedText); // Post-processing to filter out obviously hallucinated entries
       return publications.filter((pub) => {
         // Filter out entries with generic author patterns
         if (
@@ -290,39 +245,26 @@ ${chunkText}`;
           /\[1\]|\[P1\]|\[TR1\]/.test(pub.publication) ||
           /example|template|placeholder/i.test(pub.publication)
         ) {
-          console.log("Filtered out likely hallucination:", pub.publication);
           return false;
-        }
-
-        // Filter out publications with extremely short text (likely hallucinations)
+        } // Filter out publications with extremely short text (likely hallucinations)
         if (pub.publication.length < 15) {
-          console.log("Filtered out short publication:", pub.publication);
           return false;
-        }
-
-        // Only keep publications with specific publication details
+        } // Only keep publications with specific publication details
         const hasPublicationMetadata =
           pub.publication.includes("(") || // Has year or volume info
           pub.publication.includes(":") || // Has page numbers
           /vol|volume|issue|journal|proceedings/i.test(pub.publication); // Has publication metadata
 
         if (!hasPublicationMetadata) {
-          console.log(
-            "Filtered out publication without metadata:",
-            pub.publication
-          );
           return false;
         }
 
         return true;
       });
     } catch (e) {
-      console.error("Failed to parse JSON from model response:", e.message);
-      console.error("Response was:", cleanedText);
       return [];
     }
   } catch (error) {
-    console.error("Error processing publication chunk:", error);
     return [];
   }
 }
@@ -341,8 +283,6 @@ const verifyCV = async (file) => {
     const parsedData = await pdfParse(pdfBuffer);
     const cvText = parsedData.text;
 
-    console.log(cvText); // Log the CV text for debugging
-
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
@@ -355,16 +295,9 @@ const verifyCV = async (file) => {
         topP: 1,
         maxOutputTokens: 2048,
       },
-    });
-
-    // Extract candidate name using AI
+    }); // Extract candidate name using AI
     const candidateName = await extractCandidateNameWithAI(model, cvText);
-    console.log(`Extracted candidate name: ${candidateName}`); // Extract publications
     const publications = await extractPublicationsFromCV(model, cvText);
-    console.log(
-      "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    );
-    console.log(publications); // Log the extracted publications for debugging
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
@@ -409,23 +342,6 @@ const verifyCV = async (file) => {
           isVerified && candidateName && !hasAuthorMatch;
         if (isPotentialFalseClaim) {
           falseClaims++;
-          console.log(
-            `❌ Potential false claim detected: "${
-              pub.title
-            }" - Candidate "${candidateName}" not found in publication authors: ${allAuthors.join(
-              ", "
-            )}`
-          );
-        } else if (hasAuthorMatch && isVerified) {
-          console.log(
-            `✅ Verified publication with author match: "${pub.title}"`
-          );
-        } else if (isVerified && !hasAuthorMatch) {
-          console.log(
-            `⚠️ Verified publication but no author match: "${
-              pub.title
-            }" - Authors: ${allAuthors.join(", ")}`
-          );
         }
 
         // Get the best available link or create a Google Scholar search link
@@ -631,30 +547,22 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const candidateName = response.text().trim();
-
-    // Basic validation to prevent hallucination
+    const candidateName = response.text().trim(); // Basic validation to prevent hallucination
     if (
       candidateName === "UNKNOWN" ||
       candidateName.length > 100 ||
       candidateName.length < 2
     ) {
-      console.log("Could not reliably extract candidate name");
       return null;
     }
 
     // Additional validation - should look like a name
     if (!/^[A-Za-z\s\.\-']+$/.test(candidateName)) {
-      console.log(
-        "Extracted text doesn't appear to be a valid name:",
-        candidateName
-      );
       return null;
     }
 
     return candidateName;
   } catch (error) {
-    console.error("Error extracting candidate name with AI:", error);
     return null;
   }
 }
