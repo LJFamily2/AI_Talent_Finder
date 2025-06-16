@@ -1,6 +1,61 @@
+/**
+ * Scopus Verification Module
+ *
+ * This module handles verification of academic publications through Scopus database.
+ * Scopus is Elsevier's abstract and citation database covering scientific literature.
+ *
+ * Features:
+ * - Search publications by title and DOI
+ * - Extract comprehensive author information
+ * - High-precision title matching with similarity scoring
+ * - Author name verification against candidate profiles
+ * - Detailed publication metadata extraction
+ *
+ * @module scopusVerification
+ * @author AI Talent Finder Team
+ * @version 1.0.0
+ */
+
 const axios = require("axios");
 const { getTitleSimilarity } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
+
+//=============================================================================
+// CONFIGURATION AND CONSTANTS
+//=============================================================================
+
+/** Minimum similarity threshold for title matching */
+const TITLE_SIMILARITY_THRESHOLD = 98;
+
+/** Minimum title length ratio for valid matches */
+const MIN_TITLE_LENGTH_RATIO = 0.8;
+
+//=============================================================================
+// PUBLICATION VERIFICATION
+//=============================================================================
+
+/**
+ * Verifies a publication using Scopus database search
+ *
+ * @param {string} title - Publication title to search for
+ * @param {string} doi - DOI of the publication (optional)
+ * @param {string} candidateName - Name of the candidate to match against authors
+ * @param {number} maxResultsToCheck - Maximum number of search results to examine
+ * @returns {Promise<Object>} Verification result object with status and details
+ *
+ * @example
+ * const result = await verifyWithScopus(
+ *   "Machine Learning in Medical Diagnosis",
+ *   "10.1016/journal.123",
+ *   "Dr. Jane Smith",
+ *   5
+ * );
+ *
+ * if (result.status === "verified") {
+ *   console.log("Publication verified in Scopus!");
+ *   console.log("Authors:", result.details.extractedAuthors);
+ * }
+ */
 
 const verifyWithScopus = async (
   title,
@@ -9,125 +64,208 @@ const verifyWithScopus = async (
   maxResultsToCheck = 5
 ) => {
   try {
-    const scopusAPIKey = process.env.SCOPUS_API_KEY;
-    const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
-    const scopusQuery = title;
-    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
-      scopusQuery
-    )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResultsToCheck}`;
+    // Step 1: Search Scopus database for the publication
+    const searchResults = await searchScopusDatabase(title, maxResultsToCheck);
 
-    const { data: scopusResult } = await axios.get(scopusApiUrl);
-    const entries = scopusResult?.["search-results"]?.entry || [];
-    if (!entries.length) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scopusResult,
-        apiUrl: scopusApiUrl,
-      };
-    } // Log search query and result count for debugging
-    const found = entries.find((item) => {
-      // Exact DOI match takes precedence
-      if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
-        return true;
-      }
-
-      if (title && item["dc:title"]) {
-        const normalizedTitle = title.toLowerCase().trim();
-        const normalizedItemTitle = item["dc:title"].toLowerCase().trim();
-        const similarity = getTitleSimilarity(
-          normalizedTitle,
-          normalizedItemTitle
-        );
-
-        // Log similarity for debugging
-
-        // Only verify if the similarity is very high (98%+) and titles have reasonable length
-        const titleLengthRatio =
-          Math.min(normalizedTitle.length, normalizedItemTitle.length) /
-          Math.max(normalizedTitle.length, normalizedItemTitle.length);
-        if (similarity >= 98 && titleLengthRatio >= 0.8) {
-          return true;
-        }
-      }
-      return false;
-    });
-
-    if (!found) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scopusResult,
-        apiUrl: scopusApiUrl,
-      };
+    if (!searchResults.entries.length) {
+      return createScopusResponse("unable to verify", null, searchResults);
     }
 
-    // Extract author information and check for match
-    const extractedAuthors = [];
-    let hasAuthorMatch = false;
+    // Step 2: Find matching publication in search results
+    const matchedPublication = findMatchingPublication(
+      searchResults.entries,
+      title,
+      doi
+    );
 
-    if (found["dc:creator"]) {
-      extractedAuthors.push(found["dc:creator"]);
+    if (!matchedPublication) {
+      return createScopusResponse("unable to verify", null, searchResults);
     }
 
-    // Check for additional authors in author list (if available)
-    if (found.author) {
-      found.author.forEach((author) => {
-        if (author["ce:indexed-name"]) {
-          extractedAuthors.push(author["ce:indexed-name"]);
-        }
-        if (
-          author["preferred-name"]?.["ce:given-name"] &&
-          author["preferred-name"]?.["ce:surname"]
-        ) {
-          const fullName = `${author["preferred-name"]["ce:given-name"]} ${author["preferred-name"]["ce:surname"]}`;
-          extractedAuthors.push(fullName);
-        }
-      });
-    }
+    // Step 3: Extract and process author information
+    const authorInfo = extractAuthorInformation(
+      matchedPublication,
+      candidateName
+    );
 
-    // Check if candidate name matches any of the extracted authors
-    if (candidateName && extractedAuthors.length > 0) {
-      hasAuthorMatch = checkAuthorNameMatch(candidateName, extractedAuthors);
-    }
+    // Step 4: Build detailed response with Scopus-specific data
+    const details = buildPublicationDetails(matchedPublication, authorInfo);
 
-    // Get the Scopus link from the array of links
-    const scopusLink = found.link?.find((link) => link["@ref"] === "scopus")?.[
-      "@href"
-    ];
-
-    // Keep all original fields from the Scopus API response
-    const details = {
-      ...found,
-      extractedAuthors,
-      hasAuthorMatch,
-      // Ensure the scopus link is properly set if available
-      link: found.link?.map((link) => ({
-        ...link,
-        "@href": link["@ref"] === "scopus" ? scopusLink : link["@href"],
-      })),
-    };
-
-    // Determine verification status based on author match
-    const verificationStatus = hasAuthorMatch
+    // Step 5: Determine verification status based on author match
+    const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
 
-    return {
-      status: verificationStatus,
-      details,
-      result: scopusResult,
-      apiUrl: scopusApiUrl,
-    };
+    return createScopusResponse(verificationStatus, details, searchResults);
   } catch (err) {
-    return {
-      status: "unable to verify",
-      details: null,
-      result: null,
-      apiUrl: null,
-    };
+    return createScopusResponse("unable to verify", null, null);
   }
 };
+
+//=============================================================================
+// HELPER FUNCTIONS FOR SCOPUS VERIFICATION
+//=============================================================================
+
+/**
+ * Searches the Scopus database using the Elsevier API
+ * @param {string} title - Publication title to search
+ * @param {number} maxResults - Maximum results to retrieve
+ * @returns {Promise<Object>} Search results object with entries and metadata
+ * @private
+ */
+const searchScopusDatabase = async (title, maxResults) => {
+  const scopusAPIKey = process.env.SCOPUS_API_KEY;
+  const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
+  const scopusQuery = title;
+
+  const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
+    scopusQuery
+  )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResults}`;
+
+  const { data: scopusResult } = await axios.get(scopusApiUrl);
+  const entries = scopusResult?.["search-results"]?.entry || [];
+
+  return {
+    entries,
+    rawResult: scopusResult,
+    apiUrl: scopusApiUrl,
+  };
+};
+
+/**
+ * Finds a matching publication in Scopus search results
+ * @param {Array} entries - Search results from Scopus
+ * @param {string} title - Publication title to match
+ * @param {string} doi - DOI to match (optional)
+ * @returns {Object|null} Matched publication or null if not found
+ * @private
+ */
+const findMatchingPublication = (entries, title, doi) => {
+  return entries.find((item) => {
+    // DOI match takes highest precedence
+    if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
+      return true;
+    }
+
+    // Title-based matching
+    if (title && item["dc:title"]) {
+      const normalizedTitle = title.toLowerCase().trim();
+      const normalizedItemTitle = item["dc:title"].toLowerCase().trim();
+
+      const similarity = getTitleSimilarity(
+        normalizedTitle,
+        normalizedItemTitle
+      );
+
+      // Check title length ratio to ensure reasonable match
+      const titleLengthRatio =
+        Math.min(normalizedTitle.length, normalizedItemTitle.length) /
+        Math.max(normalizedTitle.length, normalizedItemTitle.length);
+
+      // Only verify if the similarity is very high and titles have reasonable length
+      if (
+        similarity >= TITLE_SIMILARITY_THRESHOLD &&
+        titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+};
+
+/**
+ * Extracts author information from a Scopus publication entry
+ * @param {Object} publication - Publication object from Scopus
+ * @param {string} candidateName - Candidate name to match against
+ * @returns {Object} Author information object
+ * @private
+ */
+const extractAuthorInformation = (publication, candidateName) => {
+  const extractedAuthors = [];
+
+  // Extract primary creator/author
+  if (publication["dc:creator"]) {
+    extractedAuthors.push(publication["dc:creator"]);
+  }
+
+  // Extract additional authors from the author list
+  if (publication.author) {
+    publication.author.forEach((author) => {
+      // Add indexed name if available
+      if (author["ce:indexed-name"]) {
+        extractedAuthors.push(author["ce:indexed-name"]);
+      }
+
+      // Add full name from preferred name fields
+      if (
+        author["preferred-name"]?.["ce:given-name"] &&
+        author["preferred-name"]?.["ce:surname"]
+      ) {
+        const fullName = `${author["preferred-name"]["ce:given-name"]} ${author["preferred-name"]["ce:surname"]}`;
+        extractedAuthors.push(fullName);
+      }
+    });
+  }
+
+  // Check if candidate name matches any extracted authors
+  const hasAuthorMatch =
+    candidateName && extractedAuthors.length > 0
+      ? checkAuthorNameMatch(candidateName, extractedAuthors)
+      : false;
+
+  return {
+    extractedAuthors,
+    hasAuthorMatch,
+  };
+};
+
+/**
+ * Builds detailed publication information for the response
+ * @param {Object} publication - Matched publication from Scopus
+ * @param {Object} authorInfo - Extracted author information
+ * @returns {Object} Detailed publication object
+ * @private
+ */
+const buildPublicationDetails = (publication, authorInfo) => {
+  // Extract Scopus link from the links array
+  const scopusLink = publication.link?.find(
+    (link) => link["@ref"] === "scopus"
+  )?.["@href"];
+
+  return {
+    ...publication,
+    extractedAuthors: authorInfo.extractedAuthors,
+    hasAuthorMatch: authorInfo.hasAuthorMatch,
+    // Ensure the scopus link is properly set if available
+    link: publication.link?.map((link) => ({
+      ...link,
+      "@href": link["@ref"] === "scopus" ? scopusLink : link["@href"],
+    })),
+  };
+};
+
+/**
+ * Creates a standardized Scopus verification response object
+ * @param {string} status - Verification status
+ * @param {Object} details - Publication details
+ * @param {Object} searchResults - Raw search results and metadata
+ * @returns {Object} Formatted verification response
+ * @private
+ */
+const createScopusResponse = (status, details, searchResults) => {
+  return {
+    status,
+    details,
+    result: searchResults?.rawResult || null,
+    apiUrl: searchResults?.apiUrl || null,
+  };
+};
+
+//=============================================================================
+// MODULE EXPORTS
+//=============================================================================
 
 module.exports = {
   verifyWithScopus,

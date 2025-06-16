@@ -1,3 +1,20 @@
+/**
+ * CV Verification Controller
+ *
+ * This is the main controller for academic CV verification system.
+ * It handles the complete CV analysis pipeline including:
+ * - PDF parsing and text extraction
+ * - AI-powered candidate name extraction
+ * - Academic publication identification and extraction
+ * - Cross-verification with Google Scholar and Scopus databases
+ * - Author name matching and verification
+ * - Comprehensive result aggregation and reporting
+ *
+ * @module cvVerification
+ * @author AI Talent Finder Team
+ * @version 1.0.0
+ */
+
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -8,6 +25,31 @@ const {
 } = require("./googleScholarVerification");
 const { verifyWithScopus } = require("./scopusVerification");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
+
+//=============================================================================
+// MAIN CV VERIFICATION FUNCTION
+//=============================================================================
+
+/**
+ * Main function for verifying academic CVs
+ *
+ * Processes a CV file through the complete verification pipeline:
+ * 1. Parse PDF to extract text content
+ * 2. Extract candidate name using AI
+ * 3. Identify and extract publications using AI
+ * 4. Verify each publication with Google Scholar and Scopus
+ * 5. Match candidate name against publication authors
+ * 6. Generate comprehensive verification report
+ *
+ * @param {Object} file - Uploaded CV file object with path property
+ * @returns {Promise<Object>} Comprehensive verification results
+ *
+ * @example
+ * const result = await verifyCV(uploadedFile);
+ * console.log(`Verified ${result.verifiedPublications}/${result.total} publications`);
+ * console.log(`Publications with author match: ${result.verifiedWithAuthorMatch}`);
+ * console.log(`Potential false claims: ${result.falseClaims}`);
+ */
 
 const extractPublicationsFromCV = async (model, cvText) => {
   // Enhanced patterns for academic publication sections
@@ -269,6 +311,39 @@ ${chunkText}`;
   }
 }
 
+// AI-based function to extract candidate name from CV
+async function extractCandidateNameWithAI(model, cvText) {
+  const prompt = `You are an expert CV analyzer.
+From the text of this CV/resume, extract ONLY the full name of the candidate/person whose CV this is.
+Return ONLY the name as plain text - no explanation, no JSON, no additional information.
+If you cannot determine the name with high confidence, return "UNKNOWN".
+
+CV TEXT:
+${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const candidateName = response.text().trim(); // Basic validation to prevent hallucination
+    if (
+      candidateName === "UNKNOWN" ||
+      candidateName.length > 100 ||
+      candidateName.length < 2
+    ) {
+      return null;
+    }
+
+    // Additional validation - should look like a name
+    if (!/^[A-Za-z\s\.\-']+$/.test(candidateName)) {
+      return null;
+    }
+
+    return candidateName;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Main function
 // 1. parse the CV PDF to text
 // 2. extract candidate name using AI
@@ -325,14 +400,10 @@ const verifyCV = async (file) => {
         }
 
         // Remove duplicates and clean author names
-        let combinedAuthorMatchResult = null;
         if (candidateName && allAuthors.length > 0) {
           hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
-          combinedAuthorMatchResult = {
-            hasMatch: hasAuthorMatch,
-            matchType: hasAuthorMatch ? "rule-based" : "no-match",
-          };
-        } // Flag potential false claims
+        }
+        // Flag potential false claims
         const isVerified =
           scholarResult.status === "verified" ||
           scopusResult.status === "verified" ||
@@ -533,39 +604,6 @@ const verifyCV = async (file) => {
     throw error;
   }
 };
-
-// AI-based function to extract candidate name from CV
-async function extractCandidateNameWithAI(model, cvText) {
-  const prompt = `You are an expert CV analyzer.
-From the text of this CV/resume, extract ONLY the full name of the candidate/person whose CV this is.
-Return ONLY the name as plain text - no explanation, no JSON, no additional information.
-If you cannot determine the name with high confidence, return "UNKNOWN".
-
-CV TEXT:
-${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const candidateName = response.text().trim(); // Basic validation to prevent hallucination
-    if (
-      candidateName === "UNKNOWN" ||
-      candidateName.length > 100 ||
-      candidateName.length < 2
-    ) {
-      return null;
-    }
-
-    // Additional validation - should look like a name
-    if (!/^[A-Za-z\s\.\-']+$/.test(candidateName)) {
-      return null;
-    }
-
-    return candidateName;
-  } catch (error) {
-    return null;
-  }
-}
 
 module.exports = {
   verifyCV,

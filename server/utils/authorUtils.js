@@ -1,110 +1,176 @@
+/**
+ * Author Utilities Module
+ *
+ * This module provides utilities for academic author name matching and information retrieval.
+ * It supports various academic name formats including:
+ * - Full names: "Benjamin F. Goldfarb"
+ * - Initials: "B.F. Goldfarb", "BD Goldstein"
+ * - Surname-first: "Smith, J."
+ * - Mixed formats between publications and CVs
+ *
+ * @module authorUtils
+ * @author AI Talent Finder Team
+ * @version 1.0.0
+ */
+
 const axios = require("axios");
 const { getTitleSimilarity } = require("./textUtils");
 
-// Cache for author details to avoid repeated API calls
+//=============================================================================
+// CONFIGURATION AND CACHE
+//=============================================================================
+
+/**
+ * Cache for author details to avoid repeated API calls
+ * @type {Map<string, Object>}
+ */
 const authorCache = new Map();
+
+//=============================================================================
+// NAME PARSING AND NORMALIZATION
+//=============================================================================
+
+/**
+ * Normalizes a name by converting to lowercase and cleaning special characters
+ * @param {string} name - The name to normalize
+ * @returns {string} The normalized name
+ * @private
+ */
+const normalizeName = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s\-\.,]/g, " ") // Keep commas for surname-first format parsing
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+/**
+ * Extracts structured name parts from a full name string
+ * Handles various academic name formats and conventions
+ *
+ * @param {string} name - The full name to parse
+ * @returns {Object} Structured name object with parsed components
+ * @private
+ */
+const extractNameParts = (name) => {
+  // Check for surname-first format (e.g., "Smith, J.")
+  let firstName = "",
+    lastName = "",
+    middleNames = [];
+
+  const normalizedName = normalizeName(name);
+
+  if (normalizedName.includes(",")) {
+    // Handle "Lastname, Firstname" format
+    const parts = normalizedName.split(",").map((part) => part.trim());
+    lastName = parts[0];
+
+    if (parts.length > 1 && parts[1]) {
+      const firstParts = parts[1].split(" ").filter(Boolean);
+      firstName = firstParts[0] || "";
+      middleNames = firstParts.slice(1) || [];
+    }
+  } else {
+    // Standard "Firstname [Middle] Lastname" format
+    let parts = normalizedName.split(" ").filter(Boolean);
+
+    // Special handling for initials with dots (e.g., "B.F. Goldfarb")
+    if (parts.length >= 2 && parts[0].includes(".") && parts[0].length <= 4) {
+      // This looks like initials - split them up
+      const initialsStr = parts[0];
+      const initialParts = initialsStr.split(".").filter(Boolean);
+
+      if (initialParts.length > 1) {
+        firstName = initialParts[0];
+        middleNames = initialParts.slice(1);
+        lastName = parts[parts.length - 1];
+      } else {
+        // Single initial with dot
+        firstName = parts[0];
+        lastName = parts[parts.length - 1];
+        middleNames = parts.slice(1, -1);
+      }
+    } else {
+      // Check for concatenated initials (e.g., "BD Goldstein" -> firstName: "B", middleNames: ["D"])
+      // Only consider it concatenated initials if it's 2-4 letters AND all uppercase in original form
+      const originalParts = name.split(" ").filter(Boolean);
+      if (
+        parts.length === 2 &&
+        parts[0].length >= 2 &&
+        parts[0].length <= 4 &&
+        originalParts.length >= 1 &&
+        /^[A-Z]+$/.test(originalParts[0])
+      ) {
+        // This looks like concatenated initials
+        const initialsStr = parts[0];
+        firstName = initialsStr.charAt(0);
+        middleNames = initialsStr.slice(1).split("").filter(Boolean);
+        lastName = parts[1];
+      } else {
+        // Standard format
+        firstName = parts[0] || "";
+        lastName = parts[parts.length - 1] || "";
+        middleNames = parts.slice(1, -1);
+      }
+    }
+  }
+
+  // Get all initials
+  const firstInitial = firstName.replace(/\./g, "").charAt(0);
+  const middleInitials = middleNames.map((n) => n.replace(/\./g, "").charAt(0));
+
+  // Get all initials as a string (e.g., "BFG" for "Benjamin F. Goldfarb")
+  const allInitialsStr = firstInitial + middleInitials.join("");
+
+  // Get full name without dots for comparison
+  const fullNameNoDots = normalizedName.replace(/\./g, "");
+
+  return {
+    firstName: firstName.replace(/\./g, ""), // Remove dots for consistency
+    lastName,
+    middleNames: middleNames.map((n) => n.replace(/\./g, "")), // Remove dots for consistency
+    firstInitial,
+    middleInitials,
+    allInitials: allInitialsStr,
+    fullName: normalizedName,
+    fullNameNoDots,
+  };
+};
+
+//=============================================================================
+// AUTHOR MATCHING LOGIC
+//=============================================================================
 
 /**
  * Comprehensive author name matching function for academic publications
  * Handles various academic name formats, abbreviations, and ordering
+ *
+ * @param {string} candidateName - The candidate's name to match
+ * @param {string[]} authorList - Array of author names from publications
+ * @returns {boolean} True if a match is found, false otherwise
+ *
+ * @example
+ * // Returns true - full name matches initials
+ * checkAuthorNameMatch("Benjamin F. Goldfarb", ["B.F. Goldfarb", "John Smith"]);
+ *
+ * @example
+ * // Returns true - standard name matches surname-first format
+ * checkAuthorNameMatch("John Smith", ["Smith, J.", "Other Author"]);
+ *
+ * @example
+ * // Returns true - concatenated initials match full name
+ * checkAuthorNameMatch("Benjamin D. Goldstein", ["BD Goldstein"]);
+ *
+ * @example
+ * // Returns false - different middle initial
+ * checkAuthorNameMatch("Benjamin C. Goldstein", ["BD Goldstein"]);
  */
 const checkAuthorNameMatch = (candidateName, authorList) => {
+  // Input validation
   if (!candidateName || !authorList || authorList.length === 0) {
     return false;
   }
-  // Normalize candidate name
-  const normalizeName = (name) => {
-    return name
-      .toLowerCase()
-      .replace(/[^\w\s\-\.,]/g, " ") // Keep commas for surname-first format parsing
-      .replace(/\s+/g, " ")
-      .trim();
-  };
-  const extractNameParts = (name) => {
-    // Check for surname-first format (e.g., "Smith, J.")
-    let firstName = "",
-      lastName = "",
-      middleNames = [];
 
-    const normalizedName = normalizeName(name);
-    if (normalizedName.includes(",")) {
-      // Handle "Lastname, Firstname" format
-      const parts = normalizedName.split(",").map((part) => part.trim());
-      lastName = parts[0];
-
-      if (parts.length > 1 && parts[1]) {
-        const firstParts = parts[1].split(" ").filter(Boolean);
-        firstName = firstParts[0] || "";
-        middleNames = firstParts.slice(1) || [];
-      }
-    } else {
-      // Standard "Firstname [Middle] Lastname" format
-      let parts = normalizedName.split(" ").filter(Boolean);
-
-      // Special handling for initials with dots (e.g., "B.F. Goldfarb")
-      if (parts.length >= 2 && parts[0].includes(".") && parts[0].length <= 4) {
-        // This looks like initials - split them up
-        const initialsStr = parts[0];
-        const initialParts = initialsStr.split(".").filter(Boolean);
-
-        if (initialParts.length > 1) {
-          firstName = initialParts[0];
-          middleNames = initialParts.slice(1);
-          lastName = parts[parts.length - 1];
-        } else {
-          // Single initial with dot
-          firstName = parts[0];
-          lastName = parts[parts.length - 1];
-          middleNames = parts.slice(1, -1);
-        }
-      } else {
-        // Standard format
-        // Check for concatenated initials (e.g., "BD Goldstein" -> firstName: "B", middleNames: ["D"])
-        // Only consider it concatenated initials if it's 2-4 letters AND all uppercase in original form
-        const originalParts = name.split(" ").filter(Boolean);
-        if (
-          parts.length === 2 &&
-          parts[0].length >= 2 &&
-          parts[0].length <= 4 &&
-          originalParts.length >= 1 &&
-          /^[A-Z]+$/.test(originalParts[0])
-        ) {
-          // This looks like concatenated initials
-          const initialsStr = parts[0];
-          firstName = initialsStr.charAt(0);
-          middleNames = initialsStr.slice(1).split("").filter(Boolean);
-          lastName = parts[1];
-        } else {
-          firstName = parts[0] || "";
-          lastName = parts[parts.length - 1] || "";
-          middleNames = parts.slice(1, -1);
-        }
-      }
-    }
-
-    // Get all initials
-    const firstInitial = firstName.replace(/\./g, "").charAt(0);
-    const middleInitials = middleNames.map((n) =>
-      n.replace(/\./g, "").charAt(0)
-    );
-
-    // Get all initials as a string (e.g., "BFG" for "Benjamin F. Goldfarb")
-    const allInitialsStr = firstInitial + middleInitials.join("");
-
-    // Get full name without dots for comparison
-    const fullNameNoDots = normalizedName.replace(/\./g, "");
-
-    return {
-      firstName: firstName.replace(/\./g, ""), // Remove dots for consistency
-      lastName,
-      middleNames: middleNames.map((n) => n.replace(/\./g, "")), // Remove dots for consistency
-      firstInitial,
-      middleInitials,
-      allInitials: allInitialsStr,
-      fullName: normalizedName,
-      fullNameNoDots,
-    };
-  };
   const candidate = extractNameParts(candidateName);
 
   // Check each author in the list
@@ -113,200 +179,170 @@ const checkAuthorNameMatch = (candidateName, authorList) => {
 
     const author = extractNameParts(authorName);
 
-    // ------------------ MATCHING LOGIC -----------------
-
-    // 1. EXACT MATCH - Full name match with or without dots
+    // Try different matching strategies in order of confidence
     if (
-      candidate.fullName === author.fullName ||
-      candidate.fullNameNoDots === author.fullNameNoDots
+      tryExactMatch(candidate, author) ||
+      tryLastNameAndInitialMatch(candidate, author) ||
+      tryBothInitialsMatch(candidate, author) ||
+      tryFullNameMatch(candidate, author)
     ) {
       return true;
-    }
-
-    // 2. LAST NAME MATCH - Last name must match in all cases
-    if (candidate.lastName !== author.lastName) {
-      continue; // Skip to next author if last names don't match
-    }
-
-    // 3. FULL NAME WITH INITIALS: "Benjamin F. Goldfarb" matches "B.F. Goldfarb"
-    // OR: "John Smith" matches "Smith, J."
-    // The candidate has full name, author has initials
-    if (
-      candidate.firstName.length > 1 &&
-      author.firstName.length === 1 &&
-      author.firstInitial === candidate.firstInitial &&
-      candidate.lastName === author.lastName
-    ) {
-      // Check middle initials match if both have them
-      if (
-        author.middleInitials.length > 0 &&
-        candidate.middleInitials.length > 0
-      ) {
-        // Every middle initial in author must match candidate's middle initials
-        const middleInitialsMatch =
-          author.middleInitials.length === candidate.middleInitials.length &&
-          author.middleInitials.every((initial, index) => {
-            return candidate.middleInitials[index] === initial;
-          });
-
-        if (middleInitialsMatch) {
-          return true;
-        }
-      }
-      // If author has middle initials but candidate doesn't, they don't match
-      else if (
-        author.middleInitials.length > 0 &&
-        candidate.middleInitials.length === 0
-      ) {
-        continue;
-      }
-      // If candidate has middle initials but author doesn't, they don't match
-      else if (
-        candidate.middleInitials.length > 0 &&
-        author.middleInitials.length === 0
-      ) {
-        continue;
-      }
-      // Neither has middle initials, and first initial + last name match
-      else {
-        return true;
-      }
-    }
-
-    // 4. INITIAL TO FULL NAME: "B.F. Goldfarb" matches "Benjamin F. Goldfarb"
-    // The candidate has initials, author has full name
-    if (
-      candidate.firstName.length === 1 &&
-      author.firstName.length > 1 &&
-      candidate.firstInitial === author.firstInitial &&
-      candidate.lastName === author.lastName
-    ) {
-      // Check middle initials match if both have them
-      if (
-        candidate.middleInitials.length > 0 &&
-        author.middleInitials.length > 0
-      ) {
-        const middleInitialsMatch = candidate.middleInitials.every(
-          (initial, index) => {
-            return author.middleInitials[index] === initial;
-          }
-        );
-
-        if (middleInitialsMatch) {
-          return true;
-        }
-      }
-      // If either has middle initials but the other doesn't, they don't match
-      else if (
-        candidate.middleInitials.length !== author.middleInitials.length
-      ) {
-        continue;
-      }
-      // Neither has middle initials
-      else {
-        return true;
-      }
-    }
-
-    // 5. BOTH HAVE INITIALS: "B.F. Goldfarb" matches "B.F. Goldfarb"
-    if (
-      candidate.firstName.length === 1 &&
-      author.firstName.length === 1 &&
-      candidate.firstInitial === author.firstInitial &&
-      candidate.lastName === author.lastName
-    ) {
-      // All middle initials must match exactly
-      if (
-        candidate.middleInitials.join("") === author.middleInitials.join("")
-      ) {
-        return true;
-      }
-    }
-
-    // 6. FULL NAMES WITH DIFFERENT FORMATS: "John Smith" matches "Smith, John"
-    if (
-      candidate.firstName.length > 1 &&
-      author.firstName.length > 1 &&
-      candidate.firstName === author.firstName &&
-      candidate.lastName === author.lastName
-    ) {
-      // If both have middle names/initials, they must match
-      if (candidate.middleNames.length > 0 && author.middleNames.length > 0) {
-        // Either full middle names match or initials match
-        if (
-          candidate.middleNames.join(" ") === author.middleNames.join(" ") ||
-          candidate.middleInitials.join("") === author.middleInitials.join("")
-        ) {
-          return true;
-        }
-      }
-      // If neither has middle names
-      else if (
-        candidate.middleNames.length === 0 &&
-        author.middleNames.length === 0
-      ) {
-        return true;
-      }
-      // Special case: if one has no middle names but first and last match perfectly, accept it
-      // This handles cases like "Benjamin Goldstein" matching "Benjamin C. Goldstein"
-      else {
-        return true;
-      }
     }
   }
 
   return false;
 };
 
+//=============================================================================
+// MATCHING STRATEGIES
+//=============================================================================
+
+/**
+ * Attempts exact name matching (with or without dots)
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if exact match found
+ * @private
+ */
+const tryExactMatch = (candidate, author) => {
+  return (
+    candidate.fullName === author.fullName ||
+    candidate.fullNameNoDots === author.fullNameNoDots
+  );
+};
+
+/**
+ * Attempts matching based on last name and first initial
+ * Handles cases like "Benjamin F. Goldfarb" vs "B.F. Goldfarb"
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if match found
+ * @private
+ */
+const tryLastNameAndInitialMatch = (candidate, author) => {
+  // Last name must match in all cases
+  if (candidate.lastName !== author.lastName) {
+    return false;
+  }
+
+  // Case 1: Candidate has full name, author has initials
+  if (
+    candidate.firstName.length > 1 &&
+    author.firstName.length === 1 &&
+    author.firstInitial === candidate.firstInitial
+  ) {
+    return checkMiddleInitialsMatch(candidate, author);
+  }
+
+  // Case 2: Candidate has initials, author has full name
+  if (
+    candidate.firstName.length === 1 &&
+    author.firstName.length > 1 &&
+    candidate.firstInitial === author.firstInitial
+  ) {
+    return checkMiddleInitialsMatch(candidate, author);
+  }
+
+  return false;
+};
+
+/**
+ * Attempts matching when both names have initials
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if match found
+ * @private
+ */
+const tryBothInitialsMatch = (candidate, author) => {
+  if (
+    candidate.firstName.length === 1 &&
+    author.firstName.length === 1 &&
+    candidate.firstInitial === author.firstInitial &&
+    candidate.lastName === author.lastName
+  ) {
+    // All middle initials must match exactly
+    return candidate.middleInitials.join("") === author.middleInitials.join("");
+  }
+  return false;
+};
+
+/**
+ * Attempts matching when both names are full names
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if match found
+ * @private
+ */
+const tryFullNameMatch = (candidate, author) => {
+  if (
+    candidate.firstName.length > 1 &&
+    author.firstName.length > 1 &&
+    candidate.firstName === author.firstName &&
+    candidate.lastName === author.lastName
+  ) {
+    // If both have middle names/initials, they must match
+    if (candidate.middleNames.length > 0 && author.middleNames.length > 0) {
+      return (
+        candidate.middleNames.join(" ") === author.middleNames.join(" ") ||
+        candidate.middleInitials.join("") === author.middleInitials.join("")
+      );
+    }
+
+    // If neither has middle names or one doesn't have middle names, accept the match
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Checks if middle initials match between candidate and author
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if middle initials match or both have none
+ * @private
+ */
+const checkMiddleInitialsMatch = (candidate, author) => {
+  // If both have middle initials, they must match
+  if (author.middleInitials.length > 0 && candidate.middleInitials.length > 0) {
+    return (
+      author.middleInitials.length === candidate.middleInitials.length &&
+      author.middleInitials.every(
+        (initial, index) => candidate.middleInitials[index] === initial
+      )
+    );
+  }
+
+  // If one has middle initials but the other doesn't, they don't match
+  if (author.middleInitials.length !== candidate.middleInitials.length) {
+    return false;
+  }
+
+  // Neither has middle initials - this is a match
+  return true;
+};
+
+//=============================================================================
+// AUTHOR INFORMATION RETRIEVAL
+//=============================================================================
+
 /**
  * Fetches detailed author information from Google Scholar
  * Uses cache to avoid repeated API calls for the same author
+ *
+ * @param {string} authorId - Google Scholar author ID
+ * @param {string} serpApiKey - SerpAPI key for Google Scholar access
+ * @param {string} searchTitle - Title to find in author's publications
+ * @returns {Promise<Object|null>} Author details object or null if not found
+ *
+ * @example
+ * const authorInfo = await getAuthorDetails("yLD8fzoAAAAJ", apiKey, "Sample Title");
+ * if (authorInfo) {
+ *   console.log(`Author: ${authorInfo.details.name}`);
+ *   console.log(`Citations: ${authorInfo.details.citedBy}`);
+ * }
  */
 const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
-  // Helper function to find matching article
-  const findMatchingArticle = (articles, title) => {
-    if (!articles || !title) return null;
-
-    const normalizedSearchTitle = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s]/g, "");
-
-    return articles.find((article) => {
-      if (!article.title) return false;
-
-      const normalizedArticleTitle = article.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s]/g, "");
-
-      // Try exact match first
-      if (normalizedArticleTitle === normalizedSearchTitle) return true;
-
-      // Try fuzzy matching using getTitleSimilarity
-      const similarity = getTitleSimilarity(
-        normalizedArticleTitle,
-        normalizedSearchTitle
-      );
-      if (similarity > 70) return true;
-
-      // Try partial matching in either direction
-      if (
-        normalizedArticleTitle.length > 20 &&
-        normalizedSearchTitle.length > 20
-      ) {
-        if (
-          normalizedArticleTitle.includes(normalizedSearchTitle) ||
-          normalizedSearchTitle.includes(normalizedArticleTitle)
-        )
-          return true;
-      }
-
-      return false;
-    });
-  };
-
-  // Check cache first
+  // Check cache first to avoid unnecessary API calls
   if (authorCache.has(authorId)) {
     const cachedAuthor = authorCache.get(authorId);
     const matchingArticle = findMatchingArticle(
@@ -315,32 +351,18 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
     );
 
     if (matchingArticle) {
-      return {
-        year: matchingArticle.year,
-        details: {
-          name: cachedAuthor.name,
-          affiliations: cachedAuthor.affiliations,
-          interests: cachedAuthor.interests,
-          citedBy: matchingArticle.cited_by,
-        },
-      };
+      return buildAuthorResponse(cachedAuthor, matchingArticle);
     }
   }
 
   try {
-    const authorApiUrl = `https://serpapi.com/search?engine=google_scholar_author&author_id=${authorId}&api_key=${serpApiKey}`;
-    const { data: authorResult } = await axios.get(authorApiUrl);
+    // Fetch author data from Google Scholar API
+    const authorResult = await fetchAuthorFromAPI(authorId, serpApiKey);
 
-    // Cache the full author result
-    const authorData = {
-      name: authorResult.author?.name,
-      affiliations: authorResult.author?.affiliations,
-      interests: authorResult.author?.interests,
-      articles: authorResult.articles,
-    };
-    authorCache.set(authorId, authorData);
+    // Cache the result for future use
+    cacheAuthorData(authorId, authorResult);
 
-    // Find the matching article
+    // Find the matching article in the author's publications
     const matchingArticle = findMatchingArticle(
       authorResult.articles,
       searchTitle
@@ -357,11 +379,117 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
       };
     }
   } catch (error) {
-    // Error handled silently
+    // Silently handle errors - return null for failed requests
   }
 
   return null;
 };
+
+//=============================================================================
+// HELPER FUNCTIONS FOR AUTHOR DETAILS
+//=============================================================================
+
+/**
+ * Finds a matching article in an author's publication list
+ * @param {Array} articles - Array of articles to search
+ * @param {string} title - Title to search for
+ * @returns {Object|null} Matching article or null if not found
+ * @private
+ */
+const findMatchingArticle = (articles, title) => {
+  if (!articles || !title) return null;
+
+  const normalizedSearchTitle = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/g, "");
+
+  return articles.find((article) => {
+    if (!article.title) return false;
+
+    const normalizedArticleTitle = article.title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, "");
+
+    // Try exact match first
+    if (normalizedArticleTitle === normalizedSearchTitle) return true;
+
+    // Try fuzzy matching using getTitleSimilarity
+    const similarity = getTitleSimilarity(
+      normalizedArticleTitle,
+      normalizedSearchTitle
+    );
+    if (similarity > 70) return true;
+
+    // Try partial matching in either direction for longer titles
+    if (
+      normalizedArticleTitle.length > 20 &&
+      normalizedSearchTitle.length > 20
+    ) {
+      if (
+        normalizedArticleTitle.includes(normalizedSearchTitle) ||
+        normalizedSearchTitle.includes(normalizedArticleTitle)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+};
+
+/**
+ * Fetches author data from Google Scholar API
+ * @param {string} authorId - Google Scholar author ID
+ * @param {string} serpApiKey - SerpAPI key
+ * @returns {Promise<Object>} Author data from API
+ * @private
+ */
+const fetchAuthorFromAPI = async (authorId, serpApiKey) => {
+  const authorApiUrl = `https://serpapi.com/search?engine=google_scholar_author&author_id=${authorId}&api_key=${serpApiKey}`;
+  const { data: authorResult } = await axios.get(authorApiUrl);
+  return authorResult;
+};
+
+/**
+ * Caches author data for future use
+ * @param {string} authorId - Google Scholar author ID
+ * @param {Object} authorResult - Author data to cache
+ * @private
+ */
+const cacheAuthorData = (authorId, authorResult) => {
+  const authorData = {
+    name: authorResult.author?.name,
+    affiliations: authorResult.author?.affiliations,
+    interests: authorResult.author?.interests,
+    articles: authorResult.articles,
+  };
+  authorCache.set(authorId, authorData);
+};
+
+/**
+ * Builds author response from cached data
+ * @param {Object} cachedAuthor - Cached author data
+ * @param {Object} matchingArticle - Matching article data
+ * @returns {Object} Formatted author response
+ * @private
+ */
+const buildAuthorResponse = (cachedAuthor, matchingArticle) => {
+  return {
+    year: matchingArticle.year,
+    details: {
+      name: cachedAuthor.name,
+      affiliations: cachedAuthor.affiliations,
+      interests: cachedAuthor.interests,
+      citedBy: matchingArticle.cited_by,
+    },
+  };
+};
+
+//=============================================================================
+// MODULE EXPORTS
+//=============================================================================
 
 module.exports = {
   authorCache,
