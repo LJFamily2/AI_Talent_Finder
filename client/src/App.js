@@ -10,8 +10,13 @@ import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./components/Dashboard";
 import { CssBaseline } from "@mui/material";
+<<<<<<< Updated upstream:client/src/App.js
 import CVUpload from "./components/CVUpload"; 
 
+=======
+import CVUpload from "./pages/CVUpload";
+import SearchPublications from './pages/SearchPublications';
+>>>>>>> Stashed changes:client/src/App.jsx
 
 function App() {
   return (
@@ -36,7 +41,12 @@ function App() {
               </ProtectedRoute>
             }
           />
+<<<<<<< Updated upstream:client/src/App.js
+=======
+          <Route path="/verify-cv" element={<CVUpload />} />
+>>>>>>> Stashed changes:client/src/App.jsx
           <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/search" element={<SearchPublications />} />
         </Routes>
       </AuthProvider>
     </Router>
