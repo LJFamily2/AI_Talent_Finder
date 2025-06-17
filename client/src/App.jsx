@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
 import CVUpload from "./pages/CVUpload";
+import CVVerification from "./pages/CVVerification";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             }
           />
           <Route path="/upload-cv" element={<CVUpload />} />
+          <Route path="/cv-verification" element={<CVVerification />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
