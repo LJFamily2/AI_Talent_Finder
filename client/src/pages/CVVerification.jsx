@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import ResearcherProfile from "../components/ResearcherProfile";
+import ResearcherSection from "../components/ResearcherSection";
 import { Pagination, FormControl, FormGroup, FormLabel, RadioGroup, FormControlLabel, Radio, Checkbox, Button } from "@mui/material";
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import Header from '../components/Header';
@@ -336,7 +336,7 @@ export default function CVVerification() {
 
                 {/* Researcher Profile */}
                 <aside className="md:col-span-3">
-                    <ResearcherProfile researcherData={researcherData} />
+                    <ResearcherSection researcherData={researcherData} />
                 </aside>
             </div>
 

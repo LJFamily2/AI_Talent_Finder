@@ -1,7 +1,7 @@
 import { Avatar, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { BarChart } from "@mui/x-charts";
 
-export default function ResearcherProfile({ researcherData }) {
+export default function ResearcherSection({ researcherData }) {
 
     if (!researcherData) {
         return (
