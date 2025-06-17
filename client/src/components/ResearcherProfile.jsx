@@ -14,20 +14,20 @@ export default function ResearcherProfile({ researcherData }) {
     const researcher = researcherData.author;
 
     // set up table
-    const statsTable = researcherData.citedBy.table;
+    const statsTable = researcherData.citedBy.table || [];
 
     function createData(name, all, since_2020) {
         return { name, all, since_2020 };
     }
 
     const rows = [
-        createData('Citations', statsTable[0].citations?.all, statsTable[0].citations?.since_2020),
-        createData('h-index', statsTable[1].h_index?.all, statsTable[1].h_index?.since_2020),
-        createData('i10-index', statsTable[2].i10_index?.all, statsTable[2].i10_index?.since_2020),
+        createData('Citations', statsTable[0]?.citations?.all, statsTable[0]?.citations?.since_2020),
+        createData('h-index', statsTable[1]?.h_index?.all, statsTable[1]?.h_index?.since_2020),
+        createData('i10-index', statsTable[2]?.i10_index?.all, statsTable[2]?.i10_index?.since_2020),
     ];
 
     // set up graph
-    const statsGraph = researcherData.citedBy.graph;
+    const statsGraph = researcherData.citedBy?.graph || [];
     const dataMap = new Map();
     statsGraph.forEach(d => dataMap.set(d.year, Number(d.citations)));
 

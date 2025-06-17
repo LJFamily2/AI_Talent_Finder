@@ -16,7 +16,7 @@ export default function CVVerification() {
     const [filterEndYear, setFilterEndYear] = useState('');
     const [yearFilterActive, setYearFilterActive] = useState(false);
 
-    const typeOptions = ["Article", "Conference Paper", "Book", "Webpage", "Other"];
+    const typeOptions = ["Article", "Conference Paper", "Book", "Review"];
     const [selectedTypes, setSelectedTypes] = useState([]);
 
     const [filterStatus, setFilterStatus] = useState('All')
@@ -294,9 +294,9 @@ export default function CVVerification() {
                                     </div>
 
                                     <div className="flex flex-wrap gap-10 text-sm text-gray-700">
-                                        <div>
+                                        <div className='block md:max-w-[200px] truncate'>
                                             <span className="font-semibold">Author:</span>{' '}
-                                            <span className="">{pub.author}</span>
+                                            <span className="" title={pub.author}>{pub.author}</span>
                                         </div>
                                         <div>
                                             <span className="font-semibold">Published Year:</span>{' '}
