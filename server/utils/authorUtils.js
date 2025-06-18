@@ -225,22 +225,24 @@ const tryLastNameAndInitialMatch = (candidate, author) => {
     return false;
   }
 
+  // Check if first initials match
+  if (candidate.firstInitial !== author.firstInitial) {
+    return false;
+  }
+
   // Case 1: Candidate has full name, author has initials
-  if (
-    candidate.firstName.length > 1 &&
-    author.firstName.length === 1 &&
-    author.firstInitial === candidate.firstInitial
-  ) {
-    return checkMiddleInitialsMatch(candidate, author);
+  if (candidate.firstName.length > 1 && author.firstName.length === 1) {
+    return checkMiddleInitialsMatchFlexible(candidate, author);
   }
 
   // Case 2: Candidate has initials, author has full name
-  if (
-    candidate.firstName.length === 1 &&
-    author.firstName.length > 1 &&
-    candidate.firstInitial === author.firstInitial
-  ) {
-    return checkMiddleInitialsMatch(candidate, author);
+  if (candidate.firstName.length === 1 && author.firstName.length > 1) {
+    return checkMiddleInitialsMatchFlexible(candidate, author);
+  }
+
+  // Case 3: Both have same length first names and first initials match
+  if (candidate.firstInitial === author.firstInitial) {
+    return checkMiddleInitialsMatchFlexible(candidate, author);
   }
 
   return false;
@@ -260,8 +262,8 @@ const tryBothInitialsMatch = (candidate, author) => {
     candidate.firstInitial === author.firstInitial &&
     candidate.lastName === author.lastName
   ) {
-    // All middle initials must match exactly
-    return candidate.middleInitials.join("") === author.middleInitials.join("");
+    // Use flexible middle initial matching
+    return checkMiddleInitialsMatchFlexible(candidate, author);
   }
   return false;
 };
@@ -280,7 +282,7 @@ const tryFullNameMatch = (candidate, author) => {
     candidate.firstName === author.firstName &&
     candidate.lastName === author.lastName
   ) {
-    // If both have middle names/initials, they must match
+    // If both have middle names/initials, they must match exactly
     if (candidate.middleNames.length > 0 && author.middleNames.length > 0) {
       return (
         candidate.middleNames.join(" ") === author.middleNames.join(" ") ||
@@ -288,7 +290,7 @@ const tryFullNameMatch = (candidate, author) => {
       );
     }
 
-    // If neither has middle names or one doesn't have middle names, accept the match
+    // Use flexible matching for middle names - allows one to have middle names and other not
     return true;
   }
   return false;
@@ -318,6 +320,31 @@ const checkMiddleInitialsMatch = (candidate, author) => {
   }
 
   // Neither has middle initials - this is a match
+  return true;
+};
+
+/**
+ * Checks if middle initials match between candidate and author with flexible rules
+ * Allows matches even when one has middle initials and the other doesn't
+ * This enables "Sorelle A. Friedler" to match "S Friedler"
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if middle initials are compatible
+ * @private
+ */
+const checkMiddleInitialsMatchFlexible = (candidate, author) => {
+  // If both have middle initials, they must match exactly
+  if (author.middleInitials.length > 0 && candidate.middleInitials.length > 0) {
+    return (
+      author.middleInitials.length === candidate.middleInitials.length &&
+      author.middleInitials.every(
+        (initial, index) => candidate.middleInitials[index] === initial
+      )
+    );
+  }
+
+  // If one has middle initials and the other doesn't, that's still a valid match
+  // This handles cases like "Sorelle A. Friedler" vs "S Friedler"
   return true;
 };
 

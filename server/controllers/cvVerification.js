@@ -68,6 +68,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
     /book chapters/i,
     /book reviews/i,
     /research publications/i,
+    /policy-related publications and reports/i,
+    /workshop papers and technical reports/i,
     /articles/i,
     /published works/i,
     /scholarly publications/i,
@@ -225,7 +227,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
       if (!existingPub.title) return false;
 
       const similarity = getTitleSimilarity(pub.title, existingPub.title);
-      return similarity > 80; // Adjust threshold as needed
+      return similarity > 98; // Adjust threshold as needed
     });
     if (!isDuplicate) {
       uniquePublications.push(pub);
@@ -588,18 +590,9 @@ const verifyCV = async (file) => {
         allAuthorIds.scopus = authorIds.scopus;
       }
     }); // Only proceed with aggregation if we have at least one author ID
-    console.log("=== AUTHOR DETAILS AGGREGATION ===");
-    console.log("All Author IDs collected:", allAuthorIds);
-    console.log(
-      "Google Scholar IDs found:",
-      allAuthorIds.google_scholar ? "Yes" : "No"
-    );
-    console.log("Scopus IDs found:", allAuthorIds.scopus ? "Yes" : "No");
 
     let aggregatedAuthorDetails = null;
     if (Object.values(allAuthorIds).some((id) => id)) {
-      console.log("Proceeding with author details aggregation...");
-
       try {
         // Use the aggregator to get comprehensive author details
         const rawAuthorDetails = await aggregateAuthorDetails(
@@ -607,29 +600,7 @@ const verifyCV = async (file) => {
           candidateName
         );
 
-        console.log("Raw author details received:", !!rawAuthorDetails);
         if (rawAuthorDetails) {
-          console.log(
-            "Author details structure:",
-            Object.keys(rawAuthorDetails)
-          );
-          console.log("Author name:", rawAuthorDetails.author?.name);
-          console.log("Author surname:", rawAuthorDetails.author?.surname);
-          console.log("Author given name:", rawAuthorDetails.author?.givenName);
-          console.log(
-            "Articles count:",
-            rawAuthorDetails.articles?.length || 0
-          );
-          console.log(
-            "Affiliations count:",
-            rawAuthorDetails.author?.affiliationHistory?.length || 0
-          );
-          console.log(
-            "H-index (Google Scholar):",
-            rawAuthorDetails.h_index?.googleScholar
-          );
-          console.log("H-index (Scopus):", rawAuthorDetails.h_index?.scopus);
-
           // Transform the result to match the expected structure
           aggregatedAuthorDetails = {
             author: rawAuthorDetails.author,
@@ -642,14 +613,10 @@ const verifyCV = async (file) => {
             },
           };
 
-          console.log("Author details successfully transformed for response");
-        } else {
-          console.log("No raw author details received from aggregator");
-        }
+        } 
       } catch (error) {
         console.error("Failed to aggregate author details:", error.message);
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
-        console.log("Attempting fallback to Google Scholar author details...");
         const match = verificationResults.find(
           (result) =>
             result.verification.google_scholar.status === "verified" &&
@@ -658,26 +625,11 @@ const verifyCV = async (file) => {
         );
 
         if (match?.verification.google_scholar.details?.authorDetails) {
-          console.log(
-            "Fallback successful: Using Google Scholar author details from matched publication"
-          );
           aggregatedAuthorDetails =
             match.verification.google_scholar.details.authorDetails;
-        } else {
-          console.log(
-            "Fallback failed: No suitable Google Scholar author details found"
-          );
-        }
+        } 
       }
-    } else {
-      console.log("No author IDs found - skipping author details aggregation");
-    }
-
-    console.log(
-      "Final aggregated author details available:",
-      !!aggregatedAuthorDetails
-    );
-    console.log("=== AUTHOR DETAILS AGGREGATION COMPLETE ===");
+    } 
 
     return {
       success: true,

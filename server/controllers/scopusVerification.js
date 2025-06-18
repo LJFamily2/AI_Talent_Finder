@@ -183,33 +183,21 @@ const findMatchingPublication = (entries, title, doi) => {
  * @private
  */
 const extractAuthorInformation = (publication, candidateName) => {
-  console.log("=== SCOPUS AUTHOR EXTRACTION ===");
-  console.log("Extracting author info for candidate:", candidateName);
-
   const extractedAuthors = [];
   let authorId = null;
 
   // Extract primary creator/author
   if (publication["dc:creator"]) {
     extractedAuthors.push(publication["dc:creator"]);
-    console.log("Added dc:creator:", publication["dc:creator"]);
   }
 
   // Extract additional authors from the author list
   if (publication.author) {
-    console.log(
-      "Processing",
-      publication.author.length,
-      "authors from Scopus response"
-    );
-
     publication.author.forEach((author, index) => {
-      console.log(`Author ${index + 1} data:`, JSON.stringify(author));
 
       // Add all available name formats to the extracted authors list
       if (author["authname"]) {
         extractedAuthors.push(author["authname"]);
-        console.log(`Added authname: ${author["authname"]}`);
       }
 
       if (author["surname"] && author["given-name"]) {
@@ -218,7 +206,6 @@ const extractAuthorInformation = (publication, candidateName) => {
 
         extractedAuthors.push(fullName);
         extractedAuthors.push(reversedName);
-        console.log(`Added full name formats: ${fullName} and ${reversedName}`);
       }
 
       if (author["surname"] && author["initials"]) {
@@ -229,9 +216,6 @@ const extractAuthorInformation = (publication, candidateName) => {
         extractedAuthors.push(initialsFirst);
         extractedAuthors.push(surnameFirst);
         extractedAuthors.push(surnameSpace);
-        console.log(
-          `Added initial name formats: ${initialsFirst}, ${surnameFirst}, and ${surnameSpace}`
-        );
       }
     });
   }
@@ -242,7 +226,6 @@ const extractAuthorInformation = (publication, candidateName) => {
       ? checkAuthorNameMatch(candidateName, extractedAuthors)
       : false;
 
-  console.log("Author match result:", hasAuthorMatch);
 
   // If there's a match, find the author ID from authid field
   if (hasAuthorMatch && publication.author) {
@@ -266,17 +249,11 @@ const extractAuthorInformation = (publication, candidateName) => {
       if (checkAuthorNameMatch(candidateName, authorNames)) {
         if (author["authid"]) {
           authorId = author["authid"];
-          console.log(`Found matching author with ID: ${authorId}`);
           break; // Stop once we find a match
         }
       }
     }
   }
-
-  console.log("Final extracted authors:", extractedAuthors);
-  console.log("Final author match:", hasAuthorMatch);
-  console.log("Final author ID:", authorId);
-  console.log("=== END SCOPUS AUTHOR EXTRACTION ===");
 
   return {
     extractedAuthors,
