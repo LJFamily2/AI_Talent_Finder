@@ -1,295 +1,359 @@
+/**
+ * CV Verification Controller
+ *
+ * This is the main controller for academic CV verification system.
+ * It handles the complete CV analysis pipeline including:
+ * - PDF parsing and text extraction
+ * - AI-powered candidate name extraction
+ * - Academic publication identification and extraction
+ * - Cross-verification with Google Scholar and Scopus databases
+ * - Author name matching and verification
+ * - Comprehensive result aggregation and reporting
+ *
+ * @module cvVerification
+ * @author AI Talent Finder Team
+ * @version 1.0.0
+ */
+
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
-const axios = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { getTitleSimilarity } = require("../utils/textUtils");
+const {
+  verifyWithGoogleScholar,
+  createGoogleScholarSearchUrl,
+} = require("./googleScholarVerification");
+const { verifyWithScopus } = require("./scopusVerification");
+const { checkAuthorNameMatch } = require("../utils/authorUtils");
+const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 
-// Cache for author data to avoid duplicate API calls
-const authorCache = new Map();
+//=============================================================================
+// MAIN CV VERIFICATION FUNCTION
+//=============================================================================
 
-const verifyWithGoogleScholar = async (title, doi, maxResultsToCheck = 10) => {
-  try {
-    const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
-    const scholarQuery = title;
-    const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
-      scholarQuery
-    )}&hl=en&api_key=${serpApiKey}`;
+/**
+ * Main function for verifying academic CVs
+ *
+ * Processes a CV file through the complete verification pipeline:
+ * 1. Parse PDF to extract text content
+ * 2. Extract candidate name using AI
+ * 3. Identify and extract publications using AI
+ * 4. Verify each publication with Google Scholar and Scopus
+ * 5. Match candidate name against publication authors
+ * 6. Generate comprehensive verification report
+ *
+ * @param {Object} file - Uploaded CV file object with path property
+ * @returns {Promise<Object>} Comprehensive verification results
+ *
+ * @example
+ * const result = await verifyCV(uploadedFile);
+ * console.log(`Verified ${result.verifiedPublications}/${result.total} publications`);
+ * console.log(`Publications with author match: ${result.verifiedWithAuthorMatch}`);
+ * console.log(`Potential false claims: ${result.falseClaims}`);
+ */
 
-    const { data: scholarResult } = await axios.get(scholarApiUrl);
-    const organicResults =
-      scholarResult?.organic_results || scholarResult?.items || [];
-
-    if (!organicResults.length) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scholarResult,
-      };
-    }
-
-    const found = organicResults.slice(0, maxResultsToCheck).find((item) => {
-      if (doi && item.link?.toLowerCase().includes(doi.toLowerCase())) {
-        return true;
-      }
-      if (title && item.title) {
-        const normalizedTitle = title.toLowerCase().trim();
-        const normalizedItemTitle = item.title.toLowerCase().trim();
-
-        if (
-          normalizedItemTitle.includes(normalizedTitle) ||
-          normalizedTitle.includes(normalizedItemTitle)
-        ) {
-          return true;
-        }
-
-        const similarity = getTitleSimilarity(title, item.title);
-        return similarity > 70;
-      }
-      return false;
-    });
-
-    if (!found) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scholarResult,
-      };
-    }
-    let authorDetails = null;
-
-    if (found.publication_info?.authors?.length > 0) {
-      const authorId = found.publication_info.authors[0].author_id;
-      if (authorId) {
-        const authorInfo = await getAuthorDetails(
-          authorId,
-          serpApiKey,
-          found.title
-        );
-        if (authorInfo) {
-          authorDetails = authorInfo.details;
-        }
-      }
-    }
-
-    return {
-      status: "verified",
-      details: {
-        ...found,
-        authorDetails,
-      },
-      result: scholarResult,
-    };
-  } catch (err) {
-    return { status: "unable to verify", details: null, result: null };
-  }
-};
-
-const verifyWithScopus = async (title, doi, maxResultsToCheck = 10) => {
-  try {
-    const scopusAPIKey = process.env.SCOPUS_API_KEY;
-    const scopusQuery = title;
-    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&query=TITLE-ABS-KEY(${encodeURIComponent(
-      scopusQuery
-    )})&page=1&sortBy=relevance`;
-
-    const { data: scopusResult } = await axios.get(scopusApiUrl);
-    const entries = scopusResult?.["search-results"]?.entry || [];
-    if (!entries.length) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scopusResult,
-        apiUrl: scopusApiUrl,
-      };
-    }
-    const found = entries.slice(0, maxResultsToCheck).find((item) => {
-      if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
-        return true;
-      }
-      if (title && item["dc:title"]) {
-        const normalizedTitle = title.toLowerCase().trim();
-        const normalizedItemTitle = item["dc:title"].toLowerCase().trim();
-
-        if (
-          normalizedItemTitle.includes(normalizedTitle) ||
-          normalizedTitle.includes(normalizedItemTitle)
-        ) {
-          return true;
-        }
-
-        const similarity = getTitleSimilarity(title, item["dc:title"]);
-        return similarity > 70;
-      }
-      return false;
-    });
-    if (!found) {
-      return {
-        status: "unable to verify",
-        details: null,
-        result: scopusResult,
-        apiUrl: scopusApiUrl,
-      };
-    }
-
-    // Get the Scopus link from the array of links
-    const scopusLink = found.link?.find((link) => link["@ref"] === "scopus")?.[
-      "@href"
-    ]; // Keep all original fields from the Scopus API response
-    const details = {
-      ...found,
-      // Ensure the scopus link is properly set if available
-      link: found.link?.map((link) => ({
-        ...link,
-        "@href": link["@ref"] === "scopus" ? scopusLink : link["@href"],
-      })),
-    };
-    return {
-      status: "verified",
-      details,
-      result: scopusResult,
-      apiUrl: scopusApiUrl,
-    };
-  } catch (err) {
-    return {
-      status: "unable to verify",
-      details: null,
-      result: null,
-      apiUrl: null,
-    };
-  }
-};
-
-const createGoogleScholarSearchUrl = (title) => {
-  if (!title) return null;
-  const encodedTitle = encodeURIComponent(title);
-  return `https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=${encodedTitle}`;
-};
-
-const extractPublicationsFromCV = async (cvText) => {
-  const googleApiKey = process.env.GEMINI_API_KEY;
-  if (!googleApiKey) {
-    throw new Error("Google AI API key is not configured");
-  } // Regular expressions for identifying publication sections and their boundaries
+const extractPublicationsFromCV = async (model, cvText) => {
+  // Enhanced patterns for academic publication sections
   const PUBLICATION_PATTERNS = [
     /publications?$/i,
     /selected publications/i,
     /journal (?:articles|publications)/i,
     /conference (?:papers|publications)/i,
     /peer[- ]reviewed publications/i,
+    /in-progress manuscripts/i,
+    /peer-reviewed publications/i,
+    /policy-related publications/i,
+    /workshop papers/i,
+    /technical reports/i,
     /book chapters/i,
+    /book reviews/i,
     /research publications/i,
+    /policy-related publications and reports/i,
+    /workshop papers and technical reports/i,
     /articles/i,
     /published works/i,
     /scholarly publications/i,
+    /papers/i,
+    /\[.*\]/i, // Matches publication entries with reference numbers like [1], [P1]
   ];
 
-  // Function to identify publication headers and section boundaries
-  const analyzeSection = (line) => {
-    const upperLine = line.toUpperCase().trim();
-    // Skip empty lines
-    if (!line.trim()) return null;
-
-    // Check if this is a publication section header
-    const isHeader = PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
-
-    // Check if this is a new section (all caps, but not a publication header)
-    const isNewSection = line === upperLine && !isHeader;
-
-    return { isHeader, isNewSection, text: line };
-  };
-
-  // Process the CV text more efficiently
+  // Process the CV text to find sections
   const lines = cvText
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const allPublicationSections = [];
-  let currentSection = { header: "", content: [] };
 
-  for (const line of lines) {
-    const section = analyzeSection(line);
-    if (!section) continue;
-
-    if (section.isHeader) {
-      // Save previous section if it has content
-      if (currentSection.content.length > 0) {
-        allPublicationSections.push({
-          header: currentSection.header,
-          content: currentSection.content.join("\n"),
-        });
-      }
-      // Start new section
-      currentSection = { header: line, content: [] };
-    } else if (section.isNewSection && currentSection.content.length > 0) {
-      // End current section
-      allPublicationSections.push({
-        header: currentSection.header,
-        content: currentSection.content.join("\n"),
-      });
-      currentSection = { header: "", content: [] };
-    } else if (currentSection.header) {
-      // Add content to current section
-      currentSection.content.push(line);
+  // Identify potential publication sections
+  const sectionHeaders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (
+      (line === line.toUpperCase() && line.length > 3) || // All caps headers
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) || // Publication patterns
+      /^\[.*\]/.test(line) || // Publication entries starting with [x]
+      /^[0-9]+\./.test(line) // Numbered entries
+    ) {
+      sectionHeaders.push({ index: i, text: line });
     }
   }
 
-  // Add the last section if it has content
-  if (currentSection.content.length > 0) {
-    allPublicationSections.push({
-      header: currentSection.header,
-      content: currentSection.content.join("\n"),
+  // Extract sections that appear to be publication lists
+  const publicationSections = [];
+  for (let i = 0; i < sectionHeaders.length; i++) {
+    const header = sectionHeaders[i];
+    const nextHeader = sectionHeaders[i + 1];
+
+    const sectionEnd = nextHeader ? nextHeader.index : lines.length;
+    const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
+    if (
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(header.text)) ||
+      /publications|papers|manuscripts|reports/i.test(header.text)
+    ) {
+      publicationSections.push({
+        header: header.text,
+        content: sectionContent,
+      });
+    }
+  }
+  if (publicationSections.length === 0) {
+    // If no sections found, look for entries with common publication patterns
+    const pubEntries = lines.filter(
+      (line) =>
+        /^\[\w+\]/.test(line) || // [1], [P1], etc.
+        /^[0-9]+\./.test(line) || // Numbered entries
+        /(19|20)[0-9]{2}/.test(line) // Contains a year
+    );
+
+    if (pubEntries.length > 0) {
+      publicationSections.push({
+        header: "Publications",
+        content: pubEntries.join("\n"),
+      });
+    }
+  }
+  // Process each section in chunks
+  const allPublications = [];
+  const MAX_CHUNK_SIZE = 4000; // Characters per chunk
+
+  for (const section of publicationSections) {
+    // Split section into chunks if needed
+    if (section.content.length > MAX_CHUNK_SIZE) {
+      const chunks = [];
+      let currentChunk = section.header + "\n\n";
+      let currentSize = currentChunk.length;
+
+      // Split at logical boundaries (lines)
+      const contentLines = section.content.split("\n");
+      for (const line of contentLines) {
+        if (
+          currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
+          currentChunk.length > 0
+        ) {
+          chunks.push(currentChunk);
+          currentChunk = section.header + " (continued)\n\n";
+          currentSize = currentChunk.length;
+        }
+
+        currentChunk += line + "\n";
+        currentSize += line.length + 1;
+      }
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
+      }
+
+      // Process each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPubs = await extractPublicationsFromChunk(model, chunks[i]);
+        allPublications.push(...chunkPubs);
+      }
+    } else {
+      // Process entire section
+      const sectionText = `${section.header}\n\n${section.content}`;
+      const sectionPubs = await extractPublicationsFromChunk(
+        model,
+        sectionText
+      );
+      allPublications.push(...sectionPubs);
+    }
+  }
+  // If nothing was found, try a general extraction as a fallback
+  if (allPublications.length === 0 && cvText.length > 0) {
+    // Split the full text into manageable chunks
+    const chunks = [];
+    for (let i = 0; i < cvText.length; i += MAX_CHUNK_SIZE) {
+      chunks.push(cvText.substring(i, i + MAX_CHUNK_SIZE));
+    }
+    for (let i = 0; i < chunks.length; i++) {
+      const fallbackPubs = await extractPublicationsFromChunk(
+        model,
+        chunks[i],
+        true
+      );
+      allPublications.push(...fallbackPubs);
+    }
+  } // Remove duplicates (based on title similarity) and validate publications
+  const uniquePublications = [];
+  for (const pub of allPublications) {
+    if (!pub.title) continue;
+
+    // Additional validation to filter out fabricated publications
+    if (
+      /\[([0-9]+|P[0-9]+|TR[0-9]+)\]/.test(pub.publication) ||
+      /^[A-Z]\.\s*Author/.test(pub.publication) ||
+      (/et al\./.test(pub.publication) &&
+        !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
+    ) {
+      continue;
+    }
+
+    // Check if title has reasonable length and not generic words
+    if (
+      pub.title &&
+      (pub.title.length < 10 ||
+        (/study|framework|analysis|research|impact/i.test(pub.title) &&
+          pub.title.length < 25))
+    ) {
+      // If title is too generic and short, verify it appears in the original text
+      const titleInText = new RegExp(
+        pub.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i"
+      );
+      if (!titleInText.test(cvText)) {
+        continue;
+      }
+    }
+
+    const isDuplicate = uniquePublications.some((existingPub) => {
+      if (!existingPub.title) return false;
+
+      const similarity = getTitleSimilarity(pub.title, existingPub.title);
+      return similarity > 98; // Adjust threshold as needed
     });
+    if (!isDuplicate) {
+      uniquePublications.push(pub);
+    }
   }
 
-  // Combine all publication sections with headers for context
-  const combinedPublicationSection = allPublicationSections
-    .map((section) => `${section.header}\n${section.content}`)
-    .join("\n\n");
+  return uniquePublications;
+};
 
-  // Initialize Google AI
-  const genAI = new GoogleGenerativeAI(googleApiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemma-3n-e4b-it",
-    generationConfig: {
-      temperature: 0.1,
-      topP: 1,
-      maxOutputTokens: 2048,
-    },
-  });
-
-  // Prepare the prompt
-  const prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, which contains the Publications section of an academic CV, extract all publication entries.
+// Helper function to extract publications from a chunk of text
+async function extractPublicationsFromChunk(
+  model,
+  chunkText,
+  isFallback = false
+) {
+  // Create a more specific prompt with strong anti-hallucination instructions
+  let prompt = `You are an expert academic CV analyzer focusing on publications.
+From the text below, which contains part of an academic CV, extract ONLY ACTUAL publications that appear in the text.
 Each publication must be returned as an object inside a JSON array, with the following keys:
-- "publication": the full original text of the publication entry
-- "title": the publication title (can be in quotes or the main text before publication details)
+- "publication": the full original text of the publication entry exactly as it appears
+- "title": the publication title extracted from the publication text
 - "doi": the DOI if written (starts with 10.), otherwise null
 Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
-Rules:
-- Extract ALL publications, even if titles are not in quotes
-- Extract titles from text whether they appear in quotes or as main text before publication details
-- DO NOT fabricate or invent DOI numbers - only include if explicitly written starting with 10.
+
+IMPORTANT RULES:
+- ONLY extract publications that are explicitly written in the text
+- DO NOT create or invent ANY publications that aren't explicitly in the text
+- Return an EMPTY array [] if you can't find actual publications
+- If you're uncertain if something is a publication, DO NOT include it
+- DO NOT include example, template or placeholder publications with generic author names like "A. Author"
+- DO NOT fabricate ANY content or publications
 - Return only valid JSON. No markdown, no explanation, no extra output.
 
 TEXT:
-${combinedPublicationSection}`;
+${chunkText}`;
 
-  // Generate response from Google AI
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-  // Parse and clean the response
-  return JSON.parse(
-    text
+    // Parse and clean the response
+    let cleanedText = text
       .trim()
       .replace(/```json|```/g, "")
       .replace(/^[^[{]*(\[.*\])[^}\]]*$/s, "$1")
-      .trim()
-  );
-};
+      .trim();
+
+    // Handle edge cases where the model doesn't return valid JSON
+    try {
+      // Fix common JSON issues - sometimes the model returns malformed JSON
+      cleanedText = cleanedText.replace(/,\s*\]/g, "]");
+      cleanedText = cleanedText.replace(/([^\\])\\([^\\"])/g, "$1\\\\$2");
+
+      const publications = JSON.parse(cleanedText); // Post-processing to filter out obviously hallucinated entries
+      return publications.filter((pub) => {
+        // Filter out entries with generic author patterns
+        if (
+          /A\.\s*Author|B\.\s*Author|C\.\s*Author/.test(pub.publication) ||
+          /\[1\]|\[P1\]|\[TR1\]/.test(pub.publication) ||
+          /example|template|placeholder/i.test(pub.publication)
+        ) {
+          return false;
+        } // Filter out publications with extremely short text (likely hallucinations)
+        if (pub.publication.length < 15) {
+          return false;
+        } // Only keep publications with specific publication details
+        const hasPublicationMetadata =
+          pub.publication.includes("(") || // Has year or volume info
+          pub.publication.includes(":") || // Has page numbers
+          /vol|volume|issue|journal|proceedings/i.test(pub.publication); // Has publication metadata
+
+        if (!hasPublicationMetadata) {
+          return false;
+        }
+
+        return true;
+      });
+    } catch (e) {
+      return [];
+    }
+  } catch (error) {
+    return [];
+  }
+}
+
+// AI-based function to extract candidate name from CV
+async function extractCandidateNameWithAI(model, cvText) {
+  const prompt = `You are an expert CV analyzer.
+From the text of this CV/resume, extract ONLY the full name of the candidate/person whose CV this is.
+Return ONLY the name as plain text - no explanation, no JSON, no additional information.
+If you cannot determine the name with high confidence, return "UNKNOWN".
+
+CV TEXT:
+${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const candidateName = response.text().trim(); // Basic validation to prevent hallucination
+    if (
+      candidateName === "UNKNOWN" ||
+      candidateName.length > 100 ||
+      candidateName.length < 2
+    ) {
+      return null;
+    }
+
+    // Additional validation - should look like a name
+    if (!/^[A-Za-z\s\.\-']+$/.test(candidateName)) {
+      return null;
+    }
+
+    return candidateName;
+  } catch (error) {
+    return null;
+  }
+}
 
 // Main function
+// 1. parse the CV PDF to text
+// 2. extract candidate name using AI
+// 3. extract publications using the Google AI model
+// 4. verify each publication with Google Scholar and Scopus
+// 5. check if candidate name matches publication authors
+// 6. return the results
 const verifyCV = async (file) => {
   try {
     // Parse PDF to text
@@ -300,24 +364,62 @@ const verifyCV = async (file) => {
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
-    // Extract publications
-    const publications = await extractPublicationsFromCV(cvText);
+    // Initialize Google AI model
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemma-3n-e4b-it",
+      generationConfig: {
+        temperature: 0.1,
+        topP: 1,
+        maxOutputTokens: 2048,
+      },
+    }); // Extract candidate name using AI
+    const candidateName = await extractCandidateNameWithAI(model, cvText);
+    const publications = await extractPublicationsFromCV(model, cvText);
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
-    }
-
-    // Verify each publication with both Google Scholar and Scopus
+    } // Verify each publication with both Google Scholar and Scopus
+    let falseClaims = 0;
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult] = await Promise.all([
-          verifyWithGoogleScholar(pub.title, pub.doi),
-          verifyWithScopus(pub.title, pub.doi),
+          verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
+          verifyWithScopus(pub.title, pub.doi, candidateName),
         ]);
+
+        // Combine authors from both sources
+        let allAuthors = [];
+        let hasAuthorMatch = false;
+
+        // Get authors from Google Scholar
+        if (scholarResult.details?.extractedAuthors) {
+          allAuthors.push(...scholarResult.details.extractedAuthors);
+        }
+
+        // Get authors from Scopus
+        if (scopusResult.details?.extractedAuthors) {
+          allAuthors.push(...scopusResult.details.extractedAuthors);
+        }
+
+        // Remove duplicates and clean author names
+        if (candidateName && allAuthors.length > 0) {
+          hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
+        }
+        // Flag potential false claims
+        const isVerified =
+          scholarResult.status === "verified" ||
+          scopusResult.status === "verified" ||
+          scholarResult.status === "verified but not same author name" ||
+          scopusResult.status === "verified but not same author name";
+        const isPotentialFalseClaim =
+          isVerified && candidateName && !hasAuthorMatch;
+        if (isPotentialFalseClaim) {
+          falseClaims++;
+        }
 
         // Get the best available link or create a Google Scholar search link
         const scholarLink = scholarResult.details?.link;
-        const scopusLink = scopusResult.details?.link;
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
         return {
@@ -424,11 +526,26 @@ const verifyCV = async (file) => {
                 // Finally use the fallback
                 return fallbackLink || "No link available";
               })(),
-              status:
-                scholarResult.status === "verified" ||
-                scopusResult.status === "verified"
-                  ? "verified"
-                  : "not verified",
+              // Determine the most specific status
+              status: (() => {
+                // If either source shows verified with author match
+                if (
+                  scholarResult.status === "verified" ||
+                  scopusResult.status === "verified"
+                ) {
+                  return "verified";
+                }
+                // If either source shows verified but not same author
+                if (
+                  scholarResult.status ===
+                    "verified but not same author name" ||
+                  scopusResult.status === "verified but not same author name"
+                ) {
+                  return "verified but not same author name";
+                }
+                // If neither is verified
+                return "not verified";
+              })(),
               // Additional Scopus fields
               publicationName:
                 scopusResult.details?.["prism:publicationName"] || null,
@@ -437,128 +554,113 @@ const verifyCV = async (file) => {
               pageRange: scopusResult.details?.["prism:pageRange"] || null,
               doi: scopusResult.details?.["prism:doi"] || null,
             },
+          }, // Enhanced author verification information
+          authorVerification: {
+            hasAuthorMatch: hasAuthorMatch,
+            authorIds: {
+              google_scholar: scholarResult.details?.authorId || null,
+              scopus: scopusResult.details?.authorId || null,
+            },
           },
         };
       })
-    ); 
-    // Get author details from the first verified publication that has Google Scholar details
-    const authorDetails =
-      verificationResults.find(
-        (result) =>
-          result.verification.google_scholar.status === "verified" &&
-          result.verification.google_scholar.details?.authorDetails
-      )?.verification.google_scholar.details.authorDetails || null;
+    ); // Aggregate author details from multiple sources
+    // Find publications with author matches and collect IDs
+    const allAuthorIds = {
+      google_scholar: null,
+      scopus: null,
+    };
+
+    // Find verified publications with author matches
+    const verifiedWithAuthorMatch = verificationResults.filter(
+      (result) =>
+        result.authorVerification.hasAuthorMatch &&
+        Object.keys(result.authorVerification.authorIds || {}).length > 0
+    );
+
+    // Collect author IDs from each source
+    verifiedWithAuthorMatch.forEach((result) => {
+      const { authorIds } = result.authorVerification;
+
+      if (authorIds?.google_scholar && !allAuthorIds.google_scholar) {
+        allAuthorIds.google_scholar = authorIds.google_scholar;
+      }
+
+      if (authorIds?.scopus && !allAuthorIds.scopus) {
+        allAuthorIds.scopus = authorIds.scopus;
+      }
+    }); // Only proceed with aggregation if we have at least one author ID
+
+    let aggregatedAuthorDetails = null;
+    if (Object.values(allAuthorIds).some((id) => id)) {
+      try {
+        // Use the aggregator to get comprehensive author details
+        const rawAuthorDetails = await aggregateAuthorDetails(
+          allAuthorIds,
+          candidateName
+        );
+
+        if (rawAuthorDetails) {
+          // Transform the result to match the expected structure
+          aggregatedAuthorDetails = {
+            author: rawAuthorDetails.author,
+            articles: rawAuthorDetails.articles,
+            metrics: {
+              h_index: rawAuthorDetails.h_index,
+              documentCounts: rawAuthorDetails.documentCounts,
+              i10_index: rawAuthorDetails.i10_index,
+              citations: rawAuthorDetails.graph,
+            },
+          };
+
+        } 
+      } catch (error) {
+        console.error("Failed to aggregate author details:", error.message);
+        console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
+        const match = verificationResults.find(
+          (result) =>
+            result.verification.google_scholar.status === "verified" &&
+            result.authorVerification.hasAuthorMatch &&
+            result.verification.google_scholar.details?.authorDetails
+        );
+
+        if (match?.verification.google_scholar.details?.authorDetails) {
+          aggregatedAuthorDetails =
+            match.verification.google_scholar.details.authorDetails;
+        } 
+      }
+    } 
 
     return {
       success: true,
+      candidateName: candidateName,
       total: verificationResults.length,
+      verifiedPublications: verificationResults.filter(
+        (r) =>
+          r.verification.google_scholar.status === "verified" ||
+          r.verification.scopus.status === "verified" ||
+          r.verification.google_scholar.status ===
+            "verified but not same author name" ||
+          r.verification.scopus.status === "verified but not same author name"
+      ).length,
+      verifiedWithAuthorMatch: verificationResults.filter(
+        (r) =>
+          r.verification.google_scholar.status === "verified" ||
+          r.verification.scopus.status === "verified"
+      ).length,
+      verifiedButDifferentAuthor: verificationResults.filter(
+        (r) =>
+          r.verification.google_scholar.status ===
+            "verified but not same author name" ||
+          r.verification.scopus.status === "verified but not same author name"
+      ).length,
+      falseClaims: falseClaims,
       results: verificationResults,
-      authorDetails: authorDetails,
+      authorDetails: aggregatedAuthorDetails, // Use aggregated details instead of single source
     };
   } catch (error) {
     throw error;
   }
-};
-
-const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
-  // Helper function to find matching article
-  const findMatchingArticle = (articles, title) => {
-    if (!articles || !title) return null;
-
-    const normalizedSearchTitle = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s]/g, "");
-
-    return articles.find((article) => {
-      if (!article.title) return false;
-
-      const normalizedArticleTitle = article.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s]/g, "");
-
-      // Try exact match first
-      if (normalizedArticleTitle === normalizedSearchTitle) return true;
-
-      // Try fuzzy matching using getTitleSimilarity
-      const similarity = getTitleSimilarity(
-        normalizedArticleTitle,
-        normalizedSearchTitle
-      );
-      if (similarity > 70) return true;
-
-      // Try partial matching in either direction
-      if (
-        normalizedArticleTitle.length > 20 &&
-        normalizedSearchTitle.length > 20
-      ) {
-        if (
-          normalizedArticleTitle.includes(normalizedSearchTitle) ||
-          normalizedSearchTitle.includes(normalizedArticleTitle)
-        )
-          return true;
-      }
-
-      return false;
-    });
-  };
-
-  // Check cache first
-  if (authorCache.has(authorId)) {
-    const cachedAuthor = authorCache.get(authorId);
-    const matchingArticle = findMatchingArticle(
-      cachedAuthor.articles,
-      searchTitle
-    );
-
-    if (matchingArticle) {
-      return {
-        year: matchingArticle.year,
-        details: {
-          name: cachedAuthor.name,
-          affiliations: cachedAuthor.affiliations,
-          interests: cachedAuthor.interests,
-          citedBy: matchingArticle.cited_by,
-        },
-      };
-    }
-  }
-
-  try {
-    const authorApiUrl = `https://serpapi.com/search?engine=google_scholar_author&author_id=${authorId}&api_key=${serpApiKey}`;
-    const { data: authorResult } = await axios.get(authorApiUrl);
-
-    // Cache the full author result
-    const authorData = {
-      name: authorResult.author?.name,
-      affiliations: authorResult.author?.affiliations,
-      interests: authorResult.author?.interests,
-      articles: authorResult.articles,
-    };
-    authorCache.set(authorId, authorData);
-
-    // Find the matching article
-    const matchingArticle = findMatchingArticle(
-      authorResult.articles,
-      searchTitle
-    );
-
-    if (matchingArticle) {
-      return {
-        year: matchingArticle.year,
-        details: {
-          author: authorResult.author,
-          articles: authorResult.articles,
-          citedBy: authorResult.cited_by,
-        },
-      };
-    }
-  } catch (error) {
-    // Error handled silently
-  }
-
-  return null;
 };
 
 module.exports = {
