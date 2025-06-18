@@ -105,24 +105,13 @@ const verifyWithGoogleScholar = async (
         null,
         searchResults.rawResult
       );
-    }
-
-    // Step 3: Extract author information from the matched publication
+    } // Step 3: Extract author information from the matched publication
     const authorInfo = extractAuthorInformation(
       matchedPublication,
       candidateName
     );
 
-    // Step 4: Fetch detailed author information if there's a match
-    if (authorInfo.hasAuthorMatch && authorInfo.matchedAuthorId) {
-      authorInfo.authorDetails = await fetchAuthorDetails(
-        authorInfo.matchedAuthorId,
-        process.env.GOOGLE_SCHOLAR_API_KEY,
-        matchedPublication.title
-      );
-    }
-
-    // Step 5: Determine verification status and return result
+    // Step 4: Determine verification status and return result
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
@@ -133,7 +122,7 @@ const verifyWithGoogleScholar = async (
         ...matchedPublication,
         extractedAuthors: authorInfo.extractedAuthors,
         hasAuthorMatch: authorInfo.hasAuthorMatch,
-        authorDetails: authorInfo.authorDetails,
+        authorId: authorInfo.matchedAuthorId, // Include author ID for aggregation
       },
       searchResults.rawResult
     );

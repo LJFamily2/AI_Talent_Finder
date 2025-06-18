@@ -25,6 +25,7 @@ const {
 } = require("./googleScholarVerification");
 const { verifyWithScopus } = require("./scopusVerification");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
+const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 
 //=============================================================================
 // MAIN CV VERIFICATION FUNCTION
@@ -554,25 +555,130 @@ const verifyCV = async (file) => {
           }, // Enhanced author verification information
           authorVerification: {
             hasAuthorMatch: hasAuthorMatch,
+            authorIds: {
+              google_scholar: scholarResult.details?.authorId || null,
+              scopus: scopusResult.details?.authorId || null,
+            },
           },
         };
       })
+    ); // Aggregate author details from multiple sources
+    // Find publications with author matches and collect IDs
+    const allAuthorIds = {
+      google_scholar: null,
+      scopus: null,
+    };
+
+    // Find verified publications with author matches
+    const verifiedWithAuthorMatch = verificationResults.filter(
+      (result) =>
+        result.authorVerification.hasAuthorMatch &&
+        Object.keys(result.authorVerification.authorIds || {}).length > 0
     );
 
-    // Get author details from the first verified publication where we found an author match
-    const authorDetails = (() => {
-      const matchedPublication = verificationResults.find(
-        (result) =>
-          result.verification.google_scholar.status === "verified" &&
-          result.authorVerification.hasAuthorMatch &&
-          result.verification.google_scholar.details?.authorDetails
-      );
+    // Collect author IDs from each source
+    verifiedWithAuthorMatch.forEach((result) => {
+      const { authorIds } = result.authorVerification;
 
-      return (
-        matchedPublication?.verification.google_scholar.details.authorDetails ||
-        null
-      );
-    })();
+      if (authorIds?.google_scholar && !allAuthorIds.google_scholar) {
+        allAuthorIds.google_scholar = authorIds.google_scholar;
+      }
+
+      if (authorIds?.scopus && !allAuthorIds.scopus) {
+        allAuthorIds.scopus = authorIds.scopus;
+      }
+    }); // Only proceed with aggregation if we have at least one author ID
+    console.log("=== AUTHOR DETAILS AGGREGATION ===");
+    console.log("All Author IDs collected:", allAuthorIds);
+    console.log(
+      "Google Scholar IDs found:",
+      allAuthorIds.google_scholar ? "Yes" : "No"
+    );
+    console.log("Scopus IDs found:", allAuthorIds.scopus ? "Yes" : "No");
+
+    let aggregatedAuthorDetails = null;
+    if (Object.values(allAuthorIds).some((id) => id)) {
+      console.log("Proceeding with author details aggregation...");
+
+      try {
+        // Use the aggregator to get comprehensive author details
+        const rawAuthorDetails = await aggregateAuthorDetails(
+          allAuthorIds,
+          candidateName
+        );
+
+        console.log("Raw author details received:", !!rawAuthorDetails);
+        if (rawAuthorDetails) {
+          console.log(
+            "Author details structure:",
+            Object.keys(rawAuthorDetails)
+          );
+          console.log("Author name:", rawAuthorDetails.author?.name);
+          console.log("Author surname:", rawAuthorDetails.author?.surname);
+          console.log("Author given name:", rawAuthorDetails.author?.givenName);
+          console.log(
+            "Articles count:",
+            rawAuthorDetails.articles?.length || 0
+          );
+          console.log(
+            "Affiliations count:",
+            rawAuthorDetails.author?.affiliationHistory?.length || 0
+          );
+          console.log(
+            "H-index (Google Scholar):",
+            rawAuthorDetails.h_index?.googleScholar
+          );
+          console.log("H-index (Scopus):", rawAuthorDetails.h_index?.scopus);
+
+          // Transform the result to match the expected structure
+          aggregatedAuthorDetails = {
+            author: rawAuthorDetails.author,
+            articles: rawAuthorDetails.articles,
+            metrics: {
+              h_index: rawAuthorDetails.h_index,
+              documentCounts: rawAuthorDetails.documentCounts,
+              i10_index: rawAuthorDetails.i10_index,
+              citations: rawAuthorDetails.graph,
+            },
+          };
+
+          console.log("Author details successfully transformed for response");
+        } else {
+          console.log("No raw author details received from aggregator");
+        }
+      } catch (error) {
+        console.error("Failed to aggregate author details:", error.message);
+        console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
+        console.log("Attempting fallback to Google Scholar author details...");
+        const match = verificationResults.find(
+          (result) =>
+            result.verification.google_scholar.status === "verified" &&
+            result.authorVerification.hasAuthorMatch &&
+            result.verification.google_scholar.details?.authorDetails
+        );
+
+        if (match?.verification.google_scholar.details?.authorDetails) {
+          console.log(
+            "Fallback successful: Using Google Scholar author details from matched publication"
+          );
+          aggregatedAuthorDetails =
+            match.verification.google_scholar.details.authorDetails;
+        } else {
+          console.log(
+            "Fallback failed: No suitable Google Scholar author details found"
+          );
+        }
+      }
+    } else {
+      console.log("No author IDs found - skipping author details aggregation");
+    }
+
+    console.log(
+      "Final aggregated author details available:",
+      !!aggregatedAuthorDetails
+    );
+    console.log("=== AUTHOR DETAILS AGGREGATION COMPLETE ===");
+
     return {
       success: true,
       candidateName: candidateName,
@@ -598,7 +704,7 @@ const verifyCV = async (file) => {
       ).length,
       falseClaims: falseClaims,
       results: verificationResults,
-      authorDetails: authorDetails,
+      authorDetails: aggregatedAuthorDetails, // Use aggregated details instead of single source
     };
   } catch (error) {
     throw error;
