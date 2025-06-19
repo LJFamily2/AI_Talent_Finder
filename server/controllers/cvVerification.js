@@ -24,6 +24,7 @@ const {
   createGoogleScholarSearchUrl,
 } = require("./googleScholarVerification");
 const { verifyWithScopus } = require("./scopusVerification");
+const { verifyWithOpenAlex } = require("./openAlexVerification");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const {
@@ -91,12 +92,15 @@ const verifyCV = async (file) => {
     let falseClaims = 0;
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
-        const [scholarResult, scopusResult] = await Promise.all([
-          verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
-          verifyWithScopus(pub.title, pub.doi, candidateName),
-        ]);
+        const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
+          [
+            verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
+            verifyWithScopus(pub.title, pub.doi, candidateName),
+            verifyWithOpenAlex(pub.title, pub.doi, candidateName),
+          ]
+        );
 
-        // Combine authors from both sources
+        // Combine authors from all three sources
         let allAuthors = [];
         let hasAuthorMatch = false;
 
@@ -109,25 +113,34 @@ const verifyCV = async (file) => {
         if (scopusResult.details?.extractedAuthors) {
           allAuthors.push(...scopusResult.details.extractedAuthors);
         }
+        // Get authors from OpenAlex
+        if (openAlexResult.details?.extractedAuthors) {
+          allAuthors.push(...openAlexResult.details.extractedAuthors);
+        }
 
         // Remove duplicates and clean author names
+        allAuthors = [...new Set(allAuthors)].filter(Boolean);
+
+        // Check author match
         if (candidateName && allAuthors.length > 0) {
           hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
         }
+
         // Flag potential false claims
         const isVerified =
           scholarResult.status === "verified" ||
           scopusResult.status === "verified" ||
+          openAlexResult.status === "verified" ||
           scholarResult.status === "verified but not same author name" ||
-          scopusResult.status === "verified but not same author name";
+          scopusResult.status === "verified but not same author name" ||
+          openAlexResult.status === "verified but not same author name";
         const isPotentialFalseClaim =
           isVerified && candidateName && !hasAuthorMatch;
         if (isPotentialFalseClaim) {
           falseClaims++;
-        }
-
-        // Get the best available link or create a Google Scholar search link
+        } // Get best available link
         const scholarLink = scholarResult.details?.link;
+        const openAlexLink = openAlexResult.details?.id; // OpenAlex ID as fallback link
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
         return {
@@ -145,11 +158,16 @@ const verifyCV = async (file) => {
               status: scopusResult.status,
               details: scopusResult.details,
             },
+            openalex: {
+              status: openAlexResult.status,
+              details: openAlexResult.details,
+            },
             displayData: {
               publication: pub.publication || "Unable to verify",
               title:
                 scholarResult.details?.title ||
                 scopusResult.details?.["dc:title"] ||
+                openAlexResult.details?.title ||
                 "Unable to verify",
               author: (() => {
                 // Try Google Scholar author info first
@@ -167,16 +185,35 @@ const verifyCV = async (file) => {
                 if (scopusResult.details?.["dc:creator"]) {
                   return scopusResult.details["dc:creator"];
                 }
+                // Then try OpenAlex author info
+                if (openAlexResult.details?.extractedAuthors?.length) {
+                  return openAlexResult.details.extractedAuthors.join(", ");
+                }
                 return "Unable to verify";
               })(),
               type: (() => {
-                // Use type from either source
-                const scopusType = scopusResult.details?.subtypeDescription;
-                const scholarType = scholarResult.details?.type;
-                return scopusType || scholarType || "Not specified";
+                // Use type from any source
+                return (
+                  openAlexResult.details?.type ||
+                  scholarResult.details?.type ||
+                  scopusResult.details?.subtypeDescription ||
+                  "Not specified"
+                );
               })(),
               year: (() => {
                 const currentYear = new Date().getFullYear();
+
+                // Try OpenAlex year first (usually most reliable)
+                if (openAlexResult.details?.publication_year) {
+                  const year =
+                    openAlexResult.details.publication_year.toString();
+                  if (
+                    parseInt(year) >= 1700 &&
+                    parseInt(year) <= currentYear + 1
+                  ) {
+                    return year;
+                  }
+                }
 
                 // Try Scopus coverDate first as it's usually more reliable
                 const scopusDate = scopusResult.details?.["prism:coverDate"];
@@ -220,65 +257,52 @@ const verifyCV = async (file) => {
                 return Math.max(scholarCitations, scopusCitations).toString();
               })(),
               link: (() => {
-                // Try to get Scopus link first
-                if (scopusResult.details?.link) {
-                  const scopusLink = scopusResult.details.link.find(
-                    (link) => link["@ref"] === "scopus"
-                  );
-                  if (scopusLink) return scopusLink["@href"];
-                }
-
-                // Then try Google Scholar link
+                // Try to get any link in order of preference
                 if (scholarLink) return scholarLink;
-
-                // Finally use the fallback
+                if (openAlexLink) return openAlexLink;
                 return fallbackLink || "No link available";
               })(),
-              // Determine the most specific status
               status: (() => {
-                // If either source shows verified with author match
+                // If any source shows verified with author match
                 if (
                   scholarResult.status === "verified" ||
-                  scopusResult.status === "verified"
+                  scopusResult.status === "verified" ||
+                  openAlexResult.status === "verified"
                 ) {
                   return "verified";
                 }
-                // If either source shows verified but not same author
+                // If any source shows verified but not same author
                 if (
                   scholarResult.status ===
                     "verified but not same author name" ||
-                  scopusResult.status === "verified but not same author name"
+                  scopusResult.status === "verified but not same author name" ||
+                  openAlexResult.status === "verified but not same author name"
                 ) {
                   return "verified but not same author name";
                 }
-                // If neither is verified
+                // If none are verified
                 return "not verified";
               })(),
-              // Additional Scopus fields
-              publicationName:
-                scopusResult.details?.["prism:publicationName"] || null,
-              volume: scopusResult.details?.["prism:volume"] || null,
-              issue: scopusResult.details?.["prism:issueIdentifier"] || null,
-              pageRange: scopusResult.details?.["prism:pageRange"] || null,
-              doi: scopusResult.details?.["prism:doi"] || null,
             },
-          }, // Enhanced author verification information
+          },
           authorVerification: {
             hasAuthorMatch: hasAuthorMatch,
             authorIds: {
               google_scholar: scholarResult.details?.authorId || null,
               scopus: scopusResult.details?.authorId || null,
+              openalex: openAlexResult.details?.authorId || null,
             },
           },
         };
       })
-    ); 
-    
+    );
+
     // Aggregate author details from multiple sources
     // Find publications with author matches and collect IDs
     const allAuthorIds = {
       google_scholar: null,
       scopus: null,
+      openalex: null,
     };
 
     // Find verified publications with author matches
@@ -295,9 +319,12 @@ const verifyCV = async (file) => {
       if (authorIds?.google_scholar && !allAuthorIds.google_scholar) {
         allAuthorIds.google_scholar = authorIds.google_scholar;
       }
-
       if (authorIds?.scopus && !allAuthorIds.scopus) {
         allAuthorIds.scopus = authorIds.scopus;
+      }
+
+      if (authorIds?.openalex && !allAuthorIds.openalex) {
+        allAuthorIds.openalex = authorIds.openalex;
       }
     }); // Only proceed with aggregation if we have at least one author ID
 
@@ -322,8 +349,7 @@ const verifyCV = async (file) => {
               citations: rawAuthorDetails.graph,
             },
           };
-
-        } 
+        }
       } catch (error) {
         console.error("Failed to aggregate author details:", error.message);
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
@@ -337,9 +363,9 @@ const verifyCV = async (file) => {
         if (match?.verification.google_scholar.details?.authorDetails) {
           aggregatedAuthorDetails =
             match.verification.google_scholar.details.authorDetails;
-        } 
+        }
       }
-    } 
+    }
 
     return {
       success: true,
@@ -366,7 +392,7 @@ const verifyCV = async (file) => {
       ).length,
       falseClaims: falseClaims,
       results: verificationResults,
-      authorDetails: aggregatedAuthorDetails, 
+      authorDetails: aggregatedAuthorDetails,
     };
   } catch (error) {
     throw error;

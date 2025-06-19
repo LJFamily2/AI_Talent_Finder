@@ -2,7 +2,7 @@
  * Author Details Aggregator Module
  *
  * This module aggregates author details from multiple academic sources
- * (Google Scholar, Scopus) into a comprehensive author profile.
+ * (Google Scholar, Scopus, OpenAlex) into a comprehensive author profile.
  *
  * @module authorDetailsAggregator
  * @author AI Talent Finder Team
@@ -44,15 +44,21 @@ const aggregateAuthorDetails = async (authorIds, candidateName) => {
     h_index: {
       googleScholar: null,
       scopus: null,
+      openalex: null,
     },
     documentCounts: {
       googleScholar: 0,
       scopus: 0,
+      openalex: 0,
     },
-    i10_index: null,
+    i10_index: {
+      googleScholar: null,
+      openalex: null,
+    },
     graph: {
       googleScholar: [],
       scopus: [],
+      openalex: [],
     },
   };
 
@@ -84,6 +90,21 @@ const aggregateAuthorDetails = async (authorIds, candidateName) => {
       }
     } catch (error) {
       console.warn(`Failed to fetch Scopus details: ${error.message}`);
+    }
+  }
+  // Collect data from OpenAlex
+  if (authorIds.openalex) {
+    try {
+      const [openAlexAuthorData, openAlexWorksData] = await Promise.all([
+        fetchOpenAlexAuthor(authorIds.openalex),
+        fetchOpenAlexWorks(authorIds.openalex),
+      ]);
+
+      if (openAlexAuthorData) {
+        mergeOpenAlexData(authorDetails, openAlexAuthorData, openAlexWorksData);
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch OpenAlex details: ${error.message}`);
     }
   }
 
@@ -199,7 +220,7 @@ const mergeGoogleScholarData = (authorDetails, googleScholarData) => {
         (item) => item.i10_index
       );
       if (i10Index && i10Index.i10_index && i10Index.i10_index.all) {
-        authorDetails.i10_index = i10Index.i10_index.all;
+        authorDetails.i10_index.googleScholar = i10Index.i10_index.all;
       }
     }
 
@@ -481,6 +502,247 @@ const findMatchingArticle = (articles, title) => {
 
     return false;
   });
+};
+
+//=============================================================================
+// OPENALEX DATA FUNCTIONS
+//=============================================================================
+
+/**
+ * Fetches author data from OpenAlex
+ * @param {string} authorId - OpenAlex author ID
+ * @returns {Promise<Object>} Author data
+ * @private
+ */
+const fetchOpenAlexAuthor = async (authorId) => {
+  // Extract the ID from the full URL format if needed
+  const id = authorId.includes("/") ? authorId.split("/").pop() : authorId;
+
+  const url = `https://api.openalex.org/authors/${id}?select=display_name,display_name_alternatives,works_count,cited_by_count,summary_stats,affiliations,counts_by_year`;
+
+  try {
+    const { data } = await axios.get(url);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Fetches author's works/publications from OpenAlex
+ * @param {string} authorId - OpenAlex author ID
+ * @returns {Promise<Object>} Works data
+ * @private
+ */
+const fetchOpenAlexWorks = async (authorId) => {
+  // Extract the ID from the full URL format if needed
+  const id = authorId.includes("/") ? authorId.split("/").pop() : authorId;
+
+  const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,best_oa_location,topics,counts_by_year`;
+
+  try {
+    const { data } = await axios.get(url);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Merges OpenAlex data into author details object
+ * @param {Object} authorDetails - Target author details object
+ * @param {Object} openAlexAuthorData - OpenAlex author data
+ * @param {Object} openAlexWorksData - OpenAlex works data
+ * @private
+ */
+const mergeOpenAlexData = (
+  authorDetails,
+  openAlexAuthorData,
+  openAlexWorksData = null
+) => {
+  // Basic author info
+  if (openAlexAuthorData.display_name) {
+    authorDetails.author.name = openAlexAuthorData.display_name;
+
+    // Try to extract surname and given name (assuming last word is surname)
+    const nameParts = openAlexAuthorData.display_name.split(" ");
+    if (nameParts.length > 1) {
+      authorDetails.author.surname = nameParts.pop();
+      authorDetails.author.givenName = nameParts.join(" ");
+    }
+  }
+
+  // Add affiliations
+  if (
+    openAlexAuthorData.affiliations &&
+    Array.isArray(openAlexAuthorData.affiliations)
+  ) {
+    openAlexAuthorData.affiliations.forEach((affiliation) => {
+      if (affiliation.institution && affiliation.institution.display_name) {
+        const newAffiliation = {
+          name: affiliation.institution.display_name,
+          country: affiliation.institution.country_code,
+        };
+
+        // Check if this affiliation is already in the history
+        const isDuplicate = authorDetails.author.affiliationHistory.some(
+          (aff) => aff.name === newAffiliation.name
+        );
+
+        if (!isDuplicate) {
+          authorDetails.author.affiliationHistory.push(newAffiliation);
+        }
+      }
+    });
+  }
+
+  // Citation metrics
+  if (openAlexAuthorData.summary_stats) {
+    // H-index
+    if (openAlexAuthorData.summary_stats.h_index) {
+      authorDetails.h_index.openalex = openAlexAuthorData.summary_stats.h_index;
+    }
+
+    // i10-index
+    if (openAlexAuthorData.summary_stats.i10_index) {
+      authorDetails.i10_index.openalex =
+        openAlexAuthorData.summary_stats.i10_index;
+    }
+  }
+
+  // Document count
+  if (openAlexAuthorData.works_count) {
+    authorDetails.documentCounts.openalex = openAlexAuthorData.works_count;
+  }
+
+  // Citation graph
+  if (
+    openAlexAuthorData.counts_by_year &&
+    Array.isArray(openAlexAuthorData.counts_by_year)
+  ) {
+    authorDetails.graph.openalex = openAlexAuthorData.counts_by_year.map(
+      (item) => ({
+        year: item.year,
+        citations: item.cited_by_count,
+      })
+    );
+  }
+
+  // Merge publications/works data
+  if (
+    openAlexWorksData &&
+    openAlexWorksData.results &&
+    Array.isArray(openAlexWorksData.results)
+  ) {
+    openAlexWorksData.results.forEach((work) => {
+      // Extract authors information
+      const authors = [];
+      if (work.authorships && Array.isArray(work.authorships)) {
+        work.authorships.forEach((authorship) => {
+          if (authorship.author && authorship.author.display_name) {
+            authors.push({
+              name: authorship.author.display_name,
+              openAlexId: authorship.author.id,
+              institutions: authorship.institutions || [],
+            });
+          }
+        });
+      }
+
+      // Extract venue/journal information
+      let publicationName = null;
+      let issn = null;
+      let venue = null;
+
+      if (work.host_venue) {
+        publicationName = work.host_venue.display_name;
+        issn = work.host_venue.issn_l || work.host_venue.issn;
+        venue = work.host_venue;
+      } else if (work.primary_location && work.primary_location.source) {
+        publicationName = work.primary_location.source.display_name;
+        issn =
+          work.primary_location.source.issn_l ||
+          work.primary_location.source.issn;
+        venue = work.primary_location.source;
+      }
+
+      // Extract topics/keywords
+      const keywords = [];
+      if (work.topics && Array.isArray(work.topics)) {
+        work.topics.forEach((topic) => {
+          if (topic.display_name) {
+            keywords.push(topic.display_name);
+          }
+        });
+      }
+
+      // Create article object matching the existing structure
+      const articleObj = {
+        title: work.display_name || work.title,
+        doi: work.doi,
+        openAlexId: work.id,
+        link: {
+          googleScholarLink: null,
+          scopusLink: null,
+          openAlexLink: work.id,
+          doi: work.doi,
+        },
+        authors: authors,
+        publicationName: publicationName,
+        venue: venue,
+        citedBy: work.cited_by_count || 0,
+        year: work.publication_year,
+        publicationDate: work.publication_date,
+        issn: issn,
+        type: work.type,
+        typeCrossref: work.type_crossref,
+        isRetracted: work.is_retracted,
+        isParatext: work.is_paratext,
+        openAccess: work.open_access,
+        topics: work.topics || [],
+        keywords: keywords,
+        concepts: work.concepts || [],
+        mesh: work.mesh || [],
+        biblio: work.biblio,
+        grants: work.grants || [],
+        referencedWorksCount: work.referenced_works_count,
+        relatedWorks: work.related_works || [],
+        sustainableDevelopmentGoals: work.sustainable_development_goals || [],
+        bestOaLocation: work.best_oa_location,
+        locationsCount: work.locations_count,
+        alternateHostVenues: work.alternate_host_venues || [],
+        createdDate: work.created_date,
+        updatedDate: work.updated_date,
+      };
+
+      // Check for duplicates based on title similarity or DOI
+      const isDuplicate = authorDetails.articles.some((existingArticle) => {
+        // Check DOI match first (most reliable)
+        if (
+          articleObj.doi &&
+          existingArticle.doi &&
+          articleObj.doi.toLowerCase() === existingArticle.doi.toLowerCase()
+        ) {
+          return true;
+        }
+
+        // Check title similarity
+        if (articleObj.title && existingArticle.title) {
+          const similarity = getTitleSimilarity(
+            articleObj.title,
+            existingArticle.title
+          );
+          return similarity > 0.85; // 85% similarity threshold
+        }
+
+        return false;
+      });
+
+      if (!isDuplicate) {
+        authorDetails.articles.push(articleObj);
+      }
+    });
+  }
 };
 
 module.exports = {
