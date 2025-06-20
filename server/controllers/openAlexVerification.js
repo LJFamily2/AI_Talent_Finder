@@ -109,10 +109,9 @@ const verifyWithOpenAlex = async (
  * @returns {Promise<Object>} Search results object
  * @private
  */
-const searchOpenAlex = async (title, maxResults) => {
-  const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
+const searchOpenAlex = async (title, maxResults) => {  const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
     title
-  )}&per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics`;
+  )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics`;
 
   const { data: openAlexResult } = await axios.get(openAlexApiUrl);
   return openAlexResult;
