@@ -56,22 +56,14 @@ const verifyWithOpenAlex = async (
   maxResultsToCheck = 5
 ) => {
   try {
-    console.log(`🔍 [OpenAlex] Verifying publication: "${title}"`);
-    if (doi) {
-      console.log(`📋 [OpenAlex] DOI: ${doi}`);
-    }
 
     // Step 1: Search OpenAlex for the publication
     const searchResults = await searchOpenAlex(title, maxResultsToCheck);
 
     if (!searchResults.results || searchResults.results.length === 0) {
-      console.log("❌ [OpenAlex] No search results found");
       return createOpenAlexResponse("unable to verify", null, searchResults);
     }
 
-    console.log(
-      `📊 [OpenAlex] Found ${searchResults.results.length} search results`
-    );
 
     // Step 2: Find matching publication in search results
     const matchedPublication = findMatchingPublication(
@@ -81,15 +73,8 @@ const verifyWithOpenAlex = async (
     );
 
     if (!matchedPublication) {
-      console.log("❌ [OpenAlex] No matching publication found in results");
       return createOpenAlexResponse("unable to verify", null, searchResults);
     }
-
-    console.log(
-      `✅ [OpenAlex] Found matching publication: "${
-        matchedPublication.title || matchedPublication.display_name
-      }"`
-    );
 
     // Step 3: Extract and process author information
     const authorInfo = extractAuthorInformation(
@@ -97,12 +82,6 @@ const verifyWithOpenAlex = async (
       candidateName
     );
 
-    console.log(
-      `👥 [OpenAlex] Extracted ${authorInfo.extractedAuthors.length} authors`
-    );
-    console.log(
-      `🔍 [OpenAlex] Author match found: ${authorInfo.hasAuthorMatch}`
-    );
 
     // Step 4: Build detailed response with OpenAlex-specific data
     const details = buildPublicationDetails(matchedPublication, authorInfo);
@@ -111,10 +90,6 @@ const verifyWithOpenAlex = async (
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
-
-    console.log(
-      `📋 [OpenAlex] Final verification status: ${verificationStatus}`
-    );
 
     return createOpenAlexResponse(verificationStatus, details, searchResults);
   } catch (err) {
@@ -139,7 +114,6 @@ const searchOpenAlex = async (title, maxResults) => {
     title
   )}&per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics`;
 
-  console.log(`🌐 [OpenAlex] API call: ${openAlexApiUrl}`);
   const { data: openAlexResult } = await axios.get(openAlexApiUrl);
   return openAlexResult;
 };
@@ -156,7 +130,6 @@ const findMatchingPublication = (results, title, doi) => {
   return results.find((item) => {
     // DOI match takes highest precedence
     if (doi && item.doi?.toLowerCase() === doi.toLowerCase()) {
-      console.log(`✅ [OpenAlex] DOI match found: ${item.doi}`);
       return true;
     }
 
@@ -177,22 +150,11 @@ const findMatchingPublication = (results, title, doi) => {
         Math.min(normalizedTitle.length, normalizedItemTitle.length) /
         Math.max(normalizedTitle.length, normalizedItemTitle.length);
 
-      console.log(
-        `📊 [OpenAlex] Title similarity: ${similarity}%, Length ratio: ${titleLengthRatio.toFixed(
-          2
-        )}`
-      );
-
       // Only verify if the similarity is very high and titles have reasonable length
       if (
         similarity >= TITLE_SIMILARITY_THRESHOLD &&
         titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
       ) {
-        console.log(
-          `✅ [OpenAlex] Title match found: "${
-            item.title || item.display_name
-          }"`
-        );
         return true;
       }
     }
@@ -223,14 +185,10 @@ const extractAuthorInformation = (publication, candidateName) => {
 
     // Remove duplicates
     const uniqueAuthors = [...new Set(extractedAuthors)];
-    console.log(`👥 [OpenAlex] Unique authors: ${uniqueAuthors.join(", ")}`);
 
     // Check if candidate name matches any extracted authors
     if (candidateName && uniqueAuthors.length > 0) {
       hasAuthorMatch = checkAuthorNameMatch(candidateName, uniqueAuthors);
-      console.log(
-        `🔍 [OpenAlex] Checking candidate "${candidateName}" against authors`
-      );
     }
 
     // If there's a match, try to find the author ID
@@ -243,7 +201,6 @@ const extractAuthorInformation = (publication, candidateName) => {
           checkAuthorNameMatch(candidateName, [authorship.author.display_name])
         ) {
           authorId = authorship.author.id;
-          console.log(`🆔 [OpenAlex] Found author ID: ${authorId}`);
           break;
         }
       }
