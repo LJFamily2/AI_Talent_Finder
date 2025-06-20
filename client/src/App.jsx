@@ -24,7 +24,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/upload-cv" element={<CVUpload />} />
+          <Route path="/verify-cv" element={<CVUpload />} />
           <Route path="/cv-verification" element={<CVVerification />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
