@@ -63,7 +63,7 @@ const {
 // 4. verify each publication with Google Scholar and Scopus
 // 5. check if candidate name matches publication authors
 // 6. return the results
-const verifyCV = async (file) => {
+const verifyCV = async (file, prioritySource = "googleScholar") => {
   try {
     // Parse PDF to text
     const pdfBuffer = fs.readFileSync(file.path);
@@ -334,7 +334,8 @@ const verifyCV = async (file) => {
         // Use the aggregator to get comprehensive author details
         const rawAuthorDetails = await aggregateAuthorDetails(
           allAuthorIds,
-          candidateName
+          candidateName,
+          prioritySource
         );
 
         if (rawAuthorDetails) {

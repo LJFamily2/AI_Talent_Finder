@@ -107,8 +107,7 @@ const aggregateAuthorDetails = async (
     } catch (error) {
       console.warn(`Failed to fetch OpenAlex details: ${error.message}`);
     }
-  }
-  // After all sources have been processed, enrich the publication metadata
+  }  // After all sources have been processed, enrich the publication metadata
   if (authorDetails.articles.length > 0) {
     const originalCount = authorDetails.articles.length;
     authorDetails.articles = enrichPublicationMetadata(
@@ -123,6 +122,14 @@ const aggregateAuthorDetails = async (
     ) {
       authorDetails.documentCount = enrichedCount;
     }
+  }
+
+  // Remove _source field from final output for clean API response
+  if (authorDetails.articles) {
+    authorDetails.articles = authorDetails.articles.map(article => {
+      const { _source, ...cleanArticle } = article;
+      return cleanArticle;
+    });
   }
 
   return authorDetails;
@@ -283,8 +290,7 @@ const mergeGoogleScholarData = (
     // Document count - directly apply based on priority
     if (isPreferredSource || authorDetails.documentCount === null) {
       authorDetails.documentCount = googleScholarData.articles.length;
-    }
-    googleScholarData.articles.forEach((article) => {
+    }    googleScholarData.articles.forEach((article) => {
       const articleObj = {
         title: article.title,
         link: article.link || null,
@@ -299,6 +305,7 @@ const mergeGoogleScholarData = (
         volume: null,
         issueIdentifier: null,
         pageRange: null,
+        _source: "googleScholar",
       };
 
       authorDetails.articles.push(articleObj);
@@ -424,8 +431,7 @@ const mergeScopusData = (
         existingArticle.volume = pub["prism:volume"];
         existingArticle.issueIdentifier = pub["prism:issueIdentifier"];
         existingArticle.pageRange = pub["prism:pageRange"];
-      } else {
-        // Add new article from Scopus
+      } else {        // Add new article from Scopus
         const articleObj = {
           title: pub["dc:title"],
           link: pub["prism:url"] || null,
@@ -439,6 +445,7 @@ const mergeScopusData = (
           volume: pub["prism:volume"],
           issueIdentifier: pub["prism:issueIdentifier"],
           pageRange: pub["prism:pageRange"],
+          _source: "scopus",
         };
 
         authorDetails.articles.push(articleObj);
@@ -609,9 +616,8 @@ const fetchOpenAlexWorks = async (authorId) => {
   let cursor = "*";
   let hasMorePages = true;
   const perPage = 200; // Maximum allowed by OpenAlex
-
   while (hasMorePages) {
-    const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,topics,counts_by_year&per-page=${perPage}&cursor=${cursor}`;
+    const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,topics,counts_by_year&per_page=${perPage}&cursor=${cursor}`;
 
     try {
       const { data } = await axios.get(url);
@@ -789,9 +795,7 @@ const mergeOpenAlexData = (
       let link = work.id; // Default to OpenAlex link
       if (work.doi) {
         link = work.doi;
-      }
-
-      // Create article object matching the required structure
+      }      // Create article object matching the required structure
       const articleObj = {
         title: work.display_name || work.title,
         link: link,
@@ -803,6 +807,7 @@ const mergeOpenAlexData = (
         volume: volume,
         issueIdentifier: issueIdentifier,
         pageRange: pageRange,
+        _source: "openalex",
       };
       authorDetails.articles.push(articleObj);
     });
@@ -868,8 +873,15 @@ const categorizeArticlesBySource = (articles) => {
 
   articles.forEach((article, index) => {
     let sourceDetected = false;
-    // Method 1: Check link patterns
-    if (article.link && typeof article.link === "string") {
+    
+    // Method 1: Use explicit _source field if available (most reliable)
+    if (article._source && sourceMap[article._source]) {
+      sourceMap[article._source].push(article);
+      sourceDetected = true;
+    }
+    
+    // Method 2: Check link patterns (fallback for articles without _source)
+    if (!sourceDetected && article.link && typeof article.link === "string") {
       if (
         article.link.includes("scholar.google.com") ||
         article.link.includes("citations?view_op=view_citation")
@@ -888,7 +900,7 @@ const categorizeArticlesBySource = (articles) => {
       }
     }
 
-    // Method 2: Check for OpenAlex-specific properties
+    // Method 3: Check for OpenAlex-specific properties
     if (
       !sourceDetected &&
       (article.openAlexId ||
@@ -898,7 +910,7 @@ const categorizeArticlesBySource = (articles) => {
       sourceDetected = true;
     }
 
-    // Method 3: Check publication name patterns
+    // Method 4: Check publication name patterns
     if (!sourceDetected && article.publicationName) {
       // Google Scholar often has publication patterns like "Journal Name, Year" or "Publisher, Year"
       if (/,\s*\d{4}$/.test(article.publicationName)) {
@@ -907,7 +919,7 @@ const categorizeArticlesBySource = (articles) => {
       }
     }
 
-    // Method 4: Check for Scopus-specific ISSN format or volume/issue patterns
+    // Method 5: Check for Scopus-specific ISSN format or volume/issue patterns
     if (
       !sourceDetected &&
       (article.issn || (article.volume && article.issueIdentifier))
