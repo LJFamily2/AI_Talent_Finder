@@ -15,7 +15,7 @@ function CVUpload() {
       const formData = new FormData();
       formData.append("cv", file);
 
-      const response = await axios.post("http://localhost:8000/api/cv/verify-cv", formData, {
+      const response = await axios.post("http://localhost:5000/api/cv/verify-cv", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
