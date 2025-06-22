@@ -515,11 +515,101 @@ const buildAuthorResponse = (cachedAuthor, matchingArticle) => {
 };
 
 //=============================================================================
+// STRICT AUTHOR VERIFICATION (SECOND-LEVEL CHECK)
+//=============================================================================
+
+/**
+ * Performs a strict verification of author names for the second-level check
+ * Used after getting API results to ensure high confidence match
+ * This is stricter than the initial checkAuthorNameMatch function
+ *
+ * @param {string} candidateName - The candidate's name to verify
+ * @param {string} authorName - Author name from the API result
+ * @returns {boolean} True if verified as same person, false otherwise
+ *
+ * @example
+ * // This would return false (different first names)
+ * strictAuthorNameVerification("BENJAMIN D. Goldstein", "Brian D. Goldstein");
+ *
+ * @example
+ * // This would return true (same person, different formatting)
+ * strictAuthorNameVerification("Benjamin D. Goldstein", "B. D. Goldstein");
+ */
+const strictAuthorNameVerification = (candidateName, authorName) => {
+  if (!candidateName || !authorName) return false;
+
+  // Parse both names
+  const candidate = extractNameParts(candidateName);
+  const author = extractNameParts(authorName);
+  console.log(author)
+  // Last name must match exactly
+  if (candidate.lastName !== author.lastName) {
+    console.log(
+      `❌ Strict verification failed: different last names - "${candidateName}" vs "${authorName}"`
+    );
+    return false;
+  }
+
+  // First name checking is stricter - must match beyond just initial
+  // If both have full first names (not just initials), they must match closely
+  if (candidate.firstName.length > 1 && author.firstName.length > 1) {
+    // Check for exact match first
+    if (candidate.firstName === author.firstName) {
+      // Continue to middle initial check
+    } else {
+      // Check if they're common nickname variations (future enhancement)
+      // For now, reject different full first names
+      console.log(
+        `❌ Strict verification failed: different first names - "${candidateName}" vs "${authorName}"`
+      );
+      return false;
+    }
+  }
+
+  // If one has full first name and other has initial, check if initial matches
+  if (candidate.firstName.length > 1 && author.firstName.length === 1) {
+    if (candidate.firstInitial !== author.firstInitial) {
+      console.log(
+        `❌ Strict verification failed: first initial mismatch - "${candidateName}" vs "${authorName}"`
+      );
+      return false;
+    }
+  } else if (candidate.firstName.length === 1 && author.firstName.length > 1) {
+    if (candidate.firstInitial !== author.firstInitial) {
+      console.log(
+        `❌ Strict verification failed: first initial mismatch - "${candidateName}" vs "${authorName}"`
+      );
+      return false;
+    }
+  }
+
+  // Middle initial check (if both have middle initials, they must match)
+  if (candidate.middleInitials.length > 0 && author.middleInitials.length > 0) {
+    // Check if all middle initials match in order
+    const candidateMiddleStr = candidate.middleInitials.join("");
+    const authorMiddleStr = author.middleInitials.join("");
+
+    if (candidateMiddleStr !== authorMiddleStr) {
+      console.log(
+        `❌ Strict verification failed: different middle initials - "${candidateName}" vs "${authorName}"`
+      );
+      return false;
+    }
+  }
+
+  console.log(
+    `✅ Strict verification passed: "${candidateName}" matches "${authorName}"`
+  );
+  return true;
+};
+
+//=============================================================================
 // MODULE EXPORTS
 //=============================================================================
 
 module.exports = {
   authorCache,
   checkAuthorNameMatch,
+  strictAuthorNameVerification,
   getAuthorDetails,
 };
