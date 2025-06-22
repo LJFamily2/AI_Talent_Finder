@@ -3,7 +3,7 @@ import { BarChart } from "@mui/x-charts";
 
 export default function ResearcherSection({ researcherData }) {
 
-    if (!researcherData) {
+    if (!researcherData || !researcherData.author.name) {
         return (
             <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col items-center justify-center min-h-[200px]">
                 <p className="text-gray-500">No Researcher profile found.</p>
@@ -14,22 +14,22 @@ export default function ResearcherSection({ researcherData }) {
     const researcher = researcherData.author;
 
     // set up table
-    const statsTable = researcherData.citedBy.table || [];
+    const statsTable = researcherData.metrics || [];
 
-    function createData(name, all, since_2020) {
-        return { name, all, since_2020 };
+    function createData(name, all) {
+        return { name, all };
     }
 
     const rows = [
-        createData('Citations', statsTable[0]?.citations?.all, statsTable[0]?.citations?.since_2020),
-        createData('h-index', statsTable[1]?.h_index?.all, statsTable[1]?.h_index?.since_2020),
-        createData('i10-index', statsTable[2]?.i10_index?.all, statsTable[2]?.i10_index?.since_2020),
+        createData('Citations', statsTable.citationCount),
+        createData('h-index', statsTable.h_index),
+        createData('i10-index', statsTable.i10_index),
     ];
 
     // set up graph
-    const statsGraph = researcherData.citedBy?.graph || [];
+    const statsGraph = researcherData.metrics.citations || [];
     const dataMap = new Map();
-    statsGraph.forEach(d => dataMap.set(d.year, Number(d.citations)));
+    statsGraph.forEach(d => dataMap.set(d.year, Number(d.cited_by_count)));
 
     const latestYear = Math.max(...statsGraph.map(d => d.year));
     const fullYears = Array.from({ length: 8 }, (_, i) => latestYear - 7 + i);
@@ -38,8 +38,7 @@ export default function ResearcherSection({ researcherData }) {
     const citations = fullYears.map(year => dataMap.get(year) || 0);
 
     return (
-        <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col">
-            {/* <h2 className="text-xl font-bold mb-4 text-center">Researcher Profile</h2> */}
+        <div className="bg-white p-4 rounded-md sticky top-4 flex flex-col gap-2">
             <div className="flex items-center gap-5">
                 <Avatar
                     alt="Scholar Avatar"
@@ -47,35 +46,28 @@ export default function ResearcherSection({ researcherData }) {
                     sx={{ width: 80, height: 80 }}
                 />
                 <div>
-                    <p className="font-bold text-md">{researcher.name}</p>
-                    <p className="text-sm text-gray-600">{researcher.affiliations}</p>
+                    <p className="font-bold text-lg">{researcher.name}</p>
+                    <p className="text-sm text-gray-600">{researcher.affiliationHistory[0]?.name}</p>
                 </div>
             </div>
             <div className="mt-4">
-                <h3 className="font-semibold text-sm mb-2">
+                <h3 className="font-semibold text-md mb-2">
                     Expertise
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                    {researcher.interests.map((interest, index) => (
-                        <Chip key={index} label={interest.title} color="primary" variant="outlined" size="small" />
+                    {researcherData.expertises.map((interest, index) => (
+                        <Chip key={index} label={interest} color="primary" variant="outlined" size="small" />
                     ))}
                 </div>
             </div>
 
             <div className="mt-4 md:w-full">
-                <h3 className="font-semibold text-sm mb-2">
-                    Cited By
+                <h3 className="font-semibold text-md mb-2">
+                    Citation Metrics
                 </h3>
                 <div className="mb-2">
                     <TableContainer component={Paper}>
                         <Table size="small" aria-label="a dense table">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell></TableCell>
-                                    <TableCell align="right" sx={{ fontSize: 13 }}>All</TableCell>
-                                    <TableCell align="right" sx={{ fontSize: 13 }}>Since 2020</TableCell>
-                                </TableRow>
-                            </TableHead>
                             <TableBody>
                                 {rows.map((row) => (
                                     <TableRow
@@ -86,7 +78,6 @@ export default function ResearcherSection({ researcherData }) {
                                             {row.name}
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontSize: 13 }}>{row.all}</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: 13 }}>{row.since_2020}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -95,7 +86,6 @@ export default function ResearcherSection({ researcherData }) {
                 </div>
 
                 <div>
-                    {/* <Box className="bg-white shadow rounded"> */}
                     <h3 className="font-semilight text-sm text-gray-500">
                         Citations per Year
                     </h3>
@@ -104,7 +94,6 @@ export default function ResearcherSection({ researcherData }) {
                         series={[{ data: citations, color: '#1a73e8' }]}
                         height={230}
                     />
-                    {/* </Box> */}
                 </div>
             </div>
 
