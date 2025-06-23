@@ -49,14 +49,13 @@ const PUBLICATION_PATTERNS = [
   /published works/i,
   /scholarly publications/i,
   /papers/i,
-  /\[.*\]/i, // Matches publication entries with reference numbers like [1], [P1]
 ];
 
 /**
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 4000;
+const MAX_CHUNK_SIZE = 6000;
 
 /**
  * Similarity threshold for duplicate publication detection
@@ -144,21 +143,28 @@ const extractPublicationsFromCV = async (model, cvText) => {
   const lines = cvText
     .split(/\n+/)
     .map((line) => line.trim())
-    .filter(Boolean);
-
-  // Step 2: Identify potential publication section headers
+    .filter(Boolean); // Step 2: Identify potential publication section headers (not individual publications)
   const sectionHeaders = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (
-      (line === line.toUpperCase() && line.length > 3) || // All caps headers
-      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) || // Publication patterns
-      /^\[.*\]/.test(line) || // Publication entries starting with [x]
-      /^[0-9]+\./.test(line) // Numbered entries
+      (line === line.toUpperCase() &&
+        line.length > 3 &&
+        !/^\d+\.?$/.test(line)) ||
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line))
     ) {
       sectionHeaders.push({ index: i, text: line });
     }
   }
+
+  console.log(
+    `[Section Detection] Found ${sectionHeaders.length} potential section headers:`
+  );
+  sectionHeaders.forEach((header, idx) => {
+    console.log(
+      `[Section Detection]   ${idx + 1}. Line ${header.index}: "${header.text}"`
+    );
+  });
 
   // Step 3: Extract content from identified publication sections
   const publicationSections = [];
@@ -194,17 +200,51 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   } // Process each section in chunks
+  console.log(
+    `[Section Processing] Starting to process ${publicationSections.length} publication sections...`
+  );
   const allPublications = [];
 
-  for (const section of publicationSections) {
-    // Split section into chunks if needed
+  for (
+    let sectionIndex = 0;
+    sectionIndex < publicationSections.length;
+    sectionIndex++
+  ) {
+    const section = publicationSections[sectionIndex];
+    console.log(
+      `[Section ${sectionIndex + 1}] Processing: "${section.header}" (${
+        section.content.length
+      } chars)`
+    );
+
+    // Analyze content for potential publication entries
+    const contentLines = section.content.split("\n");
+    const potentialPubLines = contentLines.filter((line) => {
+      return (
+        /^\[\w+\]/.test(line) || // [1], [P1], etc.
+        /^[0-9]+\./.test(line) || // Numbered entries
+        /(19|20)[0-9]{2}/.test(line) || // Contains a year
+        /et al\./i.test(line) || // Contains et al.
+        /journal|conference|proceedings/i.test(line) || // Contains publication venues
+        /In .+edited by|Faber|Press|Publisher|University Press/i.test(line) || // Book identifiers
+        /^".*"/.test(line) || // Titles in quotes
+        /review of|dissertation|thesis/i.test(line) || // Reviews and theses
+        /technical report|tr[- ]?\d+/i.test(line) // Technical reports
+      );
+    });
+    console.log(
+      `[Section ${sectionIndex + 1}] Found ${
+        potentialPubLines.length
+      } lines that look like publications`
+    ); // Split section into chunks if needed
     if (section.content.length > MAX_CHUNK_SIZE) {
+      console.log(`[Section ${sectionIndex + 1}] Splitting into chunks...`);
+
       const chunks = [];
       let currentChunk = section.header + "\n\n";
       let currentSize = currentChunk.length;
 
       // Split at logical boundaries (lines)
-      const contentLines = section.content.split("\n");
       for (const line of contentLines) {
         if (
           currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
@@ -214,7 +254,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
           currentChunk = section.header + " (continued)\n\n";
           currentSize = currentChunk.length;
         }
-
         currentChunk += line + "\n";
         currentSize += line.length + 1;
       }
@@ -222,33 +261,45 @@ const extractPublicationsFromCV = async (model, cvText) => {
         chunks.push(currentChunk);
       }
 
-      // Process each chunk
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkPubs = await extractPublicationsFromChunk(model, chunks[i]);
+      console.log(
+        `[Section ${sectionIndex + 1}] Processing ${chunks.length} chunks...`
+      );
+
+      // Process chunks in parallel for better performance
+      const chunkResults = await Promise.all(
+        chunks.map((chunk) => extractPublicationsFromChunk(model, chunk))
+      );
+
+      // Flatten results
+      chunkResults.forEach((chunkPubs) => {
         allPublications.push(...chunkPubs);
-      }
+      });
     } else {
       // Process entire section
       const sectionText = `${section.header}\n\n${section.content}`;
+      console.log(
+        `[Section ${sectionIndex + 1}] Processing entire section (${
+          sectionText.length
+        } chars)...`
+      );
+
       const sectionPubs = await extractPublicationsFromChunk(
         model,
         sectionText
       );
       allPublications.push(...sectionPubs);
     }
+
+    console.log(
+      `[Section ${
+        sectionIndex + 1
+      }] Section processing complete. Total publications so far: ${
+        allPublications.length
+      }`
+    );
   }
-  // If nothing was found, try a general extraction as a fallback
-  if (allPublications.length === 0 && cvText.length > 0) {
-    // Split the full text into manageable chunks
-    const chunks = [];
-    for (let i = 0; i < cvText.length; i += MAX_CHUNK_SIZE) {
-      chunks.push(cvText.substring(i, i + MAX_CHUNK_SIZE));
-    }
-    for (let i = 0; i < chunks.length; i++) {
-      const fallbackPubs = await extractPublicationsFromChunk(model, chunks[i]);
-      allPublications.push(...fallbackPubs);
-    }
-  } // Remove duplicates (based on title similarity) and validate publications
+
+  // Remove duplicates (based on title similarity) and validate publications
   const uniquePublications = [];
   for (const pub of allPublications) {
     if (!pub.title) continue;
@@ -314,23 +365,45 @@ async function extractPublicationsFromChunk(
   chunkText,
   isFallback = false
 ) {
+  console.log(`[AI Processing] Processing chunk (${chunkText.length} chars)`);
+
   // Create a more specific prompt with strong anti-hallucination instructions
   let prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, which contains part of an academic CV, extract ONLY ACTUAL publications that appear in the text.
-Each publication must be returned as an object inside a JSON array, with the following keys:
-- "publication": the full original text of the publication entry exactly as it appears
-- "title": the publication title extracted from the publication text
+From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
+
+Each publication must be returned as an object inside a JSON array with these fields:
+- "publication": the full original text of the publication entry EXACTLY as it appears
+- "title": just the title of the publication
 - "doi": the DOI if written (starts with 10.), otherwise null
-Format: [{"publication": "...", "title": "...", "doi": "10.xxxx/..." or null}]
+
+Format: [{"publication": "...", "title": "...", "doi": null}]
+Example:
+[{"publication": "Smith, J. (2020). A Study on AI. Journal of AI Research, 10(2), 123-456. https://doi.org/10.1234/abcd", "title": "A Study on AI", "doi": "10.1234/abcd"}]
+Example input text:
+"First Title Here." Journal A, 2021.
+"Second Different Title." Journal B, 2022.
+
+Example output:
+[
+  {
+    "publication": "'First Title Here.' Journal A, 2021.",
+    "title": "First Title Here",
+    "doi": null
+  },
+  {
+    "publication": "'Second Different Title.' Journal B, 2022.",
+    "title": "Second Different Title",
+    "doi": null
+  }
+]
 
 IMPORTANT RULES:
-- ONLY extract publications that are explicitly written in the text
-- DO NOT create or invent ANY publications that aren't explicitly in the text
-- Return an EMPTY array [] if you can't find actual publications
-- If you're uncertain if something is a publication, DO NOT include it
-- DO NOT include example, template or placeholder publications with generic author names like "A. Author"
-- DO NOT fabricate ANY content or publications
-- Return only valid JSON. No markdown, no explanation, no extra output.
+- Extract EVERY publication in the text (there are multiple)
+- Be EXTREMELY CONCISE - only include essential text in the "publication" field
+- Return VALID JSON that can be parsed without errors
+- DO NOT include long quotes, explanations or descriptions
+- Return only valid JSON without markdown formatting
+- Publications may be numbered like [1], [P1], [TR1] or bulleted or unnumbered
 
 TEXT:
 ${chunkText}`;
@@ -339,49 +412,54 @@ ${chunkText}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-
-    // Parse and clean the response
+    console.log(`[AI Processing] Received response (${text.length} chars)`); // Parse and clean the response
     let cleanedText = text
       .trim()
       .replace(/```json|```/g, "")
-      .replace(/^[^[{]*(\[.*\])[^}\]]*$/s, "$1")
       .trim();
 
-    // Handle edge cases where the model doesn't return valid JSON
+    // Extract JSON array if embedded in other text
+    const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      cleanedText = jsonMatch[0];
+    }
+
     try {
-      // Fix common JSON issues - sometimes the model returns malformed JSON
+      // Fix common JSON issues
       cleanedText = cleanedText.replace(/,\s*\]/g, "]");
-      cleanedText = cleanedText.replace(/([^\\])\\([^\\"])/g, "$1\\\\$2");
 
-      const publications = JSON.parse(cleanedText); // Post-processing to filter out obviously hallucinated entries
-      return publications.filter((pub) => {
-        // Filter out entries with generic author patterns
-        if (
-          /A\.\s*Author|B\.\s*Author|C\.\s*Author/.test(pub.publication) ||
-          /\[1\]|\[P1\]|\[TR1\]/.test(pub.publication) ||
-          /example|template|placeholder/i.test(pub.publication)
-        ) {
-          return false;
-        } // Filter out publications with extremely short text (likely hallucinations)
-        if (pub.publication.length < 15) {
-          return false;
-        } // Only keep publications with specific publication details
-        const hasPublicationMetadata =
-          pub.publication.includes("(") || // Has year or volume info
-          pub.publication.includes(":") || // Has page numbers
-          /vol|volume|issue|journal|proceedings/i.test(pub.publication); // Has publication metadata
+      const publications = JSON.parse(cleanedText);
 
-        if (!hasPublicationMetadata) {
-          return false;
+      // Clean quotes and format publications
+      publications.forEach((pub) => {
+        if (pub.publication) {
+          pub.publication = pub.publication.replace(/"/g, "'");
         }
-
-        return true;
+        if (pub.title) {
+          pub.title = pub.title.replace(/"/g, "'");
+        }
       });
+
+      console.log(
+        `[AI Processing] Extracted ${publications.length} publications`
+      ); // Filter out obviously fabricated entries
+      const filteredPublications = publications.filter((pub) => {
+        return (
+          pub.publication &&
+          pub.publication.length >= 15 &&
+          !/A\.\s*Author|B\.\s*Author|example|template|placeholder/i.test(
+            pub.publication
+          )
+        );
+      });
+
+      return filteredPublications;
     } catch (e) {
+      console.log(`[AI Processing] JSON parsing failed: ${e.message}`);
       return [];
     }
   } catch (error) {
-    console.error("Error in publication chunk extraction:", error);
+    console.error(`[AI Processing] Error in chunk extraction:`, error);
     return [];
   }
 }

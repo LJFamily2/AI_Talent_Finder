@@ -18,7 +18,6 @@
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { getTitleSimilarity } = require("../utils/textUtils");
 const {
   verifyWithGoogleScholar,
   createGoogleScholarSearchUrl,
@@ -78,9 +77,9 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
     const model = genAI.getGenerativeModel({
       model: "gemma-3n-e4b-it",
       generationConfig: {
-        temperature: 0.1,
-        topP: 1,
-        maxOutputTokens: 2048,
+        temperature: 0.0,
+        topP: 0.1,
+        maxOutputTokens: 4096,
       },
     }); // Extract candidate name using AI
     const candidateName = await extractCandidateNameWithAI(model, cvText);
