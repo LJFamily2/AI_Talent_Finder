@@ -55,13 +55,13 @@ const PUBLICATION_PATTERNS = [
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 6000;
+const MAX_CHUNK_SIZE = 4000;
 
 /**
  * Similarity threshold for duplicate publication detection
  * @constant {number}
  */
-const DUPLICATE_SIMILARITY_THRESHOLD = 98;
+const DUPLICATE_SIMILARITY_THRESHOLD = 90;
 
 //=============================================================================
 // CANDIDATE NAME EXTRACTION
@@ -298,28 +298,33 @@ const extractPublicationsFromCV = async (model, cvText) => {
       }`
     );
   }
-
   // Remove duplicates (based on title similarity) and validate publications
+  console.log(
+    `[Filtering] Total publications before filtering: ${allPublications.length}`
+  );
   const uniquePublications = [];
-  for (const pub of allPublications) {
-    if (!pub.title) continue;
+  let filteredCount = 0;
 
-    // Additional validation to filter out fabricated publications
+  for (const pub of allPublications) {
+    if (!pub.title) {
+      console.log(`[Filtering] Filtered out publication without title`);
+      filteredCount++;
+      continue;
+    } // Additional validation to filter out fabricated publications
     if (
-      /\[([0-9]+|P[0-9]+|TR[0-9]+)\]/.test(pub.publication) ||
       /^[A-Z]\.\s*Author/.test(pub.publication) ||
       (/et al\./.test(pub.publication) &&
         !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
     ) {
+      console.log(`[Filtering] Filtered out fabricated: "${pub.title}"`);
+      filteredCount++;
       continue;
-    }
-
-    // Check if title has reasonable length and not generic words
+    } // Check if title has reasonable length and not generic words
     if (
       pub.title &&
-      (pub.title.length < 10 ||
-        (/study|framework|analysis|research|impact/i.test(pub.title) &&
-          pub.title.length < 25))
+      (pub.title.length < 6 || // Changed from 10 to 6
+        (/\b(study|framework|analysis|research|impact)\b/i.test(pub.title) &&
+          pub.title.length < 20)) // Changed from 25 to 20
     ) {
       // If title is too generic and short, verify it appears in the original text
       const titleInText = new RegExp(
@@ -327,6 +332,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
         "i"
       );
       if (!titleInText.test(cvText)) {
+        console.log(
+          `[Filtering] Filtered out generic title not in text: "${pub.title}"`
+        );
+        filteredCount++;
         continue;
       }
     }
@@ -338,8 +347,15 @@ const extractPublicationsFromCV = async (model, cvText) => {
     });
     if (!isDuplicate) {
       uniquePublications.push(pub);
+    } else {
+      console.log(`[Filtering] Filtered out duplicate: "${pub.title}"`);
+      filteredCount++;
     }
   }
+
+  console.log(
+    `[Filtering] Filtered out ${filteredCount} publications, ${uniquePublications.length} remain`
+  );
   return uniquePublications;
 };
 
@@ -423,10 +439,11 @@ ${chunkText}`;
     if (jsonMatch) {
       cleanedText = jsonMatch[0];
     }
-
     try {
       // Fix common JSON issues
       cleanedText = cleanedText.replace(/,\s*\]/g, "]");
+      // Handle bad control characters that cause parsing failures
+      cleanedText = cleanedText.replace(/[\u0000-\u001F]+/g, " ");
 
       const publications = JSON.parse(cleanedText);
 
@@ -452,11 +469,56 @@ ${chunkText}`;
           )
         );
       });
-
       return filteredPublications;
     } catch (e) {
       console.log(`[AI Processing] JSON parsing failed: ${e.message}`);
-      return [];
+
+      // Add recovery attempt for common JSON issues
+      try {
+        // Try to repair broken JSON by more aggressive cleaning
+        const fixedJson = cleanedText
+          .replace(/[\u0000-\u001F\u007F-\u009F]+/g, " ") // Remove all control chars
+          .replace(/\\(?!["\\/bfnrt])/g, "\\\\") // Fix unescaped backslashes
+          .replace(
+            /"([^"]*)((?:"[^"]*"[^"]*)*)":/g,
+            (match, p1, p2) => `"${p1.replace(/"/g, '\\"')}${p2}":`
+          ) // Fix quotes in keys
+          .replace(/,(\s*[\]}])/g, "$1"); // Remove trailing commas
+
+        const publications = JSON.parse(fixedJson);
+
+        // Clean quotes and format publications
+        publications.forEach((pub) => {
+          if (pub.publication) {
+            pub.publication = pub.publication.replace(/"/g, "'");
+          }
+          if (pub.title) {
+            pub.title = pub.title.replace(/"/g, "'");
+          }
+        });
+
+        console.log(
+          `[AI Processing] Recovered with ${publications.length} publications`
+        );
+
+        // Filter out obviously fabricated entries
+        const filteredPublications = publications.filter((pub) => {
+          return (
+            pub.publication &&
+            pub.publication.length >= 15 &&
+            !/A\.\s*Author|B\.\s*Author|example|template|placeholder/i.test(
+              pub.publication
+            )
+          );
+        });
+
+        return filteredPublications;
+      } catch (recoveryError) {
+        console.log(
+          `[AI Processing] Recovery failed: ${recoveryError.message}`
+        );
+        return [];
+      }
     }
   } catch (error) {
     console.error(`[AI Processing] Error in chunk extraction:`, error);
