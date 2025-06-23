@@ -7,7 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
 import CVUpload from "./pages/CVUpload";
 import CVVerification from "./pages/CVVerification";
-import SearchInterface from "./pages/SearchInterface";
+import ResearcherProfile from "./pages/ResearcherProfile";
 
 function App() {
   return (
@@ -29,6 +29,8 @@ function App() {
           {/* <Route path="/cv-verification" element={<CVVerification />} /> */}
           <Route path="/search-tool" element={<SearchInterface />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
+
+          <Route path="/researcher-profile" element={<ResearcherProfile />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
