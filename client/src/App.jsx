@@ -8,6 +8,8 @@ import { CssBaseline } from "@mui/material";
 import CVUpload from "./pages/CVUpload";
 import CVVerification from "./pages/CVVerification";
 import ResearcherProfile from "./pages/ResearcherProfile";
+import SearchAuthor from "./pages/SearchAuthor";
+
 
 function App() {
   return (
@@ -30,6 +32,7 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" />} />
 
           <Route path="/researcher-profile" element={<ResearcherProfile />} />
+          <Route path="/search-author" element={<SearchAuthor />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

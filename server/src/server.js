@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 const routes = require("../routes");
 const cvVerificationRoutes = require("../routes/cvVerification");
+const authorRoutes = require("../routes/authorRoutes");
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, "../.env") });
@@ -15,6 +16,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors());
+app.use("/api/author", authorRoutes);
 
 // Connect to MongoDB
 mongoose
