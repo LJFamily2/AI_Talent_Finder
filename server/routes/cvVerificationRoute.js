@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { verifyCV } = require("../controllers/cvVerification");
+const { verifyCV } = require("../controllers/cvVerificationController");
 const router = express.Router();
 
 // Multer storage config
