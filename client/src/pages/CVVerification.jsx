@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import ResearcherProfile from "../components/ResearcherProfile";
+import ResearcherSection from "../components/ResearcherSection";
 import { Pagination, FormControl, FormGroup, FormLabel, RadioGroup, FormControlLabel, Radio, Checkbox, Button } from "@mui/material";
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import Header from '../components/Header';
@@ -16,7 +16,7 @@ export default function CVVerification() {
     const [filterEndYear, setFilterEndYear] = useState('');
     const [yearFilterActive, setYearFilterActive] = useState(false);
 
-    const typeOptions = ["Article", "Conference Paper", "Book", "Review"];
+    const invalidTypeKeywords = ["unable to verify", "not specified", "unverified"];
     const [selectedTypes, setSelectedTypes] = useState([]);
 
     const [filterStatus, setFilterStatus] = useState('All')
@@ -39,7 +39,6 @@ export default function CVVerification() {
 
     const allDisplayData = publications.results.map(r => r.verification.displayData);
     const researcherData = publications.authorDetails;
-    // const researcherData = sampleResearcher;
 
     // Type Selection - Handle toggle
     const handleTypeChange = (type) => {
@@ -56,6 +55,20 @@ export default function CVVerification() {
         setSelectedTypes([]);
         setPage(1);
     };
+
+    // Type Selection - Get the valid types
+    const validTypes = Array.from(
+        new Set(
+            allDisplayData
+                .map(pub => pub.type?.trim()) // ensure it's a string
+                .filter(type =>
+                    type &&
+                    !invalidTypeKeywords.some(keyword =>
+                        type.toLowerCase().includes(keyword)
+                    )
+                )
+        )
+    );
 
 
     const filtered = allDisplayData
@@ -205,7 +218,7 @@ export default function CVVerification() {
                             {/* Actual form control content */}
                             <FormControl component="fieldset" sx={{ width: '100%' }}>
                                 <FormGroup>
-                                    {typeOptions.map((type) => (
+                                    {validTypes.map((type) => (
                                         <FormControlLabel
                                             key={type}
                                             control={
@@ -288,29 +301,33 @@ export default function CVVerification() {
                                 <div className="md:col-span-9">
                                     <h3 className="text-md font-light mb-5">{pub.publication}</h3>
 
-                                    <div className="mb-2 text-sm text-gray-700">
-                                        <span className=" font-semibold">Title:</span>{' '}
-                                        <span className="">{pub.title}</span>
-                                    </div>
+                                    {pub.status === 'verified' && (
+                                        <>
+                                            <div className="mb-2 text-sm text-gray-700">
+                                                <span className="font-semibold">Title:</span>{' '}
+                                                <span>{pub.title}</span>
+                                            </div>
 
-                                    <div className="flex flex-wrap gap-10 text-sm text-gray-700">
-                                        <div className='block md:max-w-[200px] truncate'>
-                                            <span className="font-semibold">Author:</span>{' '}
-                                            <span className="" title={pub.author}>{pub.author}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Published Year:</span>{' '}
-                                            <span className="">{pub.year}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Type:</span>{' '}
-                                            <span className="">{pub.type}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Cited By:</span>{' '}
-                                            <span className="">{pub.citedBy}</span>
-                                        </div>
-                                    </div>
+                                            <div className="flex flex-wrap gap-10 text-sm text-gray-700">
+                                                <div className="block md:max-w-[200px] truncate">
+                                                    <span className="font-semibold">Author:</span>{' '}
+                                                    <span title={pub.author}>{pub.author}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-semibold">Published Year:</span>{' '}
+                                                    <span>{pub.year}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-semibold">Type:</span>{' '}
+                                                    <span>{pub.type}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-semibold">Cited By:</span>{' '}
+                                                    <span>{pub.citedBy}</span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div className='md:col-span-1 md:ml-auto'>
                                     {pub.status === 'verified' ? (
@@ -336,7 +353,7 @@ export default function CVVerification() {
 
                 {/* Researcher Profile */}
                 <aside className="md:col-span-3">
-                    <ResearcherProfile researcherData={researcherData} />
+                    <ResearcherSection researcherData={researcherData} />
                 </aside>
             </div>
 
