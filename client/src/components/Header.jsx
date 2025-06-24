@@ -11,7 +11,7 @@ function Header() {
                 {/* Logo and website name */}
                 <div className="flex items-center">
                     <div className='bg-[#E60028] h-21 absolute top-0 py-3 px-4 flex items-center justify-center mr-6'>
-                        <a href="/">
+                        <a href="/landing-page">
                             <img className="h-8 w-auto" src={logo} alt=""/>
                         </a>
                     </div>
@@ -19,7 +19,10 @@ function Header() {
                     {/* Space divider - decoration purpose only */}
                     <div className="w-37 h-18"></div>
 
+                <a href="/landing-page">
                     <p className='text-lg text-white font-bold'>Talent Finder</p>
+                </a>
+                    
                 </div>
 
                 {/* Navigation links */}
