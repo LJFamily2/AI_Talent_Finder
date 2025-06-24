@@ -1,6 +1,6 @@
 import Footer from '../components/Footer';
 import Header from '../components/Header';
-import { researcherSampleData, sampleWorks } from './seed';
+// import { researcherSampleData, sampleWorks } from './seed';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { Chip } from '@mui/material';
 
