@@ -51,7 +51,9 @@ return (
                     <h3 className="font-bold text-3xl mb-5">Academics around the world,<br></br>now in one place</h3>
                     <p className="text-justify">Pulling data from reliable databases such as Scopus, ORCID and OpenAlex, our product presents to you a list of potential academics with the necessary details already given, sparing you much time of looking up on various individual platforms.</p>
                 </div>
-                <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-4 rounded-2xl mb-10">Explore now</button>
+                <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-4 rounded-2xl mb-10">
+                    <a href="/search-tool">Explore now</a>
+                </button>
             </div>
             <div className="max-w-500 w-1/2 px-25">
                     <img src={imageFindAcademics} alt="Find Academics" className="border-gray-200 border-x-1 border-t-1"/>
@@ -69,7 +71,7 @@ return (
                     <h3 className="font-bold text-3xl mb-4">Verify candidates’ CVs</h3>
                     <p className="text-justify">By comparing candidates’ statements in CV with some of our Internet sources, this product could give early alarms to the recruiters, highlighting which claims of the candidates are unverifiable.
                     </p>
-                    <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-10 rounded-2xl mb-6">Explore now</button>
+                    <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-10 rounded-2xl mb-6"><a href="/verify-cv">Explore now</a></button>
                 </div>
                                 
                 <div className="bg-white w-full h-1/2 py-8 px-5 border-1 rounded-b-lg border-gray-200 border-1">
@@ -85,7 +87,7 @@ return (
                                     <p className="text-justify">Recruiters can export their search results for further analysis.</p>
                             </div>
                             
-                            <button className="w-max bg-[#E60028] text-white px-8 py-3 mb-6 rounded-2xl">Explore now</button>
+                            <button className="w-max bg-[#E60028] text-white px-8 py-3 mb-6 rounded-2xl"><a href="#">Explore now</a></button>
                     </div>
                     
                     <div className="bg-white w-full py-8 px-5 rounded-b-lg border-gray-200 border-1 flex justify-around">
