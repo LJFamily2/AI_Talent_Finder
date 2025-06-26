@@ -30,25 +30,46 @@ const { getTitleSimilarity } = require("./textUtils");
  * @constant {RegExp[]}
  */
 const PUBLICATION_PATTERNS = [
-  /publications?$/i,
-  /selected publications/i,
-  /journal (?:articles|publications)/i,
-  /conference (?:papers|publications)/i,
-  /peer[- ]reviewed publications/i,
-  /in-progress manuscripts/i,
-  /peer-reviewed publications/i,
-  /policy-related publications/i,
-  /workshop papers/i,
-  /technical reports/i,
-  /book chapters/i,
-  /book reviews/i,
-  /research publications/i,
-  /policy-related publications and reports/i,
-  /workshop papers and technical reports/i,
-  /articles/i,
-  /published works/i,
-  /scholarly publications/i,
-  /papers/i,
+  /^publications?$/i,
+  /^selected publications$/i,
+  /^journal (articles|publications)$/i,
+  /^conference (papers|publications)$/i,
+  /^peer[- ]?reviewed publications$/i,
+  /^in-progress manuscripts$/i,
+  /^policy-related publications$/i,
+  /^workshop papers$/i,
+  /^technical reports$/i,
+  /^book chapters$/i,
+  /^book reviews$/i,
+  /^research publications$/i,
+  /^published works$/i,
+  /^scholarly publications$/i,
+  /^papers$/i,
+  /^articles$/i,
+  /^grants?$/i,
+  /^funding$/i,
+  /^service$/i,
+  /^leadership$/i,
+  /^awards?$/i,
+  /^honors?$/i,
+  /^education$/i,
+  /^employment$/i,
+  /^experience$/i,
+  /^teaching$/i,
+  /^appointments?$/i,
+  /^memberships?$/i,
+  /^activities$/i,
+  /^presentations?$/i,
+  /^talks$/i,
+  /^invited talks$/i,
+  /^conferences?$/i,
+  /^workshops?$/i,
+  /^outreach$/i,
+  /^community service$/i,
+  /^volunteering$/i,
+  /^skills$/i,
+  /^languages$/i,
+  /^references?$/i,
 ];
 
 /**
@@ -148,9 +169,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (
-      (line === line.toUpperCase() &&
-        line.length > 3 &&
-        !/^\d+\.?$/.test(line)) ||
+      (line === line.toUpperCase() && // Check if line is all uppercase
+        line.length > 3 && // Ensure line is long enough to be a header
+        !/^[A-Z]\.$/.test(line) && // Exclude single uppercase letters (e.g., initials)
+        !/^\d+\.?$/.test(line)) || // Exclude numbered lines
       PUBLICATION_PATTERNS.some((pattern) => pattern.test(line))
     ) {
       sectionHeaders.push({ index: i, text: line });
@@ -200,6 +222,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   } // Process each section in chunks
+  console.log("Publication Sections:", publicationSections);
   console.log(
     `[Section Processing] Starting to process ${publicationSections.length} publication sections...`
   );
@@ -387,34 +410,42 @@ async function extractPublicationsFromChunk(
   let prompt = `You are an expert academic CV analyzer focusing on publications.
 From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
 
+IMPORTANT: Publications may be split across multiple lines due to formatting.
+If several consecutive lines look like they belong to the same publication (e.g., author, title, journal, DOI),
+combine them into a single publication entry, even if there are line breaks.
+A publication entry ENDS when there is a blank line or a new line that starts with an author list (e.g., "Lastname, Initial.") and a year in parentheses.
+DO NOT split a publication just because of a line break.
+
 Each publication must be returned as an object inside a JSON array with these fields:
-- "publication": the full original text of the publication entry EXACTLY as it appears
+- "publication": the full original text of the publication entry EXACTLY as it appears (combine lines if needed)
 - "title": just the title of the publication
 - "doi": the DOI if written (starts with 10.), otherwise null
 
 Format: [{"publication": "...", "title": "...", "doi": null}]
-Example:
-[{"publication": "Smith, J. (2020). A Study on AI. Journal of AI Research, 10(2), 123-456. https://doi.org/10.1234/abcd", "title": "A Study on AI", "doi": "10.1234/abcd"}]
 Example input text:
-"First Title Here." Journal A, 2021.
-"Second Different Title." Journal B, 2022.
+Piwowar, H., Haustein, S., Priem, J., et al. (2018). The state of OA: A large-scale analysis
+of the prevalence and impact of open access articles. PeerJ.
+https://doi.org/10.7717/peerj.4375
+
+Priem, J., & Hemminger, B. H. (2016). Altmetrics in the wild: Using social media to explore scholarly impact. mSystems, 1(3), e00043-16. https://doi.org/10.1128/mSystems.00043-16
 
 Example output:
 [
   {
-    "publication": "'First Title Here.' Journal A, 2021.",
-    "title": "First Title Here",
-    "doi": null
+    "publication": "Piwowar, H., Haustein, S., Priem, J., et al. (2018). The state of OA: A large-scale analysis of the prevalence and impact of open access articles. PeerJ. https://doi.org/10.7717/peerj.4375",
+    "title": "The state of OA: A large-scale analysis of the prevalence and impact of open access articles",
+    "doi": "10.7717/peerj.4375"
   },
   {
-    "publication": "'Second Different Title.' Journal B, 2022.",
-    "title": "Second Different Title",
-    "doi": null
+    "publication": "Priem, J., & Hemminger, B. H. (2016). Altmetrics in the wild: Using social media to explore scholarly impact. mSystems, 1(3), e00043–16. https://doi.org/10.1128/mSystems.00043-16",
+    "title": "Altmetrics in the wild: Using social media to explore scholarly impact",
+    "doi": "10.1128/mSystems.00043-16"
   }
 ]
 
 IMPORTANT RULES:
 - Extract EVERY publication in the text (there are multiple)
+- Combine lines that belong to the same publication into a single entry
 - Be EXTREMELY CONCISE - only include essential text in the "publication" field
 - Return VALID JSON that can be parsed without errors
 - DO NOT include long quotes, explanations or descriptions

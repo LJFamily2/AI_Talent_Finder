@@ -17,7 +17,7 @@
  */
 
 const axios = require("axios");
-const { getTitleSimilarity } = require("../utils/textUtils");
+const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 
 //=============================================================================
@@ -25,7 +25,7 @@ const { checkAuthorNameMatch } = require("../utils/authorUtils");
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 98;
+const TITLE_SIMILARITY_THRESHOLD = 95;
 
 /** Minimum title length ratio for valid matches */
 const MIN_TITLE_LENGTH_RATIO = 0.8;
@@ -149,8 +149,8 @@ const findMatchingPublication = (entries, title, doi) => {
 
     // Title-based matching
     if (title && item["dc:title"]) {
-      const normalizedTitle = title.toLowerCase().trim();
-      const normalizedItemTitle = item["dc:title"].toLowerCase().trim();
+      const normalizedTitle = normalizeTitle(title);
+      const normalizedItemTitle = normalizeTitle(item["dc:title"]);
 
       const similarity = getTitleSimilarity(
         normalizedTitle,
@@ -194,7 +194,6 @@ const extractAuthorInformation = (publication, candidateName) => {
   // Extract additional authors from the author list
   if (publication.author) {
     publication.author.forEach((author, index) => {
-
       // Add all available name formats to the extracted authors list
       if (author["authname"]) {
         extractedAuthors.push(author["authname"]);
@@ -225,7 +224,6 @@ const extractAuthorInformation = (publication, candidateName) => {
     candidateName && extractedAuthors.length > 0
       ? checkAuthorNameMatch(candidateName, extractedAuthors)
       : false;
-
 
   // If there's a match, find the author ID from authid field
   if (hasAuthorMatch && publication.author) {

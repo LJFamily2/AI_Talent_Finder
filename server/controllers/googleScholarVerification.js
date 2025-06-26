@@ -15,7 +15,7 @@
  */
 
 const axios = require("axios");
-const { getTitleSimilarity } = require("../utils/textUtils");
+const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const {
   checkAuthorNameMatch,
   getAuthorDetails,
@@ -26,7 +26,7 @@ const {
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 98;
+const TITLE_SIMILARITY_THRESHOLD = 95;
 
 //=============================================================================
 // UTILITY FUNCTIONS
@@ -166,6 +166,8 @@ const searchGoogleScholar = async (title, maxResults) => {
  * @returns {Object|null} Matched publication or null if not found
  * @private
  */
+
+
 const findMatchingPublication = (results, title, doi) => {
   return results.find((item) => {
     // DOI match takes highest precedence
@@ -175,8 +177,8 @@ const findMatchingPublication = (results, title, doi) => {
 
     // Title-based matching
     if (title && item.title) {
-      const normalizedTitle = title.toLowerCase().trim();
-      const normalizedItemTitle = item.title.toLowerCase().trim();
+      const normalizedTitle = normalizeTitle(title);
+      const normalizedItemTitle = normalizeTitle(item.title);
 
       // Check for substring matches
       if (
@@ -187,7 +189,10 @@ const findMatchingPublication = (results, title, doi) => {
       }
 
       // Check similarity score
-      const similarity = getTitleSimilarity(title, item.title);
+      const similarity = getTitleSimilarity(
+        normalizedTitle,
+        normalizedItemTitle
+      );
       return similarity >= TITLE_SIMILARITY_THRESHOLD;
     }
 

@@ -1,3 +1,13 @@
+// Normalize a title by removing punctuation and extra spaces
+const normalizeTitle = (str) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .replace(/[\(\)\[\]\{\}:;,\.\-–—]/g, "") // remove common punctuation
+    .replace(/\s+/g, " ") // collapse whitespace
+    .trim();
+};
+
 const getNGrams = (text, n = 2) => {
   const ngrams = [];
   for (let i = 0; i < text.length - n + 1; i++) {
@@ -71,4 +81,5 @@ module.exports = {
   getWordSimilarity,
   normalizeText,
   getTitleSimilarity,
+  normalizeTitle,
 };

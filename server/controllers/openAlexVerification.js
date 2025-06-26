@@ -15,7 +15,7 @@
  */
 
 const axios = require("axios");
-const { getTitleSimilarity } = require("../utils/textUtils");
+const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 
 //=============================================================================
@@ -23,7 +23,7 @@ const { checkAuthorNameMatch } = require("../utils/authorUtils");
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 98;
+const TITLE_SIMILARITY_THRESHOLD = 95;
 
 /** Minimum title length ratio for valid matches */
 const MIN_TITLE_LENGTH_RATIO = 0.8;
@@ -56,14 +56,12 @@ const verifyWithOpenAlex = async (
   maxResultsToCheck = 5
 ) => {
   try {
-
     // Step 1: Search OpenAlex for the publication
     const searchResults = await searchOpenAlex(title, maxResultsToCheck);
 
     if (!searchResults.results || searchResults.results.length === 0) {
       return createOpenAlexResponse("unable to verify", null, searchResults);
     }
-
 
     // Step 2: Find matching publication in search results
     const matchedPublication = findMatchingPublication(
@@ -81,7 +79,6 @@ const verifyWithOpenAlex = async (
       matchedPublication,
       candidateName
     );
-
 
     // Step 4: Build detailed response with OpenAlex-specific data
     const details = buildPublicationDetails(matchedPublication, authorInfo);
@@ -109,7 +106,8 @@ const verifyWithOpenAlex = async (
  * @returns {Promise<Object>} Search results object
  * @private
  */
-const searchOpenAlex = async (title, maxResults) => {  const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
+const searchOpenAlex = async (title, maxResults) => {
+  const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
     title
   )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics`;
 
@@ -134,10 +132,10 @@ const findMatchingPublication = (results, title, doi) => {
 
     // Title-based matching
     if (title && (item.title || item.display_name)) {
-      const normalizedTitle = title.toLowerCase().trim();
-      const normalizedItemTitle = (item.title || item.display_name)
-        .toLowerCase()
-        .trim();
+      const normalizedTitle = normalizeTitle(title);
+      const normalizedItemTitle = normalizeTitle(
+        item.title || item.display_name
+      );
 
       const similarity = getTitleSimilarity(
         normalizedTitle,
