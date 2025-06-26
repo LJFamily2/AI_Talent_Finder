@@ -78,7 +78,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
       model: "gemma-3n-e4b-it",
       generationConfig: {
         temperature: 0.0,
-        topP: 0.1,
+        topP: 0.0,
         maxOutputTokens: 4096,
       },
     }); // Extract candidate name using AI
@@ -142,6 +142,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
         const openAlexLink = openAlexResult.details?.id; // OpenAlex ID as fallback link
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
+        // Return detailed verification result for this publication
         return {
           publication: {
             title: pub.title?.trim() || "",
@@ -151,15 +152,15 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           verification: {
             google_scholar: {
               status: scholarResult.status,
-              details: scholarResult.details,
+              // details: scholarResult.details,
             },
             scopus: {
               status: scopusResult.status,
-              details: scopusResult.details,
+              // details: scopusResult.details,
             },
             openalex: {
               status: openAlexResult.status,
-              details: openAlexResult.details,
+              // details: openAlexResult.details,
             },
             displayData: {
               publication: pub.publication || "Unable to verify",
@@ -191,13 +192,12 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
                 return "Unable to verify";
               })(),
               type: (() => {
-                // Use type from any source
-                return (
+                const type =
                   openAlexResult.details?.type ||
                   scholarResult.details?.type ||
                   scopusResult.details?.subtypeDescription ||
-                  "Not specified"
-                );
+                  "Not specified";
+                return typeof type === "string" ? type.toLowerCase() : type;
               })(),
               year: (() => {
                 const currentYear = new Date().getFullYear();
@@ -341,7 +341,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           aggregatedAuthorDetails = {
             author: rawAuthorDetails.author,
             articles: rawAuthorDetails.articles,
-            expertises: rawAuthorDetails.expertises,
+            expertise: rawAuthorDetails.expertise,
             metrics: {
               h_index: rawAuthorDetails.h_index,
               documentCount: rawAuthorDetails.documentCount,
@@ -374,22 +374,17 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
-          r.verification.google_scholar.status === "verified" ||
-          r.verification.scopus.status === "verified" ||
-          r.verification.google_scholar.status ===
-            "verified but not same author name" ||
-          r.verification.scopus.status === "verified but not same author name"
+          r.verification.displayData.status === "verified" ||
+          r.verification.displayData.status ===
+            "verified but not same author name"
       ).length,
       verifiedWithAuthorMatch: verificationResults.filter(
-        (r) =>
-          r.verification.google_scholar.status === "verified" ||
-          r.verification.scopus.status === "verified"
+        (r) => r.verification.displayData.status === "verified"
       ).length,
       verifiedButDifferentAuthor: verificationResults.filter(
         (r) =>
-          r.verification.google_scholar.status ===
-            "verified but not same author name" ||
-          r.verification.scopus.status === "verified but not same author name"
+          r.verification.displayData.status ===
+          "verified but not same author name"
       ).length,
       falseClaims: falseClaims,
       results: verificationResults,

@@ -95,7 +95,7 @@ const aggregateAuthorDetails = async (
     i10_index: null,
     citationCount: null,
     graph: [],
-    expertises: [],
+    expertise: [],
   };
 
   // Track which sources were successfully verified
@@ -352,7 +352,7 @@ const mergeGoogleScholarData = (
   if (googleScholarData.author) {
     authorDetails.author.name = googleScholarData.author.name;
 
-    // Add expertises from Google Scholar interests
+    // Add expertise from Google Scholar interests
     if (
       googleScholarData.author.interests &&
       Array.isArray(googleScholarData.author.interests)
@@ -360,9 +360,9 @@ const mergeGoogleScholarData = (
       googleScholarData.author.interests.forEach((interest) => {
         if (
           interest.title &&
-          !authorDetails.expertises.includes(interest.title)
+          !authorDetails.expertise.includes(interest.title)
         ) {
-          authorDetails.expertises.push(interest.title);
+          authorDetails.expertise.push(interest.title);
         }
       });
     }
@@ -489,7 +489,7 @@ const mergeScopusData = (
   const authorProfile =
     scopusAuthorData["author-retrieval-response"] || scopusAuthorData;
 
-  // Add expertises from Scopus subject areas
+  // Add expertise from Scopus subject areas
   if (
     authorProfile &&
     authorProfile["subject-areas"] &&
@@ -498,8 +498,8 @@ const mergeScopusData = (
   ) {
     authorProfile["subject-areas"]["subject-area"].forEach((area) => {
       const expertiseText = area["#text"] || area._;
-      if (expertiseText && !authorDetails.expertises.includes(expertiseText)) {
-        authorDetails.expertises.push(expertiseText);
+      if (expertiseText && !authorDetails.expertise.includes(expertiseText)) {
+        authorDetails.expertise.push(expertiseText);
       }
     });
   }
@@ -851,21 +851,21 @@ const mergeOpenAlexData = (
 ) => {
   const isPreferredSource = prioritySource === "openalex";
 
-  // Add expertises from OpenAlex topics (domain names)
+  // Add expertise from OpenAlex topics (domain names)
   if (openAlexAuthorData.topics && Array.isArray(openAlexAuthorData.topics)) {
-    // Create a set to avoid duplicates from domain names
-    const domainNames = new Set();
+    // Create a set to avoid duplicates from field names
+    const fieldNames = new Set();
 
     openAlexAuthorData.topics.forEach((topic) => {
-      if (topic.domain && topic.domain.display_name) {
-        domainNames.add(topic.domain.display_name);
+      if (topic.field && topic.field.display_name) {
+        fieldNames.add(topic.field.display_name);
       }
     });
 
-    // Add unique domain names to expertises
-    domainNames.forEach((name) => {
-      if (!authorDetails.expertises.includes(name)) {
-        authorDetails.expertises.push(name);
+    // Add unique field names to expertise
+    fieldNames.forEach((name) => {
+      if (!authorDetails.expertise.includes(name)) {
+        authorDetails.expertise.push(name);
       }
     });
   }
@@ -1005,8 +1005,11 @@ const mergeOpenAlexData = (
       // Determine the best link - prefer DOI, fallback to OpenAlex link
       let link = work.id; // Default to OpenAlex link
       if (work.doi) {
-        link = work.doi;
-      } // Create article object matching the required structure
+        link = work.doi.startsWith("http")
+          ? work.doi
+          : `https://doi.org/${work.doi}`;
+      } 
+      // Create article object matching the required structure
       const articleObj = {
         title: work.display_name || work.title,
         link: link,

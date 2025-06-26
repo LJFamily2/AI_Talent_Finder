@@ -3,7 +3,7 @@ const normalizeTitle = (str) => {
   if (!str) return "";
   return str
     .toLowerCase()
-    .replace(/[\(\)\[\]\{\}:;,\.\-–—]/g, "") // remove common punctuation
+    .replace(/[\(\)\[\]\{\}:;,\.\-–—\*]/g, "") // remove common punctuation including *
     .replace(/\s+/g, " ") // collapse whitespace
     .trim();
 };

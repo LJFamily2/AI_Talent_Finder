@@ -28,6 +28,8 @@ const {
 /** Minimum similarity threshold for title matching */
 const TITLE_SIMILARITY_THRESHOLD = 95;
 
+/** Minimum title length ratio for valid matches */
+const MIN_TITLE_LENGTH_RATIO = 0.8;
 //=============================================================================
 // UTILITY FUNCTIONS
 //=============================================================================
@@ -167,7 +169,6 @@ const searchGoogleScholar = async (title, maxResults) => {
  * @private
  */
 
-
 const findMatchingPublication = (results, title, doi) => {
   return results.find((item) => {
     // DOI match takes highest precedence
@@ -188,12 +189,22 @@ const findMatchingPublication = (results, title, doi) => {
         return true;
       }
 
+      const titleLengthRatio =
+        Math.min(normalizedTitle.length, normalizedItemTitle.length) /
+        Math.max(normalizedTitle.length, normalizedItemTitle.length);
+
       // Check similarity score
       const similarity = getTitleSimilarity(
         normalizedTitle,
         normalizedItemTitle
       );
-      return similarity >= TITLE_SIMILARITY_THRESHOLD;
+
+      if (
+        similarity >= TITLE_SIMILARITY_THRESHOLD &&
+        titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
+      ) {
+        return true;
+      }
     }
 
     return false;

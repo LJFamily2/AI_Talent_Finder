@@ -39,7 +39,7 @@ const authorCache = new Map();
 const normalizeName = (name) => {
   return name
     .toLowerCase()
-    .replace(/[^\w\s\-\.,]/g, " ") // Keep commas for surname-first format parsing
+    .replace(/[^\w\s]/g, " ") // Remove hyphens, commas, and periods
     .replace(/\s+/g, " ")
     .trim();
 };
@@ -172,7 +172,7 @@ const checkAuthorNameMatch = (candidateName, authorList) => {
   }
 
   const candidate = extractNameParts(candidateName);
-
+  console.log(candidate);
   // Check each author in the list
   for (const authorName of authorList) {
     if (!authorName || typeof authorName !== "string") continue;

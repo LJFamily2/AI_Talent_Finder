@@ -160,6 +160,7 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * publications.forEach(pub => console.log(pub.title));
  */
 const extractPublicationsFromCV = async (model, cvText) => {
+  console.log("Cv text", cvText);
   // Step 1: Parse CV text into lines
   const lines = cvText
     .split(/\n+/)
@@ -206,22 +207,22 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   }
-  if (publicationSections.length === 0) {
-    // If no sections found, look for entries with common publication patterns
-    const pubEntries = lines.filter(
-      (line) =>
-        /^\[\w+\]/.test(line) || // [1], [P1], etc.
-        /^[0-9]+\./.test(line) || // Numbered entries
-        /(19|20)[0-9]{2}/.test(line) // Contains a year
-    );
+  // if (publicationSections.length === 0) {
+  //   // If no sections found, look for entries with common publication patterns
+  //   const pubEntries = lines.filter(
+  //     (line) =>
+  //       /^\[\w+\]/.test(line) || // [1], [P1], etc.
+  //       /^[0-9]+\./.test(line) || // Numbered entries
+  //       /(19|20)[0-9]{2}/.test(line) // Contains a year
+  //   );
 
-    if (pubEntries.length > 0) {
-      publicationSections.push({
-        header: "Publications",
-        content: pubEntries.join("\n"),
-      });
-    }
-  } // Process each section in chunks
+  //   if (pubEntries.length > 0) {
+  //     publicationSections.push({
+  //       header: "Publications",
+  //       content: pubEntries.join("\n"),
+  //     });
+  //   }
+  // } // Process each section in chunks
   console.log("Publication Sections:", publicationSections);
   console.log(
     `[Section Processing] Starting to process ${publicationSections.length} publication sections...`
@@ -239,6 +240,15 @@ const extractPublicationsFromCV = async (model, cvText) => {
         section.content.length
       } chars)`
     );
+
+    if (section.content.length === 0) {
+      console.log(
+        `[Section ${sectionIndex + 1}] Skipping empty section "${
+          section.header
+        }".`
+      );
+      continue; // Skip to the next section
+    }
 
     // Analyze content for potential publication entries
     const contentLines = section.content.split("\n");
@@ -264,8 +274,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
       console.log(`[Section ${sectionIndex + 1}] Splitting into chunks...`);
 
       const chunks = [];
-      let currentChunk = section.header + "\n\n";
-      let currentSize = currentChunk.length;
+      let currentChunk = "";
+      let currentSize = 0;
 
       // Split at logical boundaries (lines)
       for (const line of contentLines) {
@@ -273,15 +283,15 @@ const extractPublicationsFromCV = async (model, cvText) => {
           currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
           currentChunk.length > 0
         ) {
-          chunks.push(currentChunk);
-          currentChunk = section.header + " (continued)\n\n";
-          currentSize = currentChunk.length;
+          chunks.push(currentChunk.trim()); // Trim trailing newline
+          currentChunk = ""; // Start new chunk
+          currentSize = 0;
         }
         currentChunk += line + "\n";
         currentSize += line.length + 1;
       }
       if (currentChunk.length > 0) {
-        chunks.push(currentChunk);
+        chunks.push(currentChunk.trim()); // Trim trailing newline
       }
 
       console.log(
@@ -298,17 +308,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
         allPublications.push(...chunkPubs);
       });
     } else {
-      // Process entire section
-      const sectionText = `${section.header}\n\n${section.content}`;
-      console.log(
-        `[Section ${sectionIndex + 1}] Processing entire section (${
-          sectionText.length
-        } chars)...`
-      );
-
+      // Process the entire section as a single chunk
       const sectionPubs = await extractPublicationsFromChunk(
         model,
-        sectionText
+        section.content
       );
       allPublications.push(...sectionPubs);
     }
@@ -404,44 +407,18 @@ async function extractPublicationsFromChunk(
   chunkText,
   isFallback = false
 ) {
-  console.log(`[AI Processing] Processing chunk (${chunkText.length} chars)`);
+  console.log(`[AI Processing] Processing chunk: (${chunkText})`);
 
   // Create a more specific prompt with strong anti-hallucination instructions
   let prompt = `You are an expert academic CV analyzer focusing on publications.
 From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
 
-IMPORTANT: Publications may be split across multiple lines due to formatting.
-If several consecutive lines look like they belong to the same publication (e.g., author, title, journal, DOI),
-combine them into a single publication entry, even if there are line breaks.
-A publication entry ENDS when there is a blank line or a new line that starts with an author list (e.g., "Lastname, Initial.") and a year in parentheses.
-DO NOT split a publication just because of a line break.
+Format: [{"publication": "...", "title": "...", "doi": null}]
 
 Each publication must be returned as an object inside a JSON array with these fields:
 - "publication": the full original text of the publication entry EXACTLY as it appears (combine lines if needed)
 - "title": just the title of the publication
 - "doi": the DOI if written (starts with 10.), otherwise null
-
-Format: [{"publication": "...", "title": "...", "doi": null}]
-Example input text:
-Piwowar, H., Haustein, S., Priem, J., et al. (2018). The state of OA: A large-scale analysis
-of the prevalence and impact of open access articles. PeerJ.
-https://doi.org/10.7717/peerj.4375
-
-Priem, J., & Hemminger, B. H. (2016). Altmetrics in the wild: Using social media to explore scholarly impact. mSystems, 1(3), e00043-16. https://doi.org/10.1128/mSystems.00043-16
-
-Example output:
-[
-  {
-    "publication": "Piwowar, H., Haustein, S., Priem, J., et al. (2018). The state of OA: A large-scale analysis of the prevalence and impact of open access articles. PeerJ. https://doi.org/10.7717/peerj.4375",
-    "title": "The state of OA: A large-scale analysis of the prevalence and impact of open access articles",
-    "doi": "10.7717/peerj.4375"
-  },
-  {
-    "publication": "Priem, J., & Hemminger, B. H. (2016). Altmetrics in the wild: Using social media to explore scholarly impact. mSystems, 1(3), e00043–16. https://doi.org/10.1128/mSystems.00043-16",
-    "title": "Altmetrics in the wild: Using social media to explore scholarly impact",
-    "doi": "10.1128/mSystems.00043-16"
-  }
-]
 
 IMPORTANT RULES:
 - Extract EVERY publication in the text (there are multiple)
@@ -450,7 +427,10 @@ IMPORTANT RULES:
 - Return VALID JSON that can be parsed without errors
 - DO NOT include long quotes, explanations or descriptions
 - Return only valid JSON without markdown formatting
-- Publications may be numbered like [1], [P1], [TR1] or bulleted or unnumbered
+- DO NOT hallucinate the content of publications
+- DO NOT invent titles, DOIs or publication details
+- DO NOT include any fabricated entries or placeholders
+- If you cannot find any publications, return an empty array: []
 
 TEXT:
 ${chunkText}`;
