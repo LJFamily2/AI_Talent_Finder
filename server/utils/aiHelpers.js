@@ -97,12 +97,6 @@ const DUPLICATE_SIMILARITY_THRESHOLD = 90;
  * @param {Object} model - Google Generative AI model instance
  * @param {string} cvText - The full CV text content
  * @returns {Promise<string|null>} The candidate's full name or null if not found
- *
- * @example
- * const candidateName = await extractCandidateNameWithAI(model, cvText);
- * if (candidateName) {
- *   console.log(`Processing CV for: ${candidateName}`);
- * }
  */
 async function extractCandidateNameWithAI(model, cvText) {
   const prompt = `You are an expert CV analyzer.
@@ -153,14 +147,8 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @param {Object} model - Google Generative AI model instance
  * @param {string} cvText - The full CV text content
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
- *
- * @example
- * const publications = await extractPublicationsFromCV(model, cvText);
- * console.log(`Found ${publications.length} publications`);
- * publications.forEach(pub => console.log(pub.title));
  */
 const extractPublicationsFromCV = async (model, cvText) => {
-  console.log("Cv text", cvText);
   // Step 1: Parse CV text into lines
   const lines = cvText
     .split(/\n+/)
@@ -179,16 +167,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       sectionHeaders.push({ index: i, text: line });
     }
   }
-
-  console.log(
-    `[Section Detection] Found ${sectionHeaders.length} potential section headers:`
-  );
-  sectionHeaders.forEach((header, idx) => {
-    console.log(
-      `[Section Detection]   ${idx + 1}. Line ${header.index}: "${header.text}"`
-    );
-  });
-
   // Step 3: Extract content from identified publication sections
   const publicationSections = [];
   for (let i = 0; i < sectionHeaders.length; i++) {
@@ -207,26 +185,22 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   }
-  // if (publicationSections.length === 0) {
-  //   // If no sections found, look for entries with common publication patterns
-  //   const pubEntries = lines.filter(
-  //     (line) =>
-  //       /^\[\w+\]/.test(line) || // [1], [P1], etc.
-  //       /^[0-9]+\./.test(line) || // Numbered entries
-  //       /(19|20)[0-9]{2}/.test(line) // Contains a year
-  //   );
+  if (publicationSections.length === 0) {
+    // If no sections found, look for entries with common publication patterns
+    const pubEntries = lines.filter(
+      (line) =>
+        /^\[\w+\]/.test(line) || // [1], [P1], etc.
+        /^[0-9]+\./.test(line) || // Numbered entries
+        /(19|20)[0-9]{2}/.test(line) // Contains a year
+    );
 
-  //   if (pubEntries.length > 0) {
-  //     publicationSections.push({
-  //       header: "Publications",
-  //       content: pubEntries.join("\n"),
-  //     });
-  //   }
-  // } // Process each section in chunks
-  console.log("Publication Sections:", publicationSections);
-  console.log(
-    `[Section Processing] Starting to process ${publicationSections.length} publication sections...`
-  );
+    if (pubEntries.length > 0) {
+      publicationSections.push({
+        header: "Publications",
+        content: pubEntries.join("\n"),
+      });
+    }
+  } // Process each section in chunks
   const allPublications = [];
 
   for (
@@ -235,18 +209,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
     sectionIndex++
   ) {
     const section = publicationSections[sectionIndex];
-    console.log(
-      `[Section ${sectionIndex + 1}] Processing: "${section.header}" (${
-        section.content.length
-      } chars)`
-    );
 
     if (section.content.length === 0) {
-      console.log(
-        `[Section ${sectionIndex + 1}] Skipping empty section "${
-          section.header
-        }".`
-      );
       continue; // Skip to the next section
     }
 
@@ -265,14 +229,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
         /technical report|tr[- ]?\d+/i.test(line) // Technical reports
       );
     });
-    console.log(
-      `[Section ${sectionIndex + 1}] Found ${
-        potentialPubLines.length
-      } lines that look like publications`
-    ); // Split section into chunks if needed
+    // Split section into chunks if needed
     if (section.content.length > MAX_CHUNK_SIZE) {
-      console.log(`[Section ${sectionIndex + 1}] Splitting into chunks...`);
-
       const chunks = [];
       let currentChunk = "";
       let currentSize = 0;
@@ -294,10 +252,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
         chunks.push(currentChunk.trim()); // Trim trailing newline
       }
 
-      console.log(
-        `[Section ${sectionIndex + 1}] Processing ${chunks.length} chunks...`
-      );
-
       // Process chunks in parallel for better performance
       const chunkResults = await Promise.all(
         chunks.map((chunk) => extractPublicationsFromChunk(model, chunk))
@@ -315,25 +269,13 @@ const extractPublicationsFromCV = async (model, cvText) => {
       );
       allPublications.push(...sectionPubs);
     }
-
-    console.log(
-      `[Section ${
-        sectionIndex + 1
-      }] Section processing complete. Total publications so far: ${
-        allPublications.length
-      }`
-    );
   }
   // Remove duplicates (based on title similarity) and validate publications
-  console.log(
-    `[Filtering] Total publications before filtering: ${allPublications.length}`
-  );
   const uniquePublications = [];
   let filteredCount = 0;
 
   for (const pub of allPublications) {
     if (!pub.title) {
-      console.log(`[Filtering] Filtered out publication without title`);
       filteredCount++;
       continue;
     } // Additional validation to filter out fabricated publications
@@ -342,7 +284,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       (/et al\./.test(pub.publication) &&
         !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
     ) {
-      console.log(`[Filtering] Filtered out fabricated: "${pub.title}"`);
       filteredCount++;
       continue;
     } // Check if title has reasonable length and not generic words
@@ -358,9 +299,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
         "i"
       );
       if (!titleInText.test(cvText)) {
-        console.log(
-          `[Filtering] Filtered out generic title not in text: "${pub.title}"`
-        );
         filteredCount++;
         continue;
       }
@@ -374,14 +312,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
     if (!isDuplicate) {
       uniquePublications.push(pub);
     } else {
-      console.log(`[Filtering] Filtered out duplicate: "${pub.title}"`);
       filteredCount++;
     }
   }
 
-  console.log(
-    `[Filtering] Filtered out ${filteredCount} publications, ${uniquePublications.length} remain`
-  );
   return uniquePublications;
 };
 
@@ -402,13 +336,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
  *
  * @private
  */
-async function extractPublicationsFromChunk(
-  model,
-  chunkText,
-  isFallback = false
-) {
-  console.log(`[AI Processing] Processing chunk: (${chunkText})`);
-
+async function extractPublicationsFromChunk(model, chunkText) {
   // Create a more specific prompt with strong anti-hallucination instructions
   let prompt = `You are an expert academic CV analyzer focusing on publications.
 From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
@@ -439,7 +367,6 @@ ${chunkText}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    console.log(`[AI Processing] Received response (${text.length} chars)`); // Parse and clean the response
     let cleanedText = text
       .trim()
       .replace(/```json|```/g, "")
@@ -468,9 +395,7 @@ ${chunkText}`;
         }
       });
 
-      console.log(
-        `[AI Processing] Extracted ${publications.length} publications`
-      ); // Filter out obviously fabricated entries
+      // Filter out obviously fabricated entries
       const filteredPublications = publications.filter((pub) => {
         return (
           pub.publication &&
@@ -482,8 +407,6 @@ ${chunkText}`;
       });
       return filteredPublications;
     } catch (e) {
-      console.log(`[AI Processing] JSON parsing failed: ${e.message}`);
-
       // Add recovery attempt for common JSON issues
       try {
         // Try to repair broken JSON by more aggressive cleaning
@@ -508,10 +431,6 @@ ${chunkText}`;
           }
         });
 
-        console.log(
-          `[AI Processing] Recovered with ${publications.length} publications`
-        );
-
         // Filter out obviously fabricated entries
         const filteredPublications = publications.filter((pub) => {
           return (
@@ -525,9 +444,6 @@ ${chunkText}`;
 
         return filteredPublications;
       } catch (recoveryError) {
-        console.log(
-          `[AI Processing] Recovery failed: ${recoveryError.message}`
-        );
         return [];
       }
     }

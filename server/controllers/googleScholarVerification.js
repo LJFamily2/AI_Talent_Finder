@@ -62,18 +62,6 @@ const createGoogleScholarSearchUrl = (title) => {
  * @param {string} candidateName - Name of the candidate to match against authors
  * @param {number} maxResultsToCheck - Maximum number of search results to examine
  * @returns {Promise<Object>} Verification result object
- *
- * @example
- * const result = await verifyWithGoogleScholar(
- *   "Deep Learning Applications",
- *   "10.1000/journal.123",
- *   "John Smith",
- *   5
- * );
- *
- * if (result.status === "verified") {
- *   console.log("Publication verified with author match!");
- * }
  */
 
 const verifyWithGoogleScholar = async (

@@ -42,19 +42,6 @@ const MIN_TITLE_LENGTH_RATIO = 0.8;
  * @param {string} candidateName - Name of the candidate to match against authors
  * @param {number} maxResultsToCheck - Maximum number of search results to examine
  * @returns {Promise<Object>} Verification result object with status and details
- *
- * @example
- * const result = await verifyWithScopus(
- *   "Machine Learning in Medical Diagnosis",
- *   "10.1016/journal.123",
- *   "Dr. Jane Smith",
- *   5
- * );
- *
- * if (result.status === "verified") {
- *   console.log("Publication verified in Scopus!");
- *   console.log("Authors:", result.details.extractedAuthors);
- * }
  */
 
 const verifyWithScopus = async (

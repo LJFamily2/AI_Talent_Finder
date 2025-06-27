@@ -340,7 +340,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           // Transform the result to match the expected structure
           aggregatedAuthorDetails = {
             author: rawAuthorDetails.author,
-            articles: rawAuthorDetails.articles,
+            // articles: rawAuthorDetails.articles,
             expertise: rawAuthorDetails.expertise,
             metrics: {
               h_index: rawAuthorDetails.h_index,
