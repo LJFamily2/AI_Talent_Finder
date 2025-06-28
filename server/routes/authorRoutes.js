@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const { searchByAuthor } = require("../controllers/authorController");
+const { searchByAuthor, saveToDatabase } = require("../controllers/authorController");
 
-router.post("/search-author", searchByAuthor);
+router.get("/search-author", searchByAuthor); // <- Fix here
+router.post("/save-profile", saveToDatabase);
 
 module.exports = router;

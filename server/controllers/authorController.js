@@ -1,117 +1,160 @@
 const axios = require("axios");
+const mongoose = require("mongoose");
 const ResearcherProfile = require("../models/researcherProfile");
 const Publication = require("../models/publication");
 
+
 const searchByAuthor = async (req, res) => {
-  const { name } = req.body;
+  const { name } = req.query;
   if (!name) return res.status(400).json({ error: "Author name is required" });
 
   try {
-    const openAlexUrl = `https://api.openalex.org/authors?search=${encodeURIComponent(name)}`;
-    const authorData = await axios.get(openAlexUrl);
-    const author = authorData.data.results?.[0];
-    if (!author) return res.status(404).json({ error: "No author found" });
+    // Step 1: Search author by name
+    const searchUrl = `https://api.openalex.org/authors?search=${encodeURIComponent(name)}`;
+    const { data: searchData } = await axios.get(searchUrl);
+    const authorRaw = searchData.results?.[0];
+    if (!authorRaw) return res.status(404).json({ error: "Author not found" });
 
+    const authorId = authorRaw.id?.split("/").pop();
+
+    // Step 2: Get full author details
+    const { data: authorData } = await axios.get(`https://api.openalex.org/authors/${authorId}`);
+    const { data: worksData } = await axios.get(`https://api.openalex.org/works?filter=author.id:${authorRaw.id}&per_page=10`);
+
+    // Build researcher profile (OpenAlex only for now)
     const profile = {
       basic_info: {
-        name: author.display_name,
-        email: author.email || "N/A",
-        thumbnail: author.image_url || null,
-        affiliations: author.last_known_institution ? [{
+        name: authorData.display_name,
+        email: "unknown@example.com", // from Google Scholar (not available here)
+        thumbnail: "", // from Google Scholar (not available here)
+        affiliations: authorData.affiliations?.map(entry => ({
           institution: {
-            display_name: author.last_known_institution.display_name,
-            years: "N/A",
-            ror: author.last_known_institution.ror
+            display_name: entry.institution?.display_name || "",
+            ror: entry.institution?.ror || "",
+            years: entry.years || [],
+            id: entry.institution?.id || "",
+            country_code: entry.institution?.country_code || "",
+            type: entry.institution?.type || "",
+            lineage: entry.institution?.lineage || []
           }
-        }] : []
+        })) || []
       },
       identifiers: {
-        openalex: author.id,
-        orcid: author.orcid || null,
-        google_scholar_id: author.ids?.google_scholar || null
+        scopus: "", // To be filled via Scopus
+        openalex: authorData.id,
+        orcid: authorData.orcid || "",
+        google_scholar_id: "" // To be filled via Google Scholar
       },
       research_metrics: {
-        h_index: author.summary_stats?.h_index,
-        i10_index: author.i10_index,
-        two_year_mean_citedness: author.summary_stats?.two_year_mean_citedness,
-        total_citations: author.summary_stats?.cited_by_count,
-        total_works: author.works_count
+        h_index: authorData.summary_stats?.h_index || 0,
+        i10_index: authorData.summary_stats?.i10_index || 0,
+        two_year_mean_citedness: authorData.summary_stats?.["2yr_mean_citedness"] || 0,
+        total_citations: authorData.cited_by_count || 0,
+        total_works: authorData.works_count || 0
       },
       research_areas: {
-        fields: author.x_concepts?.map(x => ({ display_name: x.display_name })) || [],
-        topics: []
+        fields: authorData.x_concepts?.slice(0, 5).map(c => ({
+          display_name: c.display_name
+        })) || [],
+        topics: authorData.x_concepts?.slice(0, 5).map(c => ({
+          display_name: c.display_name,
+          count: Math.round(c.score * 100) // Score approx to count
+        })) || []
       },
-      works: [],
+      works: [], // to be filled after publications are saved
       citation_trends: {
-        cited_by_table: null,
-        cited_by_graph: null,
-        counts_by_year: []
+        cited_by_table: authorData.counts_by_year || {},
+        cited_by_graph: authorData.summary_stats || {},
+        counts_by_year: authorData.counts_by_year || []
       },
-      current_affiliation: {
-        institution: author.last_known_institution?.display_name || null,
-        display_name: author.last_known_institution?.display_name || null,
-        ror: author.last_known_institution?.ror || null
-      }
+      current_affiliation: authorData.last_known_institution ? {
+        institution: authorData.last_known_institution.display_name,
+        display_name: authorData.last_known_institution.display_name,
+        ror: authorData.last_known_institution.ror
+      } : {}
     };
 
-    // Fetch works by this author
-    const worksRes = await axios.get(`https://api.openalex.org/works?filter=author.id:${author.id}`);
-    const works = worksRes.data.results;
+    // Build publication list (OpenAlex)
+    const publications = worksData.results.map(work => ({
+      id: work.id,
+      doi: work.doi,
+      title: work.title,
+      publication_date: work.publication_date,
+      publicationLocation: work.primary_location?.source?.host_organization_name || "",
+      volume: work.biblio?.volume || "",
+      issue: work.biblio?.issue || "",
+      page_range: work.biblio?.first_page && work.biblio?.last_page
+        ? `${work.biblio.first_page}-${work.biblio.last_page}`
+        : "",
+      article_number: "", // Not available from OpenAlex
+      publication_type: work.type || "",
+      eissn: work.primary_location?.source?.e_issn || "",
+      issn: work.primary_location?.source?.issn || "",
+      authors: work.authorships?.map(a => ({
+        name: a.author?.display_name || "",
+        id: a.author?.id || "",
+        affiliation: a.institutions?.[0]?.display_name || "",
+        orcid: a.author?.orcid || ""
+      })) || [],
+      cited_by_count: work.cited_by_count || 0,
+      citation_percentile: work.biblio?.citation_normalized_percentile || 0,
+      open_access_status: work.open_access?.oa_status || "",
+      fwci: work.metrics?.field_citation_ratio || 0
+    }));
 
-    for (const work of works) {
-      const pub = {
-        id: work.id,
-        title: work.title,
-        doi: work.doi,
-        url: work.url,
-        link: work.primary_location?.source?.url || null,
-        publication_date: work.publication_date,
-        journal_name: work.host_venue?.display_name,
-        volume: work.biblio?.volume,
-        issue: work.biblio?.issue,
-        page_range: work.biblio?.pages,
-        article_number: work.biblio?.article_number,
-        publication_type: work.type,
-        language: work.language,
-        issn: work.host_venue?.issn?.[0],
-        eissn: null,
-        authors: work.authorships?.map(a => ({
-          id: a.author?.id,
-          affiliation: a.institutions?.[0]?.display_name,
-          orcid: a.author?.orcid
-        })),
-        abstract: work.abstract_inverted_index ? Object.keys(work.abstract_inverted_index).join(" ") : null,
-        topics: work.concepts?.map(c => ({
-          id: c.id,
-          display_name: c.display_name,
-          score: c.score
-        })),
-        cited_by_count: work.cited_by_count,
-        citation_percentile: null,
-        open_access_status: work.open_access?.oa_status,
-        fwci: null,
-        source_api: "openalex",
-        external_ids: {
-          openalex: work.id
-        }
-      };
-
-      const savedPub = await Publication.findOneAndUpdate(
-        { id: pub.id },
-        { $set: pub },
-        { upsert: true, new: true }
-      );
-
-      profile.works.push({ workID: [savedPub._id] });
-    }
-
-    await ResearcherProfile.create(profile);
-    return res.status(200).json({ profile, works: profile.works });
+    return res.status(200).json({ profile, publications });
 
   } catch (err) {
-    console.error("Author search error:", err.message);
-    return res.status(500).json({ error: "Server error" });
+    console.error("❌ Error searching author:", err.message);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-module.exports = { searchByAuthor };
+
+const saveToDatabase = async (req, res) => {
+  const { profile, publications } = req.body;
+
+  if (!profile || !publications) {
+    return res.status(400).json({ error: "Missing profile or publications" });
+  }
+
+  let insertedPublications = [];
+
+  try {
+    insertedPublications = await Publication.insertMany(publications, { ordered: false });
+  } catch (err) {
+    console.warn("Skipping duplicates:", err.message);
+    if (err.insertedDocs) {
+      insertedPublications = err.insertedDocs;
+    }
+  }
+
+  try {
+    const pubIds = insertedPublications.map(pub => ({
+      workID: [pub._id]
+    }));
+
+    const newProfile = new ResearcherProfile({
+      ...profile,
+      works: pubIds
+    });
+
+    await newProfile.save();
+
+    return res.status(200).json({
+      message: "Saved to DB",
+      profile: newProfile,
+      worksSaved: insertedPublications.length
+    });
+
+  } catch (err) {
+    console.error("❌ Error saving to DB:", err.message);
+    return res.status(500).json({ error: "Save failed" });
+  }
+};
+
+
+module.exports = {
+  searchByAuthor,
+  saveToDatabase
+};
