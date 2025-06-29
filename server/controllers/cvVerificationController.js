@@ -47,12 +47,6 @@ const {
  *
  * @param {Object} file - Uploaded CV file object with path property
  * @returns {Promise<Object>} Comprehensive verification results
- *
- * @example
- * const result = await verifyCV(uploadedFile);
- * console.log(`Verified ${result.verifiedPublications}/${result.total} publications`);
- * console.log(`Publications with author match: ${result.verifiedWithAuthorMatch}`);
- * console.log(`Potential false claims: ${result.falseClaims}`);
  */
 
 // Main function
@@ -88,7 +82,6 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
     } // Verify each publication with both Google Scholar and Scopus
-    let falseClaims = 0;
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
@@ -133,11 +126,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           scholarResult.status === "verified but not same author name" ||
           scopusResult.status === "verified but not same author name" ||
           openAlexResult.status === "verified but not same author name";
-        const isPotentialFalseClaim =
-          isVerified && candidateName && !hasAuthorMatch;
-        if (isPotentialFalseClaim) {
-          falseClaims++;
-        } // Get best available link
+        // Get best available link
         const scholarLink = scholarResult.details?.link;
         const openAlexLink = openAlexResult.details?.id; // OpenAlex ID as fallback link
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
@@ -386,7 +375,6 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           r.verification.displayData.status ===
           "verified but not same author name"
       ).length,
-      falseClaims: falseClaims,
       results: verificationResults,
       authorDetails: aggregatedAuthorDetails,
     };

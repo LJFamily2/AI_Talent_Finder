@@ -31,6 +31,7 @@ const { getTitleSimilarity } = require("./textUtils");
  */
 const PUBLICATION_PATTERNS = [
   /^publications?$/i,
+  /^policy publications?$/i,
   /^selected publications$/i,
   /^journal (articles|publications)$/i,
   /^conference (papers|publications)$/i,
@@ -46,30 +47,20 @@ const PUBLICATION_PATTERNS = [
   /^scholarly publications$/i,
   /^papers$/i,
   /^articles$/i,
-  /^grants?$/i,
-  /^funding$/i,
-  /^service$/i,
-  /^leadership$/i,
   /^awards?$/i,
   /^honors?$/i,
-  /^education$/i,
   /^employment$/i,
   /^experience$/i,
-  /^teaching$/i,
   /^appointments?$/i,
-  /^memberships?$/i,
   /^activities$/i,
-  /^presentations?$/i,
   /^talks$/i,
   /^invited talks$/i,
   /^conferences?$/i,
-  /^workshops?$/i,
-  /^outreach$/i,
-  /^community service$/i,
-  /^volunteering$/i,
-  /^skills$/i,
-  /^languages$/i,
-  /^references?$/i,
+  /^White House Reports$/i,
+  /^Policy-related Publications and Reports$/i,
+  /^Workshop Papers and Technical Reports$/i,
+  /^Thesis$/i,
+  /^PATENTS$/i,
 ];
 
 /**
@@ -338,30 +329,45 @@ const extractPublicationsFromCV = async (model, cvText) => {
  */
 async function extractPublicationsFromChunk(model, chunkText) {
   // Create a more specific prompt with strong anti-hallucination instructions
-  let prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
+  let prompt = `${chunkText}
 
-Format: [{"publication": "...", "title": "...", "doi": null}]
+You are an expert academic CV analyzer focusing on extracting publication records.
 
-Each publication must be returned as an object inside a JSON array with these fields:
-- "publication": the full original text of the publication entry EXACTLY as it appears (combine lines if needed)
-- "title": just the title of the publication
-- "doi": the DOI if written (starts with 10.), otherwise null
+From the text above, extract EVERY publication that appears. Your task is to output a structured JSON array, where each object contains:
 
-IMPORTANT RULES:
-- Extract EVERY publication in the text (there are multiple)
-- Combine lines that belong to the same publication into a single entry
-- Be EXTREMELY CONCISE - only include essential text in the "publication" field
-- Return VALID JSON that can be parsed without errors
-- DO NOT include long quotes, explanations or descriptions
-- Return only valid JSON without markdown formatting
-- DO NOT hallucinate the content of publications
-- DO NOT invent titles, DOIs or publication details
-- DO NOT include any fabricated entries or placeholders
-- If you cannot find any publications, return an empty array: []
+- "publication": the full original publication entry EXACTLY as it appears (including authors, title, and source)
+- "title": only the title of the publication
+- "doi": the DOI if included (starting with "10."), otherwise null
 
-TEXT:
-${chunkText}`;
+Return format:
+[
+  {
+    "publication": "...",
+    "title": "...",
+    "doi": "10.xxxx/xxxxx" or null
+  },
+  ...
+]
+
+Rules:
+- Combine lines that belong to the same publication into one entry.
+- Include all author names, titles, dates, and publication source in the "publication" field.
+- Do NOT add commentary, markdown, bullet points, or extra explanation.
+- Output ONLY valid JSON — no code block markers, no extra characters.
+- Do NOT invent or guess any missing information.
+- If no publications are found, return: []
+
+Example output:
+[
+  {
+    "publication": "Smith J., Doe A. 'Analyzing Policy Impacts on Education'. Education Review Journal, 2021.",
+    "title": "Analyzing Policy Impacts on Education",
+    "doi": null
+  }
+]
+
+Begin your response with the JSON array only.
+`;
 
   try {
     const result = await model.generateContent(prompt);
