@@ -51,7 +51,6 @@ const PUBLICATION_PATTERNS = [
   /^honors?$/i,
   /^employment$/i,
   /^experience$/i,
-  /^appointments?$/i,
   /^activities$/i,
   /^talks$/i,
   /^invited talks$/i,

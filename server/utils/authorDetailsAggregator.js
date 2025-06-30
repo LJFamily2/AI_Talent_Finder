@@ -81,7 +81,7 @@ const getNextBestSource = (
 const aggregateAuthorDetails = async (
   authorIds,
   candidateName,
-  prioritySource = "googleScholar"
+  prioritySource
 ) => {
   const authorDetails = {
     author: {
@@ -102,32 +102,6 @@ const aggregateAuthorDetails = async (
   // Track which sources were successfully verified
   const verifiedSources = {};
 
-  // Collect data from Google Scholar
-  if (authorIds.google_scholar) {
-    try {
-      const googleScholarData = await fetchGoogleScholarAuthor(
-        authorIds.google_scholar
-      );
-
-      // Verify author name match before merging data
-      if (googleScholarData && googleScholarData.author) {
-        const authorName = googleScholarData.author.name;
-
-        // Use strict verification to ensure names match
-        if (strictAuthorNameVerification(candidateName, authorName)) {
-          mergeGoogleScholarData(
-            authorDetails,
-            googleScholarData,
-            prioritySource
-          );
-          verifiedSources.googleScholar = true;
-        }
-      }
-    } catch (error) {
-      console.warn(`Failed to fetch Google Scholar details: ${error.message}`);
-    }
-  }
-
   // Collect data from Scopus
   if (authorIds.scopus) {
     try {
@@ -140,7 +114,7 @@ const aggregateAuthorDetails = async (
 
       // Verify author name match before merging data
       if (scopusAuthorData && scopusAuthorData["author-retrieval-response"]) {
-        const authorProfile = scopusAuthorData["author-retrieval-response"];
+        const authorProfile = scopusAuthorData["author-retrieval-response"][0];
         if (
           authorProfile &&
           authorProfile["author-profile"] &&
@@ -194,6 +168,32 @@ const aggregateAuthorDetails = async (
       }
     } catch (error) {
       console.warn(`Failed to fetch OpenAlex details: ${error.message}`);
+    }
+  }
+
+  // Collect data from Google Scholar
+  if (authorIds.google_scholar) {
+    try {
+      const googleScholarData = await fetchGoogleScholarAuthor(
+        authorIds.google_scholar
+      );
+
+      // Verify author name match before merging data
+      if (googleScholarData && googleScholarData.author) {
+        const authorName = googleScholarData.author.name;
+
+        // Use strict verification to ensure names match
+        if (strictAuthorNameVerification(candidateName, authorName)) {
+          mergeGoogleScholarData(
+            authorDetails,
+            googleScholarData,
+            prioritySource
+          );
+          verifiedSources.googleScholar = true;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch Google Scholar details: ${error.message}`);
     }
   }
 
@@ -462,10 +462,8 @@ const mergeScopusData = (
   prioritySource
 ) => {
   const isPreferredSource = prioritySource === "scopus";
-
   // Parse XML or JSON response based on format
-  const authorProfile =
-    scopusAuthorData["author-retrieval-response"] || scopusAuthorData;
+  const authorProfile = scopusAuthorData["author-retrieval-response"][0];
 
   // Add expertise from Scopus subject areas
   if (
@@ -986,7 +984,7 @@ const mergeOpenAlexData = (
         link = work.doi.startsWith("http")
           ? work.doi
           : `https://doi.org/${work.doi}`;
-      } 
+      }
       // Create article object matching the required structure
       const articleObj = {
         title: work.display_name || work.title,

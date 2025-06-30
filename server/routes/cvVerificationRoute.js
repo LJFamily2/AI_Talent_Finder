@@ -13,9 +13,8 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
   }
 
   try {
-    // Get priority source from request body, default to 'googleScholar'
-    const prioritySource = req.body.prioritySource || "googleScholar";
-    console.log("Priority source:", prioritySource);
+    // Get priority source from request body, default to 'scopus'
+    const prioritySource = req.body.prioritySource || "scopus";
     // Validate priority source
     const validSources = ["googleScholar", "scopus", "openalex"];
     if (!validSources.includes(prioritySource)) {

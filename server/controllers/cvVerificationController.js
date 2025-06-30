@@ -49,14 +49,7 @@ const {
  * @returns {Promise<Object>} Comprehensive verification results
  */
 
-// Main function
-// 1. parse the CV PDF to text
-// 2. extract candidate name using AI
-// 3. extract publications using the Google AI model
-// 4. verify each publication with Google Scholar and Scopus
-// 5. check if candidate name matches publication authors
-// 6. return the results
-const verifyCV = async (file, prioritySource = "googleScholar") => {
+const verifyCV = async (file, prioritySource) => {
   try {
     // Parse PDF to text
     const pdfBuffer = fs.readFileSync(file.path);
@@ -330,7 +323,7 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           aggregatedAuthorDetails = {
             author: rawAuthorDetails.author,
             // articles: rawAuthorDetails.articles,
-            expertise: rawAuthorDetails.expertise,
+            expertises: rawAuthorDetails.expertise,
             metrics: {
               h_index: rawAuthorDetails.h_index,
               documentCount: rawAuthorDetails.documentCount,
@@ -343,17 +336,17 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
       } catch (error) {
         console.error("Failed to aggregate author details:", error.message);
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
-        const match = verificationResults.find(
-          (result) =>
-            result.verification.google_scholar.status === "verified" &&
-            result.authorVerification.hasAuthorMatch &&
-            result.verification.google_scholar.details?.authorDetails
-        );
+        // const match = verificationResults.find(
+        //   (result) =>
+        //     result.verification.google_scholar.status === "verified" &&
+        //     result.authorVerification.hasAuthorMatch &&
+        //     result.verification.google_scholar.details?.authorDetails
+        // );
 
-        if (match?.verification.google_scholar.details?.authorDetails) {
-          aggregatedAuthorDetails =
-            match.verification.google_scholar.details.authorDetails;
-        }
+        // if (match?.verification.google_scholar.details?.authorDetails) {
+        //   aggregatedAuthorDetails =
+        //     match.verification.google_scholar.details.authorDetails;
+        // }
       }
     }
 
