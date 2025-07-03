@@ -55,14 +55,14 @@ const verifyCV = async (file, prioritySource) => {
     const pdfBuffer = fs.readFileSync(file.path);
     const parsedData = await pdfParse(pdfBuffer);
     const cvText = parsedData.text;
-
+    console.log("CV Text:", cvText);
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Initialize Google AI model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemma-3n-e4b-it",
+      model: "gemma-3-27b-it",
       generationConfig: {
         temperature: 0.0,
         topP: 0.0,
@@ -134,7 +134,7 @@ const verifyCV = async (file, prioritySource) => {
           verification: {
             google_scholar: {
               status: scholarResult.status,
-              // details: scholarResult.details,
+              details: scholarResult.details,
             },
             scopus: {
               status: scopusResult.status,

@@ -50,6 +50,7 @@ const PUBLICATION_PATTERNS = [
   /^awards?$/i,
   /^honors?$/i,
   /^employment$/i,
+  /^conference articles$/i,
   /^experience$/i,
   /^activities$/i,
   /^talks$/i,
@@ -60,13 +61,16 @@ const PUBLICATION_PATTERNS = [
   /^Workshop Papers and Technical Reports$/i,
   /^Thesis$/i,
   /^PATENTS$/i,
+  /^journal articles$/i,
+  /^(19|20)[0-9]{2}$/i, // Add standalone year as a publication section pattern
+  /^(19|20)[0-9]{2} Publications$/i, // Add "YEAR Publications" as a pattern
 ];
 
 /**
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 4000;
+const MAX_CHUNK_SIZE = 6000;
 
 /**
  * Similarity threshold for duplicate publication detection
@@ -139,6 +143,12 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
  */
 const extractPublicationsFromCV = async (model, cvText) => {
+  // Fast path for small CVs - process the entire text directly if under the chunk size limit
+  if (cvText.length < MAX_CHUNK_SIZE) {
+    return await extractPublicationsFromChunk(model, cvText);
+  }
+
+  // Original implementation for larger CVs follows
   // Step 1: Parse CV text into lines
   const lines = cvText
     .split(/\n+/)
@@ -152,7 +162,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
         line.length > 3 && // Ensure line is long enough to be a header
         !/^[A-Z]\.$/.test(line) && // Exclude single uppercase letters (e.g., initials)
         !/^\d+\.?$/.test(line)) || // Exclude numbered lines
-      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line))
+      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
+      /^(19|20)[0-9]{2}$/i.test(line) // Add this line to detect standalone years as section headers
     ) {
       sectionHeaders.push({ index: i, text: line });
     }
@@ -167,7 +178,8 @@ const extractPublicationsFromCV = async (model, cvText) => {
     const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
     if (
       PUBLICATION_PATTERNS.some((pattern) => pattern.test(header.text)) ||
-      /publications|papers|manuscripts|reports/i.test(header.text)
+      /publications|papers|manuscripts|reports/i.test(header.text) ||
+      /^(19|20)[0-9]{2}$/i.test(header.text)
     ) {
       publicationSections.push({
         header: header.text,
@@ -176,21 +188,40 @@ const extractPublicationsFromCV = async (model, cvText) => {
     }
   }
   if (publicationSections.length === 0) {
-    // If no sections found, look for entries with common publication patterns
+    // Expanded pattern matching for publications
     const pubEntries = lines.filter(
       (line) =>
         /^\[\w+\]/.test(line) || // [1], [P1], etc.
         /^[0-9]+\./.test(line) || // Numbered entries
-        /(19|20)[0-9]{2}/.test(line) // Contains a year
+        /(19|20)[0-9]{2}/.test(line) || // Contains a year
+        /et al\./i.test(line) || // Contains et al.
+        /journal|conference|proceedings/i.test(line) || // Publication venues
+        /In .+edited by|Press|Publisher/i.test(line) // Book identifiers
     );
 
+    // Create smaller chunks of publications if there are many
     if (pubEntries.length > 0) {
-      publicationSections.push({
-        header: "Publications",
-        content: pubEntries.join("\n"),
-      });
+      // Group entries into smaller chunks to avoid AI processing limits
+      const chunkSize = 50; // Process 50 publications at a time
+      for (let i = 0; i < pubEntries.length; i += chunkSize) {
+        publicationSections.push({
+          header: `Publications (Group ${Math.floor(i / chunkSize) + 1})`,
+          content: pubEntries.slice(i, i + chunkSize).join("\n"),
+        });
+      }
     }
-  } // Process each section in chunks
+  }
+
+  console.log(`Found ${publicationSections.length} publication sections`);
+  publicationSections.forEach((section, index) => {
+    console.log(
+      `Section ${index + 1}: ${section.header} (${
+        section.content.length
+      } chars)`
+    );
+  });
+
+  // Process each section in chunks
   const allPublications = [];
 
   for (
@@ -206,19 +237,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
 
     // Analyze content for potential publication entries
     const contentLines = section.content.split("\n");
-    const potentialPubLines = contentLines.filter((line) => {
-      return (
-        /^\[\w+\]/.test(line) || // [1], [P1], etc.
-        /^[0-9]+\./.test(line) || // Numbered entries
-        /(19|20)[0-9]{2}/.test(line) || // Contains a year
-        /et al\./i.test(line) || // Contains et al.
-        /journal|conference|proceedings/i.test(line) || // Contains publication venues
-        /In .+edited by|Faber|Press|Publisher|University Press/i.test(line) || // Book identifiers
-        /^".*"/.test(line) || // Titles in quotes
-        /review of|dissertation|thesis/i.test(line) || // Reviews and theses
-        /technical report|tr[- ]?\d+/i.test(line) // Technical reports
-      );
-    });
+
     // Split section into chunks if needed
     if (section.content.length > MAX_CHUNK_SIZE) {
       const chunks = [];
