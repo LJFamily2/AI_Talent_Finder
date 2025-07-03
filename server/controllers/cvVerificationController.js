@@ -55,7 +55,6 @@ const verifyCV = async (file, prioritySource) => {
     const pdfBuffer = fs.readFileSync(file.path);
     const parsedData = await pdfParse(pdfBuffer);
     const cvText = parsedData.text;
-    console.log("CV Text:", cvText);
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 

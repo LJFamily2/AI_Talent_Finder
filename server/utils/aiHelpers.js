@@ -33,6 +33,7 @@ const PUBLICATION_PATTERNS = [
   /^publications?$/i,
   /^policy publications?$/i,
   /^selected publications$/i,
+  /^conference presentations$/i,
   /^journal (articles|publications)$/i,
   /^conference (papers|publications)$/i,
   /^peer[- ]?reviewed publications$/i,
@@ -47,14 +48,9 @@ const PUBLICATION_PATTERNS = [
   /^scholarly publications$/i,
   /^papers$/i,
   /^articles$/i,
-  /^awards?$/i,
-  /^honors?$/i,
-  /^employment$/i,
   /^conference articles$/i,
   /^experience$/i,
   /^activities$/i,
-  /^talks$/i,
-  /^invited talks$/i,
   /^conferences?$/i,
   /^White House Reports$/i,
   /^Policy-related Publications and Reports$/i,
@@ -64,6 +60,17 @@ const PUBLICATION_PATTERNS = [
   /^journal articles$/i,
   /^(19|20)[0-9]{2}$/i, // Add standalone year as a publication section pattern
   /^(19|20)[0-9]{2} Publications$/i, // Add "YEAR Publications" as a pattern
+  /^publications? and presentations?$/i,
+  /^authored publications?$/i,
+  /^selected publications? and presentations?$/i,
+  /^recent publications?$/i,
+  /^refereed publications?$/i,
+  /^conference proceedings?$/i,
+  /^published abstracts?$/i,
+  /^invited publications?$/i,
+  /^works in (progress|preparation)$/i,
+  /^academic publications?$/i,
+  /^scientific publications?$/i,
 ];
 
 /**
@@ -157,13 +164,32 @@ const extractPublicationsFromCV = async (model, cvText) => {
   const sectionHeaders = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // Skip phone numbers
+    if (/^\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(line)) {
+      continue;
+    }
+
+    // Skip standalone years when they appear in contact info section (near top)
     if (
-      (line === line.toUpperCase() && // Check if line is all uppercase
-        line.length > 3 && // Ensure line is long enough to be a header
-        !/^[A-Z]\.$/.test(line) && // Exclude single uppercase letters (e.g., initials)
-        !/^\d+\.?$/.test(line)) || // Exclude numbered lines
+      /^(19|20)[0-9]{2}$/i.test(line) &&
+      i < 30 &&
+      !PUBLICATION_PATTERNS.some((p) => p.test(line))
+    ) {
+      continue;
+    }
+
+    if (
+      (line === line.toUpperCase() &&
+        line.length > 3 &&
+        !/^[A-Z]\.$/.test(line) &&
+        !/^\d+\.?$/.test(line) &&
+        // Additional filtering for common non-header uppercase items
+        !/^[A-Z\s\.\,]+\s+\d+$/.test(line) && // Filter "PAGE 1" type headers
+        !/^PG\.\s*\d+$/.test(line)) || // Filter "PG. 3" type headers
       PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-      /^(19|20)[0-9]{2}$/i.test(line) // Add this line to detect standalone years as section headers
+      // Only consider years as section headers when they appear in publication sections
+      (/^(19|20)[0-9]{2}$/i.test(line) && i > 100)
     ) {
       sectionHeaders.push({ index: i, text: line });
     }
@@ -212,14 +238,14 @@ const extractPublicationsFromCV = async (model, cvText) => {
     }
   }
 
-  console.log(`Found ${publicationSections.length} publication sections`);
-  publicationSections.forEach((section, index) => {
-    console.log(
-      `Section ${index + 1}: ${section.header} (${
-        section.content.length
-      } chars)`
-    );
-  });
+  // console.log(`Found ${publicationSections.length} publication sections`);
+  // publicationSections.forEach((section, index) => {
+  //   console.log(
+  //     `Section ${index + 1}: ${section.header} (${
+  //       section.content.length
+  //     } chars)`
+  //   );
+  // });
 
   // Process each section in chunks
   const allPublications = [];
