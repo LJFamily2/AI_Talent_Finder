@@ -4,7 +4,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 const routes = require("../routes");
-const cvVerificationRoutes = require("../routes/cvVerification");
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, "../.env") });

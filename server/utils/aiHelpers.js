@@ -30,25 +30,36 @@ const { getTitleSimilarity } = require("./textUtils");
  * @constant {RegExp[]}
  */
 const PUBLICATION_PATTERNS = [
-  /publications?$/i,
-  /selected publications/i,
-  /journal (?:articles|publications)/i,
-  /conference (?:papers|publications)/i,
-  /peer[- ]reviewed publications/i,
-  /in-progress manuscripts/i,
-  /peer-reviewed publications/i,
-  /policy-related publications/i,
-  /workshop papers/i,
-  /technical reports/i,
-  /book chapters/i,
-  /book reviews/i,
-  /research publications/i,
-  /policy-related publications and reports/i,
-  /workshop papers and technical reports/i,
-  /articles/i,
-  /published works/i,
-  /scholarly publications/i,
-  /papers/i,
+  /^publications?$/i,
+  /^policy publications?$/i,
+  /^selected publications$/i,
+  /^journal (articles|publications)$/i,
+  /^conference (papers|publications)$/i,
+  /^peer[- ]?reviewed publications$/i,
+  /^in-progress manuscripts$/i,
+  /^policy-related publications$/i,
+  /^workshop papers$/i,
+  /^technical reports$/i,
+  /^book chapters$/i,
+  /^book reviews$/i,
+  /^research publications$/i,
+  /^published works$/i,
+  /^scholarly publications$/i,
+  /^papers$/i,
+  /^articles$/i,
+  /^awards?$/i,
+  /^honors?$/i,
+  /^employment$/i,
+  /^experience$/i,
+  /^activities$/i,
+  /^talks$/i,
+  /^invited talks$/i,
+  /^conferences?$/i,
+  /^White House Reports$/i,
+  /^Policy-related Publications and Reports$/i,
+  /^Workshop Papers and Technical Reports$/i,
+  /^Thesis$/i,
+  /^PATENTS$/i,
 ];
 
 /**
@@ -76,12 +87,6 @@ const DUPLICATE_SIMILARITY_THRESHOLD = 90;
  * @param {Object} model - Google Generative AI model instance
  * @param {string} cvText - The full CV text content
  * @returns {Promise<string|null>} The candidate's full name or null if not found
- *
- * @example
- * const candidateName = await extractCandidateNameWithAI(model, cvText);
- * if (candidateName) {
- *   console.log(`Processing CV for: ${candidateName}`);
- * }
  */
 async function extractCandidateNameWithAI(model, cvText) {
   const prompt = `You are an expert CV analyzer.
@@ -132,11 +137,6 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @param {Object} model - Google Generative AI model instance
  * @param {string} cvText - The full CV text content
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
- *
- * @example
- * const publications = await extractPublicationsFromCV(model, cvText);
- * console.log(`Found ${publications.length} publications`);
- * publications.forEach(pub => console.log(pub.title));
  */
 const extractPublicationsFromCV = async (model, cvText) => {
   // Step 1: Parse CV text into lines
@@ -148,24 +148,15 @@ const extractPublicationsFromCV = async (model, cvText) => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (
-      (line === line.toUpperCase() &&
-        line.length > 3 &&
-        !/^\d+\.?$/.test(line)) ||
+      (line === line.toUpperCase() && // Check if line is all uppercase
+        line.length > 3 && // Ensure line is long enough to be a header
+        !/^[A-Z]\.$/.test(line) && // Exclude single uppercase letters (e.g., initials)
+        !/^\d+\.?$/.test(line)) || // Exclude numbered lines
       PUBLICATION_PATTERNS.some((pattern) => pattern.test(line))
     ) {
       sectionHeaders.push({ index: i, text: line });
     }
   }
-
-  console.log(
-    `[Section Detection] Found ${sectionHeaders.length} potential section headers:`
-  );
-  sectionHeaders.forEach((header, idx) => {
-    console.log(
-      `[Section Detection]   ${idx + 1}. Line ${header.index}: "${header.text}"`
-    );
-  });
-
   // Step 3: Extract content from identified publication sections
   const publicationSections = [];
   for (let i = 0; i < sectionHeaders.length; i++) {
@@ -200,9 +191,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     }
   } // Process each section in chunks
-  console.log(
-    `[Section Processing] Starting to process ${publicationSections.length} publication sections...`
-  );
   const allPublications = [];
 
   for (
@@ -211,11 +199,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
     sectionIndex++
   ) {
     const section = publicationSections[sectionIndex];
-    console.log(
-      `[Section ${sectionIndex + 1}] Processing: "${section.header}" (${
-        section.content.length
-      } chars)`
-    );
+
+    if (section.content.length === 0) {
+      continue; // Skip to the next section
+    }
 
     // Analyze content for potential publication entries
     const contentLines = section.content.split("\n");
@@ -232,17 +219,11 @@ const extractPublicationsFromCV = async (model, cvText) => {
         /technical report|tr[- ]?\d+/i.test(line) // Technical reports
       );
     });
-    console.log(
-      `[Section ${sectionIndex + 1}] Found ${
-        potentialPubLines.length
-      } lines that look like publications`
-    ); // Split section into chunks if needed
+    // Split section into chunks if needed
     if (section.content.length > MAX_CHUNK_SIZE) {
-      console.log(`[Section ${sectionIndex + 1}] Splitting into chunks...`);
-
       const chunks = [];
-      let currentChunk = section.header + "\n\n";
-      let currentSize = currentChunk.length;
+      let currentChunk = "";
+      let currentSize = 0;
 
       // Split at logical boundaries (lines)
       for (const line of contentLines) {
@@ -250,20 +231,16 @@ const extractPublicationsFromCV = async (model, cvText) => {
           currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
           currentChunk.length > 0
         ) {
-          chunks.push(currentChunk);
-          currentChunk = section.header + " (continued)\n\n";
-          currentSize = currentChunk.length;
+          chunks.push(currentChunk.trim()); // Trim trailing newline
+          currentChunk = ""; // Start new chunk
+          currentSize = 0;
         }
         currentChunk += line + "\n";
         currentSize += line.length + 1;
       }
       if (currentChunk.length > 0) {
-        chunks.push(currentChunk);
+        chunks.push(currentChunk.trim()); // Trim trailing newline
       }
-
-      console.log(
-        `[Section ${sectionIndex + 1}] Processing ${chunks.length} chunks...`
-      );
 
       // Process chunks in parallel for better performance
       const chunkResults = await Promise.all(
@@ -275,39 +252,20 @@ const extractPublicationsFromCV = async (model, cvText) => {
         allPublications.push(...chunkPubs);
       });
     } else {
-      // Process entire section
-      const sectionText = `${section.header}\n\n${section.content}`;
-      console.log(
-        `[Section ${sectionIndex + 1}] Processing entire section (${
-          sectionText.length
-        } chars)...`
-      );
-
+      // Process the entire section as a single chunk
       const sectionPubs = await extractPublicationsFromChunk(
         model,
-        sectionText
+        section.content
       );
       allPublications.push(...sectionPubs);
     }
-
-    console.log(
-      `[Section ${
-        sectionIndex + 1
-      }] Section processing complete. Total publications so far: ${
-        allPublications.length
-      }`
-    );
   }
   // Remove duplicates (based on title similarity) and validate publications
-  console.log(
-    `[Filtering] Total publications before filtering: ${allPublications.length}`
-  );
   const uniquePublications = [];
   let filteredCount = 0;
 
   for (const pub of allPublications) {
     if (!pub.title) {
-      console.log(`[Filtering] Filtered out publication without title`);
       filteredCount++;
       continue;
     } // Additional validation to filter out fabricated publications
@@ -316,7 +274,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       (/et al\./.test(pub.publication) &&
         !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
     ) {
-      console.log(`[Filtering] Filtered out fabricated: "${pub.title}"`);
       filteredCount++;
       continue;
     } // Check if title has reasonable length and not generic words
@@ -332,9 +289,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
         "i"
       );
       if (!titleInText.test(cvText)) {
-        console.log(
-          `[Filtering] Filtered out generic title not in text: "${pub.title}"`
-        );
         filteredCount++;
         continue;
       }
@@ -348,14 +302,10 @@ const extractPublicationsFromCV = async (model, cvText) => {
     if (!isDuplicate) {
       uniquePublications.push(pub);
     } else {
-      console.log(`[Filtering] Filtered out duplicate: "${pub.title}"`);
       filteredCount++;
     }
   }
 
-  console.log(
-    `[Filtering] Filtered out ${filteredCount} publications, ${uniquePublications.length} remain`
-  );
   return uniquePublications;
 };
 
@@ -376,59 +326,52 @@ const extractPublicationsFromCV = async (model, cvText) => {
  *
  * @private
  */
-async function extractPublicationsFromChunk(
-  model,
-  chunkText,
-  isFallback = false
-) {
-  console.log(`[AI Processing] Processing chunk (${chunkText.length} chars)`);
-
+async function extractPublicationsFromChunk(model, chunkText) {
   // Create a more specific prompt with strong anti-hallucination instructions
-  let prompt = `You are an expert academic CV analyzer focusing on publications.
-From the text below, extract EVERY publication that appears in the text. BE CONCISE in your extraction.
+  let prompt = `${chunkText}
 
-Each publication must be returned as an object inside a JSON array with these fields:
-- "publication": the full original text of the publication entry EXACTLY as it appears
-- "title": just the title of the publication
-- "doi": the DOI if written (starts with 10.), otherwise null
+You are an expert academic CV analyzer focusing on extracting publication records.
 
-Format: [{"publication": "...", "title": "...", "doi": null}]
-Example:
-[{"publication": "Smith, J. (2020). A Study on AI. Journal of AI Research, 10(2), 123-456. https://doi.org/10.1234/abcd", "title": "A Study on AI", "doi": "10.1234/abcd"}]
-Example input text:
-"First Title Here." Journal A, 2021.
-"Second Different Title." Journal B, 2022.
+From the text above, extract EVERY publication that appears. Your task is to output a structured JSON array, where each object contains:
+
+- "publication": the full original publication entry EXACTLY as it appears (including authors, title, and source)
+- "title": only the title of the publication
+- "doi": the DOI if included (starting with "10."), otherwise null
+
+Return format:
+[
+  {
+    "publication": "...",
+    "title": "...",
+    "doi": "10.xxxx/xxxxx" or null
+  },
+  ...
+]
+
+Rules:
+- Combine lines that belong to the same publication into one entry.
+- Include all author names, titles, dates, and publication source in the "publication" field.
+- Do NOT add commentary, markdown, bullet points, or extra explanation.
+- Output ONLY valid JSON — no code block markers, no extra characters.
+- Do NOT invent or guess any missing information.
+- If no publications are found, return: []
 
 Example output:
 [
   {
-    "publication": "'First Title Here.' Journal A, 2021.",
-    "title": "First Title Here",
-    "doi": null
-  },
-  {
-    "publication": "'Second Different Title.' Journal B, 2022.",
-    "title": "Second Different Title",
+    "publication": "Smith J., Doe A. 'Analyzing Policy Impacts on Education'. Education Review Journal, 2021.",
+    "title": "Analyzing Policy Impacts on Education",
     "doi": null
   }
 ]
 
-IMPORTANT RULES:
-- Extract EVERY publication in the text (there are multiple)
-- Be EXTREMELY CONCISE - only include essential text in the "publication" field
-- Return VALID JSON that can be parsed without errors
-- DO NOT include long quotes, explanations or descriptions
-- Return only valid JSON without markdown formatting
-- Publications may be numbered like [1], [P1], [TR1] or bulleted or unnumbered
-
-TEXT:
-${chunkText}`;
+Begin your response with the JSON array only.
+`;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    console.log(`[AI Processing] Received response (${text.length} chars)`); // Parse and clean the response
     let cleanedText = text
       .trim()
       .replace(/```json|```/g, "")
@@ -457,9 +400,7 @@ ${chunkText}`;
         }
       });
 
-      console.log(
-        `[AI Processing] Extracted ${publications.length} publications`
-      ); // Filter out obviously fabricated entries
+      // Filter out obviously fabricated entries
       const filteredPublications = publications.filter((pub) => {
         return (
           pub.publication &&
@@ -471,8 +412,6 @@ ${chunkText}`;
       });
       return filteredPublications;
     } catch (e) {
-      console.log(`[AI Processing] JSON parsing failed: ${e.message}`);
-
       // Add recovery attempt for common JSON issues
       try {
         // Try to repair broken JSON by more aggressive cleaning
@@ -497,10 +436,6 @@ ${chunkText}`;
           }
         });
 
-        console.log(
-          `[AI Processing] Recovered with ${publications.length} publications`
-        );
-
         // Filter out obviously fabricated entries
         const filteredPublications = publications.filter((pub) => {
           return (
@@ -514,9 +449,6 @@ ${chunkText}`;
 
         return filteredPublications;
       } catch (recoveryError) {
-        console.log(
-          `[AI Processing] Recovery failed: ${recoveryError.message}`
-        );
         return [];
       }
     }
