@@ -20,58 +20,24 @@
  */
 
 const { getTitleSimilarity } = require("./textUtils");
+const { SimpleHeaderClassifier } = require("./simpleHeaderClassifier");
+const { PUBLICATION_PATTERNS } = require("./constants");
+const path = require("path");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
 //=============================================================================
 
-/**
- * Patterns for identifying academic publication sections in CVs
- * @constant {RegExp[]}
- */
-const PUBLICATION_PATTERNS = [
-  /^publications?$/i,
-  /^policy publications?$/i,
-  /^selected publications$/i,
-  /^conference presentations$/i,
-  /^journal (articles|publications)$/i,
-  /^conference (papers|publications)$/i,
-  /^peer[- ]?reviewed publications$/i,
-  /^in-progress manuscripts$/i,
-  /^policy-related publications$/i,
-  /^workshop papers$/i,
-  /^technical reports$/i,
-  /^book chapters$/i,
-  /^book reviews$/i,
-  /^research publications$/i,
-  /^published works$/i,
-  /^scholarly publications$/i,
-  /^papers$/i,
-  /^articles$/i,
-  /^conference articles$/i,
-  /^experience$/i,
-  /^activities$/i,
-  /^conferences?$/i,
-  /^White House Reports$/i,
-  /^Policy-related Publications and Reports$/i,
-  /^Workshop Papers and Technical Reports$/i,
-  /^Thesis$/i,
-  /^PATENTS$/i,
-  /^journal articles$/i,
-  /^(19|20)[0-9]{2}$/i, // Add standalone year as a publication section pattern
-  /^(19|20)[0-9]{2} Publications$/i, // Add "YEAR Publications" as a pattern
-  /^publications? and presentations?$/i,
-  /^authored publications?$/i,
-  /^selected publications? and presentations?$/i,
-  /^recent publications?$/i,
-  /^refereed publications?$/i,
-  /^conference proceedings?$/i,
-  /^published abstracts?$/i,
-  /^invited publications?$/i,
-  /^works in (progress|preparation)$/i,
-  /^academic publications?$/i,
-  /^scientific publications?$/i,
-];
+// Initialize header classifier
+let headerClassifier = null;
+try {
+  headerClassifier = new SimpleHeaderClassifier();
+  headerClassifier.load(
+    path.join(__dirname, "../models/header_classifier.json")
+  );
+} catch (error) {
+  console.warn("Could not load header classifier model:", error.message);
+}
 
 /**
  * Maximum size for text chunks when processing with AI
@@ -151,9 +117,9 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  */
 const extractPublicationsFromCV = async (model, cvText) => {
   // Fast path for small CVs - process the entire text directly if under the chunk size limit
-  if (cvText.length < MAX_CHUNK_SIZE) {
-    return await extractPublicationsFromChunk(model, cvText);
-  }
+  // if (cvText.length < MAX_CHUNK_SIZE) {
+  //   return await extractPublicationsFromChunk(model, cvText);
+  // }
 
   // Original implementation for larger CVs follows
   // Step 1: Parse CV text into lines
@@ -161,6 +127,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean); // Step 2: Identify potential publication section headers (not individual publications)
+  // Step 2: Identify potential publication section headers (not individual publications)
   const sectionHeaders = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -179,24 +146,47 @@ const extractPublicationsFromCV = async (model, cvText) => {
       continue;
     }
 
-    if (
-      (line === line.toUpperCase() &&
-        line.length > 3 &&
-        !/^[A-Z]\.$/.test(line) &&
-        !/^\d+\.?$/.test(line) &&
-        // Additional filtering for common non-header uppercase items
-        !/^[A-Z\s\.\,]+\s+\d+$/.test(line) && // Filter "PAGE 1" type headers
-        !/^PG\.\s*\d+$/.test(line)) || // Filter "PG. 3" type headers
-      PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-      // Only consider years as section headers when they appear in publication sections
-      (/^(19|20)[0-9]{2}$/i.test(line) && i > 100)
-    ) {
+    // Try ML model first, fall back to regex rules
+    let isHeader = false;
+
+    if (headerClassifier && headerClassifier.trained) {
+      try {
+        isHeader = headerClassifier.predict(line, i, lines.length);
+        console.log(`[ML Header] Line ${i + 1}: "${line}" => ${isHeader ? "HEADER" : "not header"}`);
+      } catch (error) {
+        console.warn("Error using ML header detection:", error.message);
+        // Fall back to regex rules
+        isHeader =
+          (line === line.toUpperCase() &&
+            line.length > 3 &&
+            !/^[A-Z]\.$/.test(line) &&
+            !/^\d+\.?$/.test(line) &&
+            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
+            !/^PG\.\s*\d+$/.test(line)) ||
+          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
+          (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+      }
+    } else {
+      // Use existing regex rules
+      isHeader =
+        (line === line.toUpperCase() &&
+          line.length > 3 &&
+          !/^[A-Z]\.$/.test(line) &&
+          !/^\d+\.?$/.test(line) &&
+          !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
+          !/^PG\.\s*\d+$/.test(line)) ||
+        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
+        (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+    }
+
+    if (isHeader) {
       sectionHeaders.push({ index: i, text: line });
     }
   }
   // Step 3: Extract content from identified publication sections
   const publicationSections = [];
   for (let i = 0; i < sectionHeaders.length; i++) {
+    console.log(`Processing section header ${i + 1}: "${sectionHeaders[i].text}"`);
     const header = sectionHeaders[i];
     const nextHeader = sectionHeaders[i + 1];
 
@@ -238,14 +228,14 @@ const extractPublicationsFromCV = async (model, cvText) => {
     }
   }
 
-  // console.log(`Found ${publicationSections.length} publication sections`);
-  // publicationSections.forEach((section, index) => {
-  //   console.log(
-  //     `Section ${index + 1}: ${section.header} (${
-  //       section.content.length
-  //     } chars)`
-  //   );
-  // });
+  console.log(`Found ${publicationSections.length} publication sections`);
+  publicationSections.forEach((section, index) => {
+    console.log(
+      `Section ${index + 1}: ${section.header} (${
+        section.content.length
+      } chars)`
+    );
+  });
 
   // Process each section in chunks
   const allPublications = [];
@@ -351,8 +341,89 @@ const extractPublicationsFromCV = async (model, cvText) => {
     }
   }
 
+  console.log(uniquePublications.length, "unique publications found");
+
   return uniquePublications;
 };
+
+//=============================================================================
+// HEADER EXTRACTION FUNCTIONALITY
+//=============================================================================
+
+/**
+ * Extract all headers from CV text using ML-based header detection
+ * @param {string} cvText - The CV text to analyze
+ * @returns {Array<Object>} Array of header objects with text and line number
+ */
+function extractHeadersFromText(cvText) {
+  // Parse CV text into lines
+  const lines = cvText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const headers = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip phone numbers
+    if (/^\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(line)) {
+      continue;
+    }
+
+    // Skip standalone years when they appear in contact info section (near top)
+    if (
+      /^(19|20)[0-9]{2}$/i.test(line) &&
+      i < 30 &&
+      !PUBLICATION_PATTERNS.some((p) => p.test(line))
+    ) {
+      continue;
+    }
+
+    // Try ML model first, fall back to regex rules
+    let isHeader = false;
+
+    if (headerClassifier && headerClassifier.trained) {
+      try {
+        isHeader = headerClassifier.predict(line, i, lines.length);
+      } catch (error) {
+        console.warn("Error using ML header detection:", error.message);
+        // Fall back to regex rules
+        isHeader =
+          (line === line.toUpperCase() &&
+            line.length > 3 &&
+            !/^[A-Z]\.$/.test(line) &&
+            !/^\d+\.?$/.test(line) &&
+            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
+            !/^PG\.\s*\d+$/.test(line)) ||
+          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
+          (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+      }
+    } else {
+      // Use existing regex rules
+      isHeader =
+        (line === line.toUpperCase() &&
+          line.length > 3 &&
+          !/^[A-Z]\.$/.test(line) &&
+          !/^\d+\.?$/.test(line) &&
+          !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
+          !/^PG\.\s*\d+$/.test(line)) ||
+        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
+        (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+    }
+
+    if (isHeader) {
+      headers.push({
+        text: line,
+        lineNumber: i + 1,
+        index: i,
+      });
+    }
+  }
+
+  return headers;
+}
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -513,4 +584,5 @@ Begin your response with the JSON array only.
 module.exports = {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
+  extractHeadersFromText,
 };

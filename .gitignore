@@ -30,3 +30,5 @@
 *.swo
 .DS_Store
 Thumbs.db
+
+**/data/training/cvs/
