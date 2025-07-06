@@ -24,18 +24,19 @@ class HeaderClassifier {
       text: line,
       features: {
         isAllUpperCase: line === line.toUpperCase(),
-        startsWithNumber: /^\d+\./.test(line),
-        containsYear: /\b(19|20)\d{2}\b/.test(line),
-        length: line.length,
-        positionRatio: lineIndex / totalLines,
+        startsWithNumberOrBracket: /^\s*(\[\w+\]|\d+\.)/.test(line),
         wordCount: line.split(/\s+/).length,
+        length: line.length,
+        endsWithPeriodOrPercent: /[\.%)]\s*$/.test(line),
+        isShort: line.trim().length < 5,
+        matchesPublicationPattern: PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)),
         hasColon: line.includes(":"),
-        matchesPublicationPattern: PUBLICATION_PATTERNS.some((pattern) =>
-          pattern.test(line)
-        ),
-        precedingBlankLine: false, // Will be set during processing
-        followingBlankLine: false, // Will be set during processing
-        indentationLevel: line.search(/\S/), // Number of leading spaces
+        containsYear: /\b(19|20)\d{2}\b/.test(line),
+        positionRatio: lineIndex / totalLines,
+        // These require context, set to false here, but can be set in your generator
+        precedingBlankLine: false,
+        followingBlankLine: false,
+        indentationLevel: line.search(/\S/),
       },
     };
   }

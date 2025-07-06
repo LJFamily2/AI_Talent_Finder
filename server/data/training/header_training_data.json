@@ -677,7 +677,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "Books",
@@ -728,7 +728,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "“Livy and the Pax Deum,” Modern Philology 111, no. 2 (April 2016): 170–193.",
@@ -915,7 +915,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "2018, The Limits of an Institution, International Conference, Universidad",
@@ -2389,7 +2389,7 @@
       "positionRatio": 0.4722222222222222,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -3290,7 +3290,7 @@
       "positionRatio": 0.8402777777777778,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -3409,7 +3409,7 @@
       "positionRatio": 0.8888888888888888,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -4735,7 +4735,7 @@
       "positionRatio": 0.8857142857142857,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -4944,7 +4944,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "aperez@smith.edu",
@@ -4978,7 +4978,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Smith College, Northampton, MA",
@@ -5165,7 +5165,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Smith College, Northampton, MA",
@@ -5488,7 +5488,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Phi Beta Kappa (elected as a junior), 2018",
@@ -5556,7 +5556,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "“Women and Debate: An Analysis of Gender Differences in Discussion.”",
@@ -5692,7 +5692,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "American Psychological Association",
@@ -5743,7 +5743,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Photoshop, SPSS, SAS, Microsoft Word, Access, Excel, PowerPoint",
@@ -5794,7 +5794,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Smith College, Northampton, MA",
@@ -7528,7 +7528,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "[WH]The  White  House  Office  of  Science  and  Technology  Policy.   Blueprint  for  an  AI  Bill  of  Rights:",
@@ -7664,7 +7664,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "[M1]Seung Hyun Cheon, Anneke Wernerfelt, Sorelle A. Friedler, Berk Ustun.  Feature Responsiveness",
@@ -7919,7 +7919,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "[1]Yaaseen Mahomed, Charlie Crawford*, Sanjana Gautam, Sorelle A. Friedler, Dana",
@@ -9755,7 +9755,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "[P1]Sorelle Friedler and Brian J. Chen. Response to OMB’s Artificial Intelligence Draft Memorandum.",
@@ -10078,7 +10078,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "[TR1]Venkateswaran Shekar, Vincent Yu, Benjamin J Garcia, David Benjamin Gordon, Gemma E Moran,",
@@ -11676,7 +11676,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Sorelle A. Friedler.  Review of Pioneering Women in American Mathematics:  the Pre-1940 PhD’s",
@@ -11761,7 +11761,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "Sorelle Alaina Friedler, Mohammed Waleed Kadous, Andrew Lookingbill.Position indication con-",
@@ -20278,7 +20278,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "Books",
@@ -20329,7 +20329,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "“Livy and the Pax Deum,” Modern Philology 111, no. 2 (April 2016): 170–193.",
@@ -20516,7 +20516,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "2018, The Limits of an Institution, International Conference, Universidad",
@@ -21990,7 +21990,7 @@
       "positionRatio": 0.4722222222222222,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -22891,7 +22891,7 @@
       "positionRatio": 0.8402777777777778,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -23010,7 +23010,7 @@
       "positionRatio": 0.8888888888888888,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -23452,7 +23452,7 @@
       "positionRatio": 0.05235602094240838,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -23486,7 +23486,7 @@
       "positionRatio": 0.06282722513089005,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -23809,7 +23809,7 @@
       "positionRatio": 0.16230366492146597,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -23877,7 +23877,7 @@
       "positionRatio": 0.18324607329842932,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -25186,7 +25186,7 @@
       "positionRatio": 0.5863874345549738,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -25820,7 +25820,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Joseph, E.R., LeBlanc, R., Kline, N.J., Bliss, E.A., and Schmidt, T.J. (2015).  Central actions of serotonin across",
@@ -26874,7 +26874,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Priem, J. (2015, July 6). Altmetrics: A chapter from Beyond Bibliometrics: Harnessing",
@@ -28081,7 +28081,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Kyle JE, Mehta P, Rodriguez M, Li S, Chen Y. “Lipidomic Insights into Glioblastoma Cell",
@@ -28812,7 +28812,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "Journal Articles",
@@ -28829,7 +28829,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "• Zhang, L.; Yang, Y.; Zhou, Y.; Wang, Z.; Ding, J.; Wu, J. (2023). JCAD",
@@ -30286,7 +30286,7 @@
       "positionRatio": 0.5327868852459017,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -30830,7 +30830,7 @@
       "positionRatio": 0.7950819672131147,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -30903,7 +30903,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "K.V. Thomas, J.M. O’Reilly, S. Kopp, and E.T. Johannson. The Proteasome and its Transcription Factor Substrate",
@@ -31833,7 +31833,7 @@
       "positionRatio": 0.2251655629139073,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -31867,7 +31867,7 @@
       "positionRatio": 0.23841059602649006,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -31889,7 +31889,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "“Selection Problems in Scholarship on Ethnicity and Conflict Onset: Evidence from Uganda.”",
@@ -33431,7 +33431,7 @@
       "positionRatio": 0.847682119205298,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -34490,7 +34490,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "Books",
@@ -34507,7 +34507,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "The Rustle of Language. New York: Hill and Wang, 2018.",
@@ -34575,7 +34575,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "\"Difficulties with Girls.\" In Philip Larkin, edited by Stephen Regan. Houndmills,",
@@ -34655,7 +34655,7 @@
       "positionRatio": 0.5104166666666666,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -34677,7 +34677,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "“Livy and the Pax Deum,” Modern Philology 111, no. 2 (April 2016): 170–193.",
@@ -34847,7 +34847,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "“The Prophet of Dystopia.” New Yorker, April 17, 2017.",
@@ -35136,7 +35136,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "2018, The Limits of an Institution, International Conference, Universidad",
@@ -35850,7 +35850,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "consistently generate quality innovative research solutions from earth science projects that may",
@@ -35952,7 +35952,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Featured",
@@ -36083,12 +36083,12 @@
       "positionRatio": 0.148,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -36168,12 +36168,12 @@
       "positionRatio": 0.168,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -36253,12 +36253,12 @@
       "positionRatio": 0.188,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -36355,12 +36355,12 @@
       "positionRatio": 0.212,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Conference Articles (Research)",
@@ -36542,12 +36542,12 @@
       "positionRatio": 0.256,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -36695,12 +36695,12 @@
       "positionRatio": 0.292,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -36831,12 +36831,12 @@
       "positionRatio": 0.324,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -37188,12 +37188,12 @@
       "positionRatio": 0.408,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -37341,12 +37341,12 @@
       "positionRatio": 0.444,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -37630,12 +37630,12 @@
       "positionRatio": 0.512,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -37754,7 +37754,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Conference Articles (Research)",
@@ -37817,12 +37817,12 @@
       "positionRatio": 0.556,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -38021,12 +38021,12 @@
       "positionRatio": 0.604,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -38378,12 +38378,12 @@
       "positionRatio": 0.688,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Conference Articles (Research)",
@@ -38463,12 +38463,12 @@
       "positionRatio": 0.708,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Conference Articles (Research)",
@@ -38633,12 +38633,12 @@
       "positionRatio": 0.748,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Conference Articles (Research)",
@@ -39211,12 +39211,12 @@
       "positionRatio": 0.884,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles (Research)",
@@ -40860,7 +40860,7 @@
       "positionRatio": 0.4722222222222222,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -41761,7 +41761,7 @@
       "positionRatio": 0.8402777777777778,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -41880,7 +41880,7 @@
       "positionRatio": 0.8888888888888888,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -42429,7 +42429,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Journal Articles",
@@ -42446,7 +42446,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Blundell, B.; Sieben, C.; Manley, S.; Rosten, E.; Ch'ng, Q. L.; Cox, S. (2021). 3D Structure From",
@@ -42650,7 +42650,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Ch’ng, Q. L. (2019). Chapter 7: Structural Symmetry in Crystal Engineering. In: *Advances in",
@@ -42752,7 +42752,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Ch’ng, Q. L. (2017). Surface Tension and Morphological Control in Colloidal Synthesis.",
@@ -44061,7 +44061,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "2021",
@@ -44073,7 +44073,7 @@
       "positionRatio": 0.5,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -44260,7 +44260,7 @@
       "positionRatio": 0.72,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -45387,7 +45387,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "2025",
@@ -45399,7 +45399,7 @@
       "positionRatio": 0.061200923787528866,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -45421,7 +45421,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Wu, K. H., M. Seyedmahmoudian, S. Mekhilef, P. Shrivastava, and A. Stojcevski. 2025.",
@@ -45761,7 +45761,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Dev, U., S. Ahmad, M. R. Uddin, R. Dhar, H. Mubarak, M. R. Hazari, S. Mekhilef, M.",
@@ -45909,7 +45909,7 @@
       "positionRatio": 0.09584295612009237,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -45931,7 +45931,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Bakini, H., N. Mesbahi, M. Kermadi, S. Mekhilef, Y. Zahraoui, M. Mubin, M.",
@@ -47325,7 +47325,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Thirunavukkarasu, G. S., M. I. M. Ismath, M. Seyedmahmoudian, S. Mekhilef, and A.",
@@ -47779,7 +47779,7 @@
       "positionRatio": 0.2228637413394919,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -47801,7 +47801,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Han, B., Y. Zahraoui, M. Mubin, S. Mekhilef, M. Seyedmahmoudian, and A. Stojcevski. 2023.",
@@ -48787,7 +48787,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Ghazizadeh, S., A. Stojcevski, M. Seyedmahmoudian, J. Chandran, and S. Mekhilef. 2023.",
@@ -49445,7 +49445,7 @@
       "positionRatio": 0.33602771362586603,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -49467,7 +49467,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Siddique, M. D., M. F. Karim, S. Mekhilef, M. Rawa, M. Seyedmahmoudian, B. Horan, A.",
@@ -50385,7 +50385,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Khalid, H., A. Stojcevski, S. Mekhilef, M. Seyedmahmoudian, B. Mubin, P. Darvish, and A.",
@@ -50584,7 +50584,7 @@
       "positionRatio": 0.4133949191685912,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -50606,7 +50606,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Ahmed, K., M. Seyedmahmoudian, S. Mekhilef, N. M. Mubarak, and A. Stojcevski. 2021. \"A",
@@ -51813,7 +51813,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Elsanabary, A., S. Mekhilef, M. Seyedmahmoudian, and A. Stojcevski. 2021. \"A Novel Circuit",
@@ -51876,7 +51876,7 @@
       "positionRatio": 0.5011547344110855,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -51966,7 +51966,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Elsanabary, A. I., G. Konstantinou, S. Mekhilef, C. D. Townsend, M. Seyedmahmoudian, and",
@@ -52918,7 +52918,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Siddique, M. D., S. Mekhilef, M. F. Karim, M. Rawa, R. Shaw, M. Seyedmahmoudian, B.",
@@ -52981,7 +52981,7 @@
       "positionRatio": 0.5762124711316398,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -53003,7 +53003,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Jamei, E., M. Seyedmahmoudian, B. Horan, and A. Stojcevski. 2019. \"Verification of a",
@@ -53343,7 +53343,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Sarker, E., M. Seyedmahmoudian, S. Mekhilef, and A. Stojcevski. 2019. \"OPTIMAL",
@@ -53406,7 +53406,7 @@
       "positionRatio": 0.605080831408776,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -53428,7 +53428,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Hossain, M., S. Mekhilef, F. Afifi, L. M. Halabi, L. Olatomiwa, M. Seyedmahmoudian, B.",
@@ -54091,7 +54091,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Siddique, M. D., S. Mekhilef, N. M. Shah, A. Sarwar, M. A. Memon, M. Seyedmahmoudian, B.",
@@ -54358,7 +54358,7 @@
       "positionRatio": 0.6697459584295612,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -54380,7 +54380,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Das, U. K., K. S. Tey, M. Seyedmahmoudian, M. Y. Idna Idris, S. Mekhilef, B. Horan, and A.",
@@ -54499,7 +54499,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Le Huy, N., P. C. Thanh, T. D. Linh, and A. Stojcevski. 2017. \"Design and simulation of a",
@@ -54579,7 +54579,7 @@
       "positionRatio": 0.684757505773672,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -54601,7 +54601,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Seyedmahmoudian, M., B. Horan, T. K. Soon, R. Rahmani, A. M. Than Oo, S. Mekhilef, and",
@@ -54788,7 +54788,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Felipe, A. L., E. Amouroux, T. Pham, and A. Stojcevski. 2016. \"Vietnamese students",
@@ -55038,7 +55038,7 @@
       "positionRatio": 0.7159353348729792,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -55128,7 +55128,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Seyedmahmoudian, M., R. Rahmani, S. Mekhilef, A. Maung Than Oo, A. Stojcevski, T. K.",
@@ -55264,7 +55264,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Mortimer, M., B. Horan, M. Joordens, and A. Stojcevski. 2015. \"Searching Baxter's URDF",
@@ -55548,7 +55548,7 @@
       "positionRatio": 0.7505773672055427,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -55570,7 +55570,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Shafiullah, G. M., A. M. T. Oo, A. B. M. S. Ali, P. Wolfs, and A. Stojcevski. 2014. \"Experimental",
@@ -55689,7 +55689,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Arif, M. T., A. M. T. Oo, and A. Stojcevski. 2014. \"Impacts of distributed generators on utility",
@@ -56075,7 +56075,7 @@
       "positionRatio": 0.7863741339491916,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -56097,7 +56097,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Chandrasekaran, S., A. Stojcevski, G. Littlefair, and M. Joordens. 2013. \"Project-oriented",
@@ -56216,7 +56216,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Arangarajan, V., A. Stojcevski, A. M. T. Oo, and G. M. Shafiullah. 2013. \"Prospect of",
@@ -56330,7 +56330,7 @@
       "positionRatio": 0.8036951501154734,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -56437,7 +56437,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Chandran, J., and A. Stojcevski. 2012. \"Research in engineering and technology education:",
@@ -56517,7 +56517,7 @@
       "positionRatio": 0.8163972286374134,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -56539,7 +56539,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Ravalli, G., and A. Stojcevski. 2011. \"Students perception of capstone projects.\"",
@@ -56568,7 +56568,7 @@
       "positionRatio": 0.8198614318706697,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -56590,7 +56590,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Chandran, J., A. Stojcevski, A. Zayegh, and T. Nguyen. 2010. \"Implementation of a",
@@ -56772,7 +56772,7 @@
       "positionRatio": 0.8337182448036952,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -56930,7 +56930,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Mohand, A., A. Zayegh, A. Stojcevski, A. Veljanovski, D. Fitrio, and S. P. Sah. 2009. \"A novel",
@@ -56993,7 +56993,7 @@
       "positionRatio": 0.848729792147806,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -57015,7 +57015,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Mustaffa, M. T., A. Zayegh, R. Veljanovski, A. Stojcevski, and T. Z. A. Zulkifli. 2008. \"CMOS",
@@ -57083,7 +57083,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A. 2008. \"Learning to solve 'design problems' in engineering education.\"",
@@ -57180,7 +57180,7 @@
       "positionRatio": 0.8614318706697459,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -57202,7 +57202,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Joglekar, N., J. Chandran, R. Veljanovski, A. Stojcevski, A. Zayegh, and M. Dorairaj. 2007. \"A",
@@ -57418,7 +57418,7 @@
       "positionRatio": 0.8775981524249422,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -57440,7 +57440,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Fitrio, D., A. Stojcevski, and J. Singh. 2006. \"Ultra low power weak inversion current steered",
@@ -57486,7 +57486,7 @@
       "positionRatio": 0.8822170900692841,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -57508,7 +57508,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Le, H. P., J. Singh, L. Hiremath, V. Mallapur, and A. Stojcevski. 2005. \"Ultra-low-power",
@@ -57576,7 +57576,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Le, H. P., R. Veljanovski, A. Zayegh, J. Singh, and A. Stojcevski. 2005. \"A semi-custom ASIC",
@@ -57775,7 +57775,7 @@
       "positionRatio": 0.9018475750577367,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -57797,7 +57797,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A., J. Singh, and A. Zayegh. 2004. \"An efficient ADC for an UTRA-TDD system.\"",
@@ -57848,7 +57848,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A., J. Singh, and A. Zayegh. 2004. \"CMOS ADC with reconfigurable properties for",
@@ -58268,7 +58268,7 @@
       "positionRatio": 0.9353348729792148,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -58290,7 +58290,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A., J. Singh, and A. Zayegh. 2003. \"Design implications of the building block",
@@ -58443,7 +58443,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Veljanovski, R., A. Stojcevski, J. Singh, A. Zayegh, and M. Fuulkner. 2003. \"Implementation of",
@@ -58591,7 +58591,7 @@
       "positionRatio": 0.9572748267898383,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -58613,7 +58613,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Veljanovski, R., A. Stojcevski, J. Singh, A. Zayegh, and M. Faulkner. 2002. \"Reconfigurable",
@@ -58664,7 +58664,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A., J. Singh, and A. Zayegh. 2002. \"A reconfigurable analog-to-digital converter for",
@@ -58744,7 +58744,7 @@
       "positionRatio": 0.9676674364896074,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -58766,7 +58766,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": true
+    "isHeader": false
   },
   {
     "text": "Stojcevski, A., J. Singh, and A. Zayegh. 2001. \"Performance analysis of a CMOS analog to",
@@ -60024,7 +60024,7 @@
       "followingBlankLine": false,
       "indentationLevel": 0
     },
-    "isHeader": false
+    "isHeader": true
   },
   {
     "text": "“The Making of a Master in Drama and Sanqu in the Mid Ming: Li Kaixian’s Role, Influence, and Self-",
@@ -62807,7 +62807,7 @@
       "positionRatio": 0.4722222222222222,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -63708,7 +63708,7 @@
       "positionRatio": 0.8402777777777778,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0
@@ -63827,7 +63827,7 @@
       "positionRatio": 0.8888888888888888,
       "wordCount": 1,
       "hasColon": false,
-      "matchesPublicationPattern": true,
+      "matchesPublicationPattern": false,
       "precedingBlankLine": false,
       "followingBlankLine": false,
       "indentationLevel": 0

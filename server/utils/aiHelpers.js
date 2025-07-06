@@ -116,92 +116,28 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
  */
 const extractPublicationsFromCV = async (model, cvText) => {
-  // Fast path for small CVs - process the entire text directly if under the chunk size limit
-  // if (cvText.length < MAX_CHUNK_SIZE) {
-  //   return await extractPublicationsFromChunk(model, cvText);
-  // }
-
-  // Original implementation for larger CVs follows
-  // Step 1: Parse CV text into lines
+  // Use ML-based header extraction
   const lines = cvText
     .split(/\n+/)
     .map((line) => line.trim())
-    .filter(Boolean); // Step 2: Identify potential publication section headers (not individual publications)
-  // Step 2: Identify potential publication section headers (not individual publications)
-  const sectionHeaders = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    .filter(Boolean);
+  const sectionHeaders = extractHeadersFromText(cvText);
 
-    // Skip phone numbers
-    if (/^\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(line)) {
-      continue;
-    }
-
-    // Skip standalone years when they appear in contact info section (near top)
-    if (
-      /^(19|20)[0-9]{2}$/i.test(line) &&
-      i < 30 &&
-      !PUBLICATION_PATTERNS.some((p) => p.test(line))
-    ) {
-      continue;
-    }
-
-    // Try ML model first, fall back to regex rules
-    let isHeader = false;
-
-    if (headerClassifier && headerClassifier.trained) {
-      try {
-        isHeader = headerClassifier.predict(line, i, lines.length);
-        console.log(`[ML Header] Line ${i + 1}: "${line}" => ${isHeader ? "HEADER" : "not header"}`);
-      } catch (error) {
-        console.warn("Error using ML header detection:", error.message);
-        // Fall back to regex rules
-        isHeader =
-          (line === line.toUpperCase() &&
-            line.length > 3 &&
-            !/^[A-Z]\.$/.test(line) &&
-            !/^\d+\.?$/.test(line) &&
-            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-            !/^PG\.\s*\d+$/.test(line)) ||
-          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-          (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
-      }
-    } else {
-      // Use existing regex rules
-      isHeader =
-        (line === line.toUpperCase() &&
-          line.length > 3 &&
-          !/^[A-Z]\.$/.test(line) &&
-          !/^\d+\.?$/.test(line) &&
-          !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-          !/^PG\.\s*\d+$/.test(line)) ||
-        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-        (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
-    }
-
-    if (isHeader) {
-      sectionHeaders.push({ index: i, text: line });
-    }
-  }
   // Step 3: Extract content from identified publication sections
   const publicationSections = [];
   for (let i = 0; i < sectionHeaders.length; i++) {
-    console.log(`Processing section header ${i + 1}: "${sectionHeaders[i].text}"`);
+    console.log(
+      `Processing section header ${i + 1}: "${sectionHeaders[i].text}"`
+    );
     const header = sectionHeaders[i];
     const nextHeader = sectionHeaders[i + 1];
 
     const sectionEnd = nextHeader ? nextHeader.index : lines.length;
     const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
-    if (
-      PUBLICATION_PATTERNS.some((pattern) => pattern.test(header.text)) ||
-      /publications|papers|manuscripts|reports/i.test(header.text) ||
-      /^(19|20)[0-9]{2}$/i.test(header.text)
-    ) {
-      publicationSections.push({
-        header: header.text,
-        content: sectionContent,
-      });
-    }
+    publicationSections.push({
+      header: header.text,
+      content: sectionContent,
+    });
   }
   if (publicationSections.length === 0) {
     // Expanded pattern matching for publications
@@ -279,7 +215,27 @@ const extractPublicationsFromCV = async (model, cvText) => {
 
       // Process chunks in parallel for better performance
       const chunkResults = await Promise.all(
-        chunks.map((chunk) => extractPublicationsFromChunk(model, chunk))
+        chunks.map(async (chunk, idx) => {
+          console.log(
+            `\n[extractPublicationsFromChunk] Input chunk #${
+              idx + 1
+            } (section ${sectionIndex + 1}):\n`,
+            chunk
+          );
+          const result = await extractPublicationsFromChunk(model, chunk);
+          console.log(
+            `[extractPublicationsFromChunk] Output for chunk #${
+              idx + 1
+            } (section ${sectionIndex + 1}):\n`,
+            result
+          );
+          console.log(
+            `[extractPublicationsFromChunk] Total publications in chunk #${
+              idx + 1
+            } (section ${sectionIndex + 1}): ${result.length}`
+          );
+          return result;
+        })
       );
 
       // Flatten results
@@ -288,62 +244,80 @@ const extractPublicationsFromCV = async (model, cvText) => {
       });
     } else {
       // Process the entire section as a single chunk
+      console.log(
+        `\n[extractPublicationsFromChunk] Input section (section ${
+          sectionIndex + 1
+        }):\n`,
+        section.content
+      );
       const sectionPubs = await extractPublicationsFromChunk(
         model,
         section.content
       );
+      console.log(
+        `[extractPublicationsFromChunk] Output for section (section ${
+          sectionIndex + 1
+        }):\n`,
+        sectionPubs
+      );
+      console.log(
+        `[extractPublicationsFromChunk] Total publications in section ${
+          sectionIndex + 1
+        }: ${sectionPubs.length}`
+      );
       allPublications.push(...sectionPubs);
     }
   }
+
   // Remove duplicates (based on title similarity) and validate publications
-  const uniquePublications = [];
-  let filteredCount = 0;
+  // const uniquePublications = [];
+  // let filteredCount = 0;
 
-  for (const pub of allPublications) {
-    if (!pub.title) {
-      filteredCount++;
-      continue;
-    } // Additional validation to filter out fabricated publications
-    if (
-      /^[A-Z]\.\s*Author/.test(pub.publication) ||
-      (/et al\./.test(pub.publication) &&
-        !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
-    ) {
-      filteredCount++;
-      continue;
-    } // Check if title has reasonable length and not generic words
-    if (
-      pub.title &&
-      (pub.title.length < 6 || // Changed from 10 to 6
-        (/\b(study|framework|analysis|research|impact)\b/i.test(pub.title) &&
-          pub.title.length < 20)) // Changed from 25 to 20
-    ) {
-      // If title is too generic and short, verify it appears in the original text
-      const titleInText = new RegExp(
-        pub.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
-      );
-      if (!titleInText.test(cvText)) {
-        filteredCount++;
-        continue;
-      }
-    }
-    const isDuplicate = uniquePublications.some((existingPub) => {
-      if (!existingPub.title) return false;
+  // for (const pub of allPublications) {
+  //   if (!pub.title) {
+  //     filteredCount++;
+  //     continue;
+  //   } // Additional validation to filter out fabricated publications
+  //   if (
+  //     /^[A-Z]\.\s*Author/.test(pub.publication) ||
+  //     (/et al\./.test(pub.publication) &&
+  //       !/[A-Z][a-z]+/.test(pub.publication.split("et al")[0]))
+  //   ) {
+  //     filteredCount++;
+  //     continue;
+  //   } // Check if title has reasonable length and not generic words
+  //   if (
+  //     pub.title &&
+  //     (pub.title.length < 6 || // Changed from 10 to 6
+  //       (/\b(study|framework|analysis|research|impact)\b/i.test(pub.title) &&
+  //         pub.title.length < 20)) // Changed from 25 to 20
+  //   ) {
+  //     // If title is too generic and short, verify it appears in the original text
+  //     const titleInText = new RegExp(
+  //       pub.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  //       "i"
+  //     );
+  //     if (!titleInText.test(cvText)) {
+  //       filteredCount++;
+  //       continue;
+  //     }
+  //   }
+  //   const isDuplicate = uniquePublications.some((existingPub) => {
+  //     if (!existingPub.title) return false;
 
-      const similarity = getTitleSimilarity(pub.title, existingPub.title);
-      return similarity > DUPLICATE_SIMILARITY_THRESHOLD;
-    });
-    if (!isDuplicate) {
-      uniquePublications.push(pub);
-    } else {
-      filteredCount++;
-    }
-  }
+  //     const similarity = getTitleSimilarity(pub.title, existingPub.title);
+  //     return similarity > DUPLICATE_SIMILARITY_THRESHOLD;
+  //   });
+  //   if (!isDuplicate) {
+  //     uniquePublications.push(pub);
+  //   } else {
+  //     filteredCount++;
+  //   }
+  // }
 
-  console.log(uniquePublications.length, "unique publications found");
+  console.log(allPublications.length, "unique publications found");
 
-  return uniquePublications;
+  return allPublications;
 };
 
 //=============================================================================
@@ -397,8 +371,7 @@ function extractHeadersFromText(cvText) {
             !/^\d+\.?$/.test(line) &&
             !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
             !/^PG\.\s*\d+$/.test(line)) ||
-          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-          (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
       }
     } else {
       // Use existing regex rules
@@ -409,8 +382,7 @@ function extractHeadersFromText(cvText) {
           !/^\d+\.?$/.test(line) &&
           !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
           !/^PG\.\s*\d+$/.test(line)) ||
-        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-        (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
+        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
     }
 
     if (isHeader) {

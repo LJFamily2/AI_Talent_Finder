@@ -60,11 +60,6 @@ async function processCV(filePath) {
 
     const trainingData = [];
     const fileName = path.basename(filePath);
-    // Use lowercased/trimmed for robust matching
-    const manualHeaders = (manualLabels[fileName] || []).map((h) =>
-      h.trim().toLowerCase()
-    );
-
     // Process each line
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -75,20 +70,10 @@ async function processCV(filePath) {
       features.features.followingBlankLine =
         i < lines.length - 1 && !lines[i + 1].trim();
 
-      // Use manual label if available, otherwise fallback to rules
-      if (manualHeaders.length > 0) {
-        features.isHeader = manualHeaders.includes(line.trim().toLowerCase());
-      } else {
-        features.isHeader =
-          (line === line.toUpperCase() &&
-            line.length > 3 &&
-            !/^[A-Z]\.$/.test(line) &&
-            !/^\d+\.?$/.test(line) &&
-            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-            !/^PG\.\s*\d+$/.test(line)) ||
-          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)) ||
-          (/^(19|20)[0-9]{2}$/i.test(line) && i > 100);
-      }
+      // Only use fallback rules (no manual labels)
+      features.isHeader =
+        (line === line.toUpperCase() &&
+        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)));
 
       trainingData.push(features);
     }

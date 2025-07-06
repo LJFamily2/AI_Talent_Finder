@@ -76,13 +76,13 @@ const verifyCV = async (file, prioritySource) => {
     } // Verify each publication with both Google Scholar and Scopus
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
-        const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
-          [
-            verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
-            verifyWithScopus(pub.title, pub.doi, candidateName),
-            verifyWithOpenAlex(pub.title, pub.doi, candidateName),
-          ]
-        );
+        // const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
+        //   [
+        //     verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
+        //     verifyWithScopus(pub.title, pub.doi, candidateName),
+        //     verifyWithOpenAlex(pub.title, pub.doi, candidateName),
+        //   ]
+        // );
 
         // Combine authors from all three sources
         let allAuthors = [];

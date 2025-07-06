@@ -29,7 +29,6 @@ const PUBLICATION_PATTERNS = [
   /^articles$/i,
   /^conference articles$/i,
   /^experience$/i,
-  /^activities$/i,
   /^conferences?$/i,
   /^White House Reports$/i,
   /^Policy-related Publications and Reports$/i,
@@ -37,8 +36,6 @@ const PUBLICATION_PATTERNS = [
   /^Thesis$/i,
   /^PATENTS$/i,
   /^journal articles$/i,
-  /^(19|20)[0-9]{2}$/i, // Add standalone year as a publication section pattern
-  /^(19|20)[0-9]{2} Publications$/i, // Add "YEAR Publications" as a pattern
   /^publications? and presentations?$/i,
   /^authored publications?$/i,
   /^selected publications? and presentations?$/i,
