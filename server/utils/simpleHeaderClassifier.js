@@ -72,7 +72,7 @@ class SimpleHeaderClassifier {
       case 'lengthRange':
         return features.length >= this.rules.lengthRange.minLength && 
                features.length <= this.rules.lengthRange.maxLength &&
-               features.length <= 30; // Most headers are shorter
+               features.length <= 50; // Most headers are shorter
       case 'positionRatio':
         return features.positionRatio < 0.8; // Headers usually appear earlier
       case 'wordCount':

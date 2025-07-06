@@ -13,7 +13,7 @@
       "threshold": 0.5
     },
     "lengthRange": {
-      "weight": 0.5608465608465608,
+      "weight": 0.5082304526748971,
       "threshold": 0.5,
       "minLength": 3,
       "maxLength": 50

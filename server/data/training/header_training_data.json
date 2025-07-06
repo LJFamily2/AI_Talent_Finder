@@ -35445,6 +35445,4256 @@
     "isHeader": false
   },
   {
+    "text": "Professor Brett Harris",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 22,
+      "positionRatio": 0,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Position:Professor",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 18,
+      "positionRatio": 0.004,
+      "wordCount": 1,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "School:School of Earth and Planetary Sciences (EPS)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 51,
+      "positionRatio": 0.008,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Faculty:Faculty of Science and Engineering",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 42,
+      "positionRatio": 0.012,
+      "wordCount": 5,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Portfolio:Office of the Provost",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 31,
+      "positionRatio": 0.016,
+      "wordCount": 4,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Campus:Technology Park",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 22,
+      "positionRatio": 0.02,
+      "wordCount": 2,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Building:ARRC Building",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 22,
+      "positionRatio": 0.024,
+      "wordCount": 2,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Fax:08 9266 3407",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 16,
+      "positionRatio": 0.028,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Telephone:08 9266 3089",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 22,
+      "positionRatio": 0.032,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Email:B.Harris@curtin.edu.au",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 28,
+      "positionRatio": 0.036,
+      "wordCount": 1,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Brief Summary",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 13,
+      "positionRatio": 0.04,
+      "wordCount": 2,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Brett has a comprehensive industry and research background focused on a technologies for",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.044,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "search, delineations and development of subsurface resources. Brett has been Program II",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 87,
+      "positionRatio": 0.048,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "leader in Australia’s approximately 145 million dollar 8.5 year Deep Exploration Technologies",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.052,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Cooperative Research Centre (DET CRC). Within the MinEx CRC he led opportunity fund OP4",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 87,
+      "positionRatio": 0.056,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "which developed distributed accoustic sensing while mineral CT Drilling. He is currently project",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 96,
+      "positionRatio": 0.06,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "lead for MinEx CRC Project 4 who are developing a range of new in-hole",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 70,
+      "positionRatio": 0.064,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "electromagnetic sensing devices. Brett also works with government agencies on a range of",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.068,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "challenges including development of methods for efficiently locating fractured rock aquifers.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.072,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Brett has established a large portfolio of research projects and is author on many research",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 91,
+      "positionRatio": 0.076,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "publications in high impact Journals. Prof. Harris supervises several PhD students and",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 86,
+      "positionRatio": 0.08,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "coordinates undergraduate subjects including advanced electromagnetism and potential fields,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 92,
+      "positionRatio": 0.084,
+      "wordCount": 9,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "environmental geophysics and seismic interpretation. In summary Brett has the ability to",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.088,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "STAFF PROFILE",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 13,
+      "positionRatio": 0.092,
+      "wordCount": 2,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "consistently generate quality innovative research solutions from earth science projects that may",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 96,
+      "positionRatio": 0.096,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "span geophysics, numerical simulation, hydrogeology, geothermal technologies, mineral",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 85,
+      "positionRatio": 0.1,
+      "wordCount": 8,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "exploration, aquifer replenishment, geological sequestration of CO2, well logging and or well field",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 99,
+      "positionRatio": 0.104,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "design.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 7,
+      "positionRatio": 0.108,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Back to top",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 11,
+      "positionRatio": 0.112,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Publications",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 12,
+      "positionRatio": 0.116,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Featured",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 8,
+      "positionRatio": 0.12,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Book Chapters (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 24,
+      "positionRatio": 0.124,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Hillis, R. R., D. Giles, S. E. Van Der Wielen, A. Baensch, J. S. Cleverley, A. Fabris, S. W.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 92,
+      "positionRatio": 0.128,
+      "wordCount": 19,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Halley, B. D. Harris, S. M. Hill, P. A. Kanck, and 4 more contributors. 2014. \"Coiled Tubing",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.132,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Drilling and Real-Time Sensing - Enabling Prospecting Drilling in the 21st Century?.\" In",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.136,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Special Publication 18: Building Exploration Capability for the 21st Century Kelley, K. D., and",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 95,
+      "positionRatio": 0.14,
+      "wordCount": 14,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "H. C. Golden., 243-259 Colorado: Society of Economic Geologists.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 64,
+      "positionRatio": 0.144,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2024",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.148,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.152,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Jiao, J., J. Cheng, Y. Liu, Y. Li, and B. Harris. 2024. \"A Borehole Electromagnetic Scanning",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.156,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Device With Ferrite Core Coil Antenna: Numerical Simulations and Field Experiments.\" IEEE",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.16,
+      "wordCount": 12,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Transactions on Geoscience and Remote Sensing 62",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 48,
+      "positionRatio": 0.164,
+      "wordCount": 7,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2023",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.168,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.172,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Becker, M. W., B. Harris, and R. Pevzner. 2023. \"Characterization of Aquifer Poroelastic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 88,
+      "positionRatio": 0.176,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Response to Impulse and Oscillatory Well Pressure Using Distributed Acoustic Sensing.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 86,
+      "positionRatio": 0.18,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Geophysical Research Letters 50 (1)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 35,
+      "positionRatio": 0.184,
+      "wordCount": 5,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2022",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.188,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.192,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Feitz, A., B. Radke, L. Ricard, S. Glubokovskikh, A. Kalinowski, L. Wang, E. Tenthorey, R.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.196,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Schaa, K. Tertyshnikov, U. Schacht, and 21 more contributors. 2022. \"The CO2CRC Otway",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 85,
+      "positionRatio": 0.2,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "shallow CO2 controlled release experiment: Fault characterization and geophysical",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 81,
+      "positionRatio": 0.204,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "monitoring design.\" International Journal of Greenhouse Gas Control 118",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 71,
+      "positionRatio": 0.208,
+      "wordCount": 9,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2021",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.212,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.216,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Feitz, A., B. Radke, K. Chan, L. Ricard, A. Kalinowski, L. Wang, E. Tenthorey, R. Schaa, K.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 91,
+      "positionRatio": 0.22,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Tertyshnikov, S. Glubokovskikh, and 10 more contributors. 2021. \"The CO2CRC Otway",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 81,
+      "positionRatio": 0.224,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "shallow CO2 controlled release experiment: Fault characterization and leakage scenarios.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.228,
+      "wordCount": 10,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Michael, K., A. Avijegon, L. Ricard, M. Myers, K. Tertyshnikov, R. Pevzner, J. Strand, A.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.232,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Hortle, L. Stalker, M. Pervukhina, and 14 more contributors. 2021. \"A (not so) shallow",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 86,
+      "positionRatio": 0.236,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "controlled CO2 release experiment in a fault zone.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 51,
+      "positionRatio": 0.24,
+      "wordCount": 8,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Stalker, L., J. Myers, K. Michael, A. Hortle, A. Avijegon, L. Ricard, M. Myers, K. Tertyshnikov,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 96,
+      "positionRatio": 0.244,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "R. Pevzner, J. Strand, and 14 more contributors. 2021. \"Lessons Learned: The First In-Situ",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 90,
+      "positionRatio": 0.248,
+      "wordCount": 14,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Laboratory Fault Injection Test.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 33,
+      "positionRatio": 0.252,
+      "wordCount": 4,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2020",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.256,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.26,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Costall, A. R., B. D. Harris, B. Teo, R. Schaa, F. M. Wagner, and J. P. Pigois. 2020.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 85,
+      "positionRatio": 0.264,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "\"Groundwater Throughflow and Seawater Intrusion in High Quality Coastal Aquifers.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 82,
+      "positionRatio": 0.268,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Scientific Reports 10 (1)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 25,
+      "positionRatio": 0.272,
+      "wordCount": 4,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Michael, K., A. Avijegon, L. Ricard, M. Myers, K. Tertyshnikov, R. Pevzner, J. Strand, A.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.276,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Hortle, L. Stalker, M. Pervukhina, and 14 more contributors. 2020. \"A controlled CO2 release",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.28,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "experiment in a fault zone at the In-Situ Laboratory in Western Australia.\" International",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.284,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Journal of Greenhouse Gas Control 99",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 36,
+      "positionRatio": 0.288,
+      "wordCount": 6,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2019",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.292,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.296,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Le, C. V. A., B. D. Harris, and A. M. Pethick. 2019. \"New perspectives on Solid Earth Geology",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 93,
+      "positionRatio": 0.3,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "from Seismic Texture to Cooperative Inversion.\" Scientific Reports 9 (1)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 72,
+      "positionRatio": 0.304,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., B. Harris, and O. Barron. 2019. \"AEM, Seismic and Power-lines: A",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 77,
+      "positionRatio": 0.308,
+      "wordCount": 13,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "hydrogeological case study in Peel, Western Australia.\" ASEG Expanded Abstracts",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 79,
+      "positionRatio": 0.312,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Schaa, R., B. Harris, and A. Pethick. 2019. \"Magnetotelluric inversion strategies.\" ASEG",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 88,
+      "positionRatio": 0.316,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Expanded Abstracts",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 18,
+      "positionRatio": 0.32,
+      "wordCount": 2,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2018",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.324,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.328,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Costall, A., B. Harris, and J. P. Pigois. 2018. \"Electrical Resistivity Imaging and the Saline",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.332,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Water Interface in High-Quality Coastal Aquifers.\" SURVEYS IN GEOPHYSICS 39 (4): 753-",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 85,
+      "positionRatio": 0.336,
+      "wordCount": 12,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "816.",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": true,
+      "containsYear": false,
+      "length": 4,
+      "positionRatio": 0.34,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.344,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Harris, B., A. Pethick, R. Schaa, and V. Le. 2018. \"Cooperative Inversion: A Review.\" In",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 88,
+      "positionRatio": 0.348,
+      "wordCount": 15,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Australasian Exploration Geoscience Conference (AEGC) , February 18, 2018, Sydney",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 81,
+      "positionRatio": 0.352,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., B. Harris, and P. Lebedev. 2018. \"ECloud – Magnetotelluric Webapp.\" In",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 83,
+      "positionRatio": 0.356,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Australasian Exploration Geoscience Conference (AEGC) , February 17, 2018, Syndey",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 81,
+      "positionRatio": 0.36,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Bibirabea, S., B. D. Harris, R. Schaa, A. Pethick, A. Costall, J. Duan, and W. Jiang. 2018.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 91,
+      "positionRatio": 0.364,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "\"Magnetotelluric, Basin Structure and Hydrodynamics; South West of Western Australia.\" In",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.368,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Australasian Exploration Geoscience Conference (AEGC) , February 18, 2018, Sydney",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 81,
+      "positionRatio": 0.372,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Costall, A., and B. Harris. 2018. \"Rapid Estimation of Volumetric Groundwater Recharge in",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 89,
+      "positionRatio": 0.376,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "the Vadose Zone via Ground Penetrating Radar.\" In Australasian Exploration Geoscience",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 85,
+      "positionRatio": 0.38,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference (AEGC), Feb 17, 2018, Sydney",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 39,
+      "positionRatio": 0.384,
+      "wordCount": 6,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Harris, B., M. Urosevic, and A. Kepic. 2018. \"3D seismic reflection and VSP for",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 79,
+      "positionRatio": 0.388,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "hydrogeology.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 14,
+      "positionRatio": 0.392,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Feitz, A., B. Radke, S. Hossain, B. Harris, R. Schaa, A. Pethick, S. Ziramov, M. Urosevic, E.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.396,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Tenthorey, Z. Pan, and 10 more contributors. 2018. \"The CO2CRC Otway shallow CO2",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 80,
+      "positionRatio": 0.4,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "controlled release experiment: Geological model and CO2 migration simulations.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 79,
+      "positionRatio": 0.404,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2017",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.408,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.412,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Ricard, L., K. Michael, S. Whittaker, B. Harris, A. Hortle, L. Stalker, and B. Freifeld. 2017.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.416,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "\"Well-based Monitoring Schemes for the South West Hub Project, Western Australia.\" Energy",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.42,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Procedia 114: 5791-5798.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 24,
+      "positionRatio": 0.424,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.428,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Feitz, A. J., R. Pevzner, B. Harris, R. Schaa, K. Tertyshnikov, S. Ziramov, M. Gunning, T. R.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.432,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Ransley, E. Lai, A. H. Bailey, and 1 more contributors. 2017. \"The CO2CRC Otway shallow",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 87,
+      "positionRatio": 0.436,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "CO2 controlled release experiment: Site suitability assessment.\" : Elsevier",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 75,
+      "positionRatio": 0.44,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2016",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.444,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.448,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Le, C. V. A., B. D. Harris, A. M. Pethick, E. M. Takam Takougang, and B. Howe. 2016.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 84,
+      "positionRatio": 0.452,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "\"Semiautomatic and Automatic Cooperative Inversion of Seismic and Magnetotelluric Data.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.456,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Surveys in Geophysics: an international review journal of geophysics and planetary sciences",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 91,
+      "positionRatio": 0.46,
+      "wordCount": 12,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "July 2016: 1-55.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 16,
+      "positionRatio": 0.464,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Michael, M., M. Whittaker, S. Varma, E. Bekele, L. Langhi, J. Hodgkinson, and B. Harris.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 88,
+      "positionRatio": 0.468,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2016. \"Framework for the assessment of interaction between CO2 geological storage and",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": true,
+      "containsYear": true,
+      "length": 85,
+      "positionRatio": 0.472,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "other sedimentary basin resources.\" Environmental Science Processes & Impacts 18: 164-",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 86,
+      "positionRatio": 0.476,
+      "wordCount": 11,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "175.",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": true,
+      "containsYear": false,
+      "length": 4,
+      "positionRatio": 0.48,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., and B. Harris. 2016. \"Macro-parallelisation for controlled source electromagnetic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.484,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "applications.\" Journal of Applied Geophysics 124: 91-105.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 57,
+      "positionRatio": 0.488,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.492,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Le, C. V. A., B. Harris, and A. Pethick. 2016. \"Unconstrained 2D and 3D magnetotelluric",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 87,
+      "positionRatio": 0.496,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "inversion - Detection of a Ni-Cu-PGE ore zone and carbonaceous phyllites - Kevitsa.\" In First",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.5,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference on Geophysics for Mineral Exploration and Mining, Near Surface Geoscience",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 84,
+      "positionRatio": 0.504,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2016 , September 4, 2016, Barcelona, Spain: EAGE",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 48,
+      "positionRatio": 0.508,
+      "wordCount": 8,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2015",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.512,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.516,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Torkzaban, S., S. Bradford, J. Vanderzalm, B. Patterson, B. Harris, and H. Prommer. 2015.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 89,
+      "positionRatio": 0.52,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "\"Colloid Release and Clogging in Porous Media: Effects of Solution Ionic Strength and Flow",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.524,
+      "wordCount": 14,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Velocity.\" Journal of Contaminant Hydrology 181: 161-171.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 57,
+      "positionRatio": 0.528,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Takam Takougang, E., B. Harris, A. Kepic, and V. A. C. Le. 2015. \"Cooperative joint inversion",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 93,
+      "positionRatio": 0.532,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "of 3D seismic and magnetotelluric data: With application in a mineral province.\" Geophysics",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 91,
+      "positionRatio": 0.536,
+      "wordCount": 13,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "80 (4): 175-187.",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 16,
+      "positionRatio": 0.54,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.544,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Takam-Takougang, E., B. Harris, and A. Kepic. 2015. \"A workflow for cooperative inversion of",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.548,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "seismic and magnetotelluric data.\" In ASEG Extended Abstracts",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 61,
+      "positionRatio": 0.552,
+      "wordCount": 8,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2014",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.556,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.56,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, and A. W. Kepic. 2014. \"Time-lapse borehole radar",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 91,
+      "positionRatio": 0.564,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "for monitoring rainfall infiltration through podosol horizons in a sandy vadose zone.\" Water",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 92,
+      "positionRatio": 0.568,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Resources Research 50 (3): 2140-2163.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 37,
+      "positionRatio": 0.572,
+      "wordCount": 5,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "AlMalki, M., B. Harris, and C. Dupuis. 2014. \"Changes in P-wave velocity with different full",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.576,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "waveform sonic transmitter centre frequency.\" Exploration Geophysics 42 (2): 192-205.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 85,
+      "positionRatio": 0.58,
+      "wordCount": 10,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Seibert, S., H. Prommer, A. Siade, B. Harris, M. Trefry, and M. Martin. 2014. \"Heat and mass",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.584,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "transport during a groundwater replenishment trial in a highly heterogeneous aquifer.\" Water",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 92,
+      "positionRatio": 0.588,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Resources Research 50 (12): 9463-9483.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 38,
+      "positionRatio": 0.592,
+      "wordCount": 5,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., and B. Harris. 2014. \"Bathymetry, Electromagnetic Streamlines and the Marine",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 89,
+      "positionRatio": 0.596,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Controlled Source Electromagnetic Method.\" Exploration Geophysics 45 (3): 208-215.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 82,
+      "positionRatio": 0.6,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2013",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.604,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.608,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Almalki, M., B. Harris, and J. C. Dupuis. 2013. \"Field and synthetic experiments for virtual",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.612,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "source crosswell tomography in vertical wells: Perth Basin, Western Australia.\" Journal of",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.616,
+      "wordCount": 12,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Applied Geophysics 98: 144-159.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 31,
+      "positionRatio": 0.62,
+      "wordCount": 4,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Almalki, M., B. Harris, and J. C. Dupuis. 2013. \"Multifrequency full-waveform sonic logging in",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.624,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "the screened interval of a large-diameter production well.\" Geophysics 78 (5)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 77,
+      "positionRatio": 0.628,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, and A. W. Kepic. 2013. \"Waveguide properties",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 86,
+      "positionRatio": 0.632,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "recovered from shallow diffractions in common offset GPR.\" Journal of Geophysical",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 81,
+      "positionRatio": 0.636,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Research: Solid Earth 118 (1): 39-50.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 37,
+      "positionRatio": 0.64,
+      "wordCount": 6,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A. M., and B. D. Harris. 2013. \"Interpreting marine controlled source electromagnetic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.644,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "field behaviour with streamlines.\" Computers & Geosciences 60: 1-10.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 68,
+      "positionRatio": 0.648,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.652,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., and B. Harris. 2013. \"Poynting Vector Streamlines and the Marine Controlled",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 88,
+      "positionRatio": 0.656,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Source Electromagnetic Airwave.\" In 75th EAGE Conference & Exhibition incorporating SPE",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 87,
+      "positionRatio": 0.66,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "EUROPEC 2013 , June 10, 2013, London, UK: EAGE",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 46,
+      "positionRatio": 0.664,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., B. Harris, and K. Lam. 2013. \"Computing, Brains and Geophysics?.\" In 23rd",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 86,
+      "positionRatio": 0.668,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "International Geophysical Conference and Exhibition , August 11, 2013, Melbourne: CSIRO",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 87,
+      "positionRatio": 0.672,
+      "wordCount": 11,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Schafer, D., B. Harris, K. meredith, and A. Kern. 2013. \"The Allanooka-Casuarinas",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 81,
+      "positionRatio": 0.676,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Groundwater Investigation,Northern Perth Basin, Western Australia.\" In Ozwater '13, May 7,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.68,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2013, Perth: Australian Water Association.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 42,
+      "positionRatio": 0.684,
+      "wordCount": 5,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2012",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.688,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.692,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, A. W. Kepic, and M. W. Martin. 2012. \"Cross well",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 90,
+      "positionRatio": 0.696,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "radar and vertical radar profiling methods for time lapse monitoring of rainfall infiltration.\" In",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 98,
+      "positionRatio": 0.7,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "ASEG Extended Abstracts",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 23,
+      "positionRatio": 0.704,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2011",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.708,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.712,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, A. W. Kepic, J. D. Dupuis, and M. W. Martin. 2011. \"Estimation of",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 93,
+      "positionRatio": 0.716,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "water content in partially saturated soil horizons with ground-penetrating radar.\" In 73rd",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.72,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "EAGE Conference & Exhibition",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 28,
+      "positionRatio": 0.724,
+      "wordCount": 4,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Harris, B., and A. Pethick. 2011. \"Comparison of a vertical electric and a vertical magnetic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.728,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "source for cross well CSEM monitoring of CO2 injection.\" In SEG/San Antonio 2011 ,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 82,
+      "positionRatio": 0.732,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "September 18, 2011, San Antonio, Texas: SEG",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 43,
+      "positionRatio": 0.736,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Harris, B., and A. Pethick. 2011. \"Comparison of a vertical electric and a vertical magnetic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.74,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "source for cross well CSEM monitoring of CO2 injection.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 56,
+      "positionRatio": 0.744,
+      "wordCount": 9,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2010",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.748,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Conference Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 30,
+      "positionRatio": 0.752,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Harris, B., C. Dupuis, M. Almalki, Q. Li, M. Martin, and H. Prommer. 2010. \"Near Well Seismic",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 93,
+      "positionRatio": 0.756,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Methods for Managed Aquifer Recharge: Perth Basin Western Australia.\" In The 7th Annual",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 87,
+      "positionRatio": 0.76,
+      "wordCount": 13,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "International Symposium on Managed Aquifer Recharge (ISMAR), Oct 9, 2010, Abu Dhabi,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 84,
+      "positionRatio": 0.764,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "United Arab Emirates: ISMAR7.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 29,
+      "positionRatio": 0.768,
+      "wordCount": 4,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "AlMalki, M., B. Harris, and C. Dupuis. 2010. \"Full waveform sonic seismic signature of high",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 91,
+      "positionRatio": 0.772,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "permeability sandstone:Perth Basin, Western Australia.\" In 21st International Geophysical",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.776,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Conference and Exhibition, Aug 22, 2010, Darling Harbour, Sydney, Australia: CSIRO",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 82,
+      "positionRatio": 0.78,
+      "wordCount": 11,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Publishing.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 11,
+      "positionRatio": 0.784,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. Harris, C. Dupuis, A. Kepic, and M. Martin. 2010. \"Ground-Penetrating Radar",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 92,
+      "positionRatio": 0.788,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "for delineation of hydraulically significant layers in the unsaturated zone of the Gnangara",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 91,
+      "positionRatio": 0.792,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Mound, WA.\" In 21st International Geophysical Conference and Exhibition, Aug 22, 2010,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 86,
+      "positionRatio": 0.796,
+      "wordCount": 12,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Darling Harbour, Sydney, Australia: CSIRO Publishing.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 53,
+      "positionRatio": 0.8,
+      "wordCount": 6,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, A. W. Kepic, and M. W. Martin. 2010. \"GPR for large-",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.804,
+      "wordCount": 19,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "scale estimation of groundwater recharge distribution.\" In Ground Penetrating Radar (GPR),",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 90,
+      "positionRatio": 0.808,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2010 13th International Conference on: IEEE.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 44,
+      "positionRatio": 0.812,
+      "wordCount": 6,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pethick, A., and B. Harris. 2010. \"Conditioning of the 3D Marine Controlled Source",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 82,
+      "positionRatio": 0.816,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Electromagnetic Inversion.\" In 21st International Geophysical Conference and Exhibition ,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 89,
+      "positionRatio": 0.82,
+      "wordCount": 10,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "August 22, 2010, Darling Harbour, Sydney, Australia: CSIRO Publishing",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 69,
+      "positionRatio": 0.824,
+      "wordCount": 9,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, A. W. Kepic, and M. W. Martin. 2010. \"GPR for large-",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.828,
+      "wordCount": 19,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "scale estimation of groundwater recharge distribution: Investigation of the shallow",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 83,
+      "positionRatio": 0.832,
+      "wordCount": 10,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "hydrogeology at the central Gnangara Mound, Perth.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 51,
+      "positionRatio": 0.836,
+      "wordCount": 7,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Strobach, E., B. D. Harris, J. C. Dupuis, A. W. Kepic, and M. W. Martin. 2010. \"Ground-",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 87,
+      "positionRatio": 0.84,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Penetrating Radar for delineation of hydraulically significant layers in the unsaturated zone of",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 96,
+      "positionRatio": 0.844,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "the Gnangara Mound, WA.\" In ASEG Extended Abstracts",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 51,
+      "positionRatio": 0.848,
+      "wordCount": 8,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Pun, W., B. Milkereit, and B. Harris. 2010. \"Extracting frequency dependent velocities from",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 91,
+      "positionRatio": 0.852,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "full waveform sonic data.\" In SEG Denver 2010: Imaging our future , October 17, 2010,",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 85,
+      "positionRatio": 0.856,
+      "wordCount": 15,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Denver, Colorado: SEG",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 21,
+      "positionRatio": 0.86,
+      "wordCount": 3,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Milkereit, B., W. Pun, and B. Harris. 2010. \"Extraction of Permeability Variations from P-Wave",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.864,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Velocity Dispersion Data.\" In 16th European Meeting of Environmental and Engineering",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 84,
+      "positionRatio": 0.868,
+      "wordCount": 11,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Geophysics, Sep 6, 2010, Zurich, Switzerland: EAGE.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 51,
+      "positionRatio": 0.872,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Milkereit, B., W. Pun, and B. Harris. 2010. \"Extraction of permeability variations from P-wave",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.876,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "velocity dispersion data.\"",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 26,
+      "positionRatio": 0.88,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "2009",
+    "features": {
+      "isAllUpperCase": true,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 4,
+      "positionRatio": 0.884,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": true,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": true
+  },
+  {
+    "text": "Journal Articles (Research)",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 27,
+      "positionRatio": 0.888,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Dupuis, J. C., K. E. Butler, A. W. Kepic, and B. D. Harris. 2009. \"Anatomy of a seismoelectric",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": true,
+      "length": 94,
+      "positionRatio": 0.892,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "conversion: Measurements and conceptual modeling in boreholes penetrating a sandy",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 81,
+      "positionRatio": 0.896,
+      "wordCount": 10,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "aquifer.\" Journal of Geophysical Research 114: 10306-10314.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 59,
+      "positionRatio": 0.9,
+      "wordCount": 7,
+      "hasColon": true,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Additional Publication Categories",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 33,
+      "positionRatio": 0.904,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Back to top",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 11,
+      "positionRatio": 0.908,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Australia",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 9,
+      "positionRatio": 0.912,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Dubai",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 5,
+      "positionRatio": 0.916,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Malaysia",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 8,
+      "positionRatio": 0.92,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Mauritius",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 9,
+      "positionRatio": 0.924,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Singapore",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 9,
+      "positionRatio": 0.928,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Centre for Aboriginal Studies",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 29,
+      "positionRatio": 0.932,
+      "wordCount": 4,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Business and Law",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 16,
+      "positionRatio": 0.936,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Health Sciences",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 15,
+      "positionRatio": 0.94,
+      "wordCount": 2,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Humanities",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 10,
+      "positionRatio": 0.944,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Science and Engineering",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 23,
+      "positionRatio": 0.948,
+      "wordCount": 3,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Campuses",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 8,
+      "positionRatio": 0.952,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Teaching areas",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 14,
+      "positionRatio": 0.956,
+      "wordCount": 2,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "Curtin University acknowledges all First Nations of this place we call Australia and recognises the many",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 104,
+      "positionRatio": 0.96,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "nations who have looked after Country for more than 60,000 years. We are honoured and grateful for the",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 102,
+      "positionRatio": 0.964,
+      "wordCount": 18,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "privilege to maintain campuses operating in Boorloo (Perth) and Karlkurla (Kalgoorlie) in Australia. We pay",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 107,
+      "positionRatio": 0.968,
+      "wordCount": 15,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "our respects to Elders past and present as Custodians and Owners of these lands. We recognise their",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 99,
+      "positionRatio": 0.972,
+      "wordCount": 17,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "deep knowledge and their cultural, spiritual and educational practices, and aspire to learn and teach in",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 104,
+      "positionRatio": 0.976,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "partnership with them. Curtin also acknowledges First Nations peoples connected with our global",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 95,
+      "positionRatio": 0.98,
+      "wordCount": 13,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "campuses. We are committed to working in partnership with all Custodians and Owners to strengthen and",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 101,
+      "positionRatio": 0.984,
+      "wordCount": 16,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "embed First Nations’ voices and perspectives in our decision-making, now and into the future.",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 93,
+      "positionRatio": 0.988,
+      "wordCount": 14,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "CopyrightDisclaimerPrivacyAccessibilityFeedback",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 47,
+      "positionRatio": 0.992,
+      "wordCount": 1,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
+    "text": "ABN 99 143 842 569.CRICOS Provider Code 00301J.TEQSA PRV12158",
+    "features": {
+      "isAllUpperCase": false,
+      "startsWithNumber": false,
+      "containsYear": false,
+      "length": 61,
+      "positionRatio": 0.996,
+      "wordCount": 9,
+      "hasColon": false,
+      "matchesPublicationPattern": false,
+      "precedingBlankLine": false,
+      "followingBlankLine": false,
+      "indentationLevel": 0
+    },
+    "isHeader": false
+  },
+  {
     "text": "BENJAMIN C Goldstein",
     "features": {
       "isAllUpperCase": false,
