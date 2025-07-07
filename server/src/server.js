@@ -6,7 +6,7 @@ const path = require("path");
 const { createClient } = require('redis');
 
 const routes = require("../routes");
-const cvVerificationRoutes = require("../routes/cvVerification");
+const cvVerificationRoutes = require("../routes/cvVerificationRoute");
 const authorRoutes = require("../routes/authorRoutes");
 
 // Load environment variables

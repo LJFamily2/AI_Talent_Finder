@@ -10,6 +10,8 @@ import CVVerification from "./pages/CVVerification";
 import ResearcherProfile from "./pages/ResearcherProfile";
 import SearchAuthor from "./pages/SearchAuthor";
 
+import SearchInterface from "./pages/SearchInterface";
+import LandingPage from "./pages/LandingPage";
 
 function App() {
   return (
@@ -29,7 +31,9 @@ function App() {
           />
           <Route path="/verify-cv" element={<CVUpload />} />
           <Route path="/cv-verification" element={<CVVerification />} />
+          <Route path="/search-tool" element={<SearchInterface />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/landing-page" element={<LandingPage/>} />
 
           <Route path="/researcher-profile" element={<ResearcherProfile />} />
           <Route path="/search-author" element={<SearchAuthor />} />

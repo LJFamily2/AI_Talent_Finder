@@ -39,7 +39,7 @@ const authorCache = new Map();
 const normalizeName = (name) => {
   return name
     .toLowerCase()
-    .replace(/[^\w\s\-\.,]/g, " ") // Keep commas for surname-first format parsing
+    .replace(/[^\w\s]/g, " ") // Remove hyphens, commas, and periods
     .replace(/\s+/g, " ")
     .trim();
 };
@@ -172,7 +172,6 @@ const checkAuthorNameMatch = (candidateName, authorList) => {
   }
 
   const candidate = extractNameParts(candidateName);
-
   // Check each author in the list
   for (const authorName of authorList) {
     if (!authorName || typeof authorName !== "string") continue;
@@ -361,12 +360,6 @@ const checkMiddleInitialsMatchFlexible = (candidate, author) => {
  * @param {string} searchTitle - Title to find in author's publications
  * @returns {Promise<Object|null>} Author details object or null if not found
  *
- * @example
- * const authorInfo = await getAuthorDetails("yLD8fzoAAAAJ", apiKey, "Sample Title");
- * if (authorInfo) {
- *   console.log(`Author: ${authorInfo.details.name}`);
- *   console.log(`Citations: ${authorInfo.details.citedBy}`);
- * }
  */
 const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
   // Check cache first to avoid unnecessary API calls
@@ -541,12 +534,8 @@ const strictAuthorNameVerification = (candidateName, authorName) => {
   // Parse both names
   const candidate = extractNameParts(candidateName);
   const author = extractNameParts(authorName);
-  console.log(author)
   // Last name must match exactly
   if (candidate.lastName !== author.lastName) {
-    console.log(
-      `❌ Strict verification failed: different last names - "${candidateName}" vs "${authorName}"`
-    );
     return false;
   }
 
@@ -559,9 +548,6 @@ const strictAuthorNameVerification = (candidateName, authorName) => {
     } else {
       // Check if they're common nickname variations (future enhancement)
       // For now, reject different full first names
-      console.log(
-        `❌ Strict verification failed: different first names - "${candidateName}" vs "${authorName}"`
-      );
       return false;
     }
   }
@@ -569,16 +555,10 @@ const strictAuthorNameVerification = (candidateName, authorName) => {
   // If one has full first name and other has initial, check if initial matches
   if (candidate.firstName.length > 1 && author.firstName.length === 1) {
     if (candidate.firstInitial !== author.firstInitial) {
-      console.log(
-        `❌ Strict verification failed: first initial mismatch - "${candidateName}" vs "${authorName}"`
-      );
       return false;
     }
   } else if (candidate.firstName.length === 1 && author.firstName.length > 1) {
     if (candidate.firstInitial !== author.firstInitial) {
-      console.log(
-        `❌ Strict verification failed: first initial mismatch - "${candidateName}" vs "${authorName}"`
-      );
       return false;
     }
   }
@@ -590,16 +570,9 @@ const strictAuthorNameVerification = (candidateName, authorName) => {
     const authorMiddleStr = author.middleInitials.join("");
 
     if (candidateMiddleStr !== authorMiddleStr) {
-      console.log(
-        `❌ Strict verification failed: different middle initials - "${candidateName}" vs "${authorName}"`
-      );
       return false;
     }
   }
-
-  console.log(
-    `✅ Strict verification passed: "${candidateName}" matches "${authorName}"`
-  );
   return true;
 };
 

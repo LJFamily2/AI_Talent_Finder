@@ -15,7 +15,7 @@
  */
 
 const axios = require("axios");
-const { getTitleSimilarity } = require("../utils/textUtils");
+const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const {
   checkAuthorNameMatch,
   getAuthorDetails,
@@ -26,8 +26,10 @@ const {
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 98;
+const TITLE_SIMILARITY_THRESHOLD = 95;
 
+/** Minimum title length ratio for valid matches */
+const MIN_TITLE_LENGTH_RATIO = 0.8;
 //=============================================================================
 // UTILITY FUNCTIONS
 //=============================================================================
@@ -60,18 +62,6 @@ const createGoogleScholarSearchUrl = (title) => {
  * @param {string} candidateName - Name of the candidate to match against authors
  * @param {number} maxResultsToCheck - Maximum number of search results to examine
  * @returns {Promise<Object>} Verification result object
- *
- * @example
- * const result = await verifyWithGoogleScholar(
- *   "Deep Learning Applications",
- *   "10.1000/journal.123",
- *   "John Smith",
- *   5
- * );
- *
- * if (result.status === "verified") {
- *   console.log("Publication verified with author match!");
- * }
  */
 
 const verifyWithGoogleScholar = async (
@@ -166,6 +156,7 @@ const searchGoogleScholar = async (title, maxResults) => {
  * @returns {Object|null} Matched publication or null if not found
  * @private
  */
+
 const findMatchingPublication = (results, title, doi) => {
   return results.find((item) => {
     // DOI match takes highest precedence
@@ -175,8 +166,8 @@ const findMatchingPublication = (results, title, doi) => {
 
     // Title-based matching
     if (title && item.title) {
-      const normalizedTitle = title.toLowerCase().trim();
-      const normalizedItemTitle = item.title.toLowerCase().trim();
+      const normalizedTitle = normalizeTitle(title);
+      const normalizedItemTitle = normalizeTitle(item.title);
 
       // Check for substring matches
       if (
@@ -186,9 +177,22 @@ const findMatchingPublication = (results, title, doi) => {
         return true;
       }
 
+      const titleLengthRatio =
+        Math.min(normalizedTitle.length, normalizedItemTitle.length) /
+        Math.max(normalizedTitle.length, normalizedItemTitle.length);
+
       // Check similarity score
-      const similarity = getTitleSimilarity(title, item.title);
-      return similarity >= TITLE_SIMILARITY_THRESHOLD;
+      const similarity = getTitleSimilarity(
+        normalizedTitle,
+        normalizedItemTitle
+      );
+
+      if (
+        similarity >= TITLE_SIMILARITY_THRESHOLD &&
+        titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
+      ) {
+        return true;
+      }
     }
 
     return false;

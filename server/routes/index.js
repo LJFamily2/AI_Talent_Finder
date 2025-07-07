@@ -3,8 +3,8 @@ const router = express.Router();
 
 // Import route files
 const authRoutes = require("./auth");
-const cvVerificationRoutes = require("./cvVerification");
 const authorRoutes = require("./authorRoutes");
+const cvVerificationRoutes = require("./cvVerificationRoute");
 
 // Mount routes
 router.use("/api/cv", cvVerificationRoutes);
