@@ -1,29 +1,113 @@
+// server/models/publication.js
 const mongoose = require('mongoose');
 
 const publicationSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },           // All sources
-  doi: { type: String },                                        // All sources
-  title: { type: String, required: true },
+  // Core Identification Fields
+  id: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  doi: {
+    type: String
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  url: {
+    type: String
+  },
+  link: {
+    type: String
+  },
 
   // Publication Details
-  publication_date: { type: Date },                             // All sources
-  publicationLocation: { type: String },                        // host_organization_name (OpenAlex/Scopus/Scholar)
-  volume: { type: String },                                     // OpenAlex & Scopus
-  issue: { type: String },                                      // OpenAlex & Scopus
-  page_range: { type: String },                                 // Scopus & OpenAlex
-  article_number: { type: String },                             // Scopus
-  publication_type: { type: String },                           // OpenAlex & Scopus
-  eissn: { type: String },                                      // Scopus
-  issn: { type: String },                                       // OpenAlex & Scopus
+  publication_date: {
+    type: Date
+  },
+  journal_name: {
+    type: String
+  },
+  volume: {
+    type: String
+  },
+  issue: {
+    type: String
+  },
+  page_range: {
+    type: String
+  },
+  article_number: {
+    type: String
+  },
+  publication_type: {
+    type: String
+  },
+  language: {
+    type: String
+  },
+  eissn: {
+    type: String
+  },
+  issn: {
+    type: String
+  },
 
   // Author Information
-  authors: [{ type: mongoose.Schema.Types.Mixed }],             // Mixed source parsing
+  authors: [{
+    id: {
+      type: String
+    },
+    affiliation: {
+      type: String
+    },
+    orcid: {
+      type: String
+    }
+  }],
+
+  // Content & Abstract
+  abstract: {
+    type: String
+  },
+  topics: [{
+    id: {
+      type: String
+    },
+    display_name: {
+      type: String
+    },
+    score: {
+      type: Number
+    }
+  }],
 
   // Metrics & Impact
-  cited_by_count: { type: Number, default: 0 },                 // OpenAlex
-  citation_percentile: { type: Number },                        // citation_normalized_percentile (OpenAlex)
-  open_access_status: { type: String },                         // OpenAlex
-  fwci: { type: Number }                                        // OpenAlex
+  cited_by_count: {
+    type: Number,
+    default: 0
+  },
+  citation_percentile: {
+    type: Number
+  },
+  open_access_status: {
+    type: String,
+    enum: ['gold', 'green', 'bronze', 'hybrid', 'closed']
+  },
+  fwci: {
+    type: Number
+  },
+
+  // API Source Tracking
+  source_api: {
+    type: String
+  },
+  external_ids: {
+    openalex: {
+      type: String
+    }
+  }
 }, {
   timestamps: true
 });
