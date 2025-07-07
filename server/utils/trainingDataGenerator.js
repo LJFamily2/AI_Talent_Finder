@@ -7,7 +7,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const pdfParse = require("pdf-parse");
+const { extractTextFromPDF } = require("./pdfUtils");
 const { PUBLICATION_PATTERNS } = require("./constants");
 
 // Configuration
@@ -51,9 +51,8 @@ if (fs.existsSync(HEADER_LABELS_FILE)) {
 async function processCV(filePath) {
   try {
     console.log(`Processing ${filePath}...`);
-    const pdfBuffer = fs.readFileSync(filePath);
-    const parsedData = await pdfParse(pdfBuffer);
-    const lines = parsedData.text
+    const cvText = await extractTextFromPDF(filePath);
+    const lines = cvText
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
@@ -72,8 +71,8 @@ async function processCV(filePath) {
 
       // Only use fallback rules (no manual labels)
       features.isHeader =
-        (line === line.toUpperCase() &&
-        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line)));
+        line === line.toUpperCase() &&
+        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
 
       trainingData.push(features);
     }
