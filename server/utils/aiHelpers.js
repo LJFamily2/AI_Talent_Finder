@@ -539,6 +539,11 @@ Begin your response with the JSON array only.
 `;
 
   try {
+    // Check if chunkText is too short to process
+    if (chunkText.length < 20) {
+      console.log("Chunk text is too short for processing.");
+      return [];
+    }
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();

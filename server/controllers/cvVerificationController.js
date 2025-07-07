@@ -16,7 +16,6 @@
  */
 
 const fs = require("fs");
-const pdfParse = require("pdf-parse");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {
   verifyWithGoogleScholar,
@@ -30,6 +29,7 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
+const { extractTextFromPDF } = require("../utils/pdfUtils");
 //=============================================================================
 // MAIN CV VERIFICATION FUNCTION
 //=============================================================================
@@ -52,12 +52,11 @@ const {
 const verifyCV = async (file, prioritySource) => {
   const processTimes = {};
   const startAll = Date.now();
+  let cvText = "";
   try {
-    // Parse PDF to text
+    // Parse PDF to text (with OCR fallback)
     const startParse = Date.now();
-    const pdfBuffer = fs.readFileSync(file.path);
-    const parsedData = await pdfParse(pdfBuffer);
-    const cvText = parsedData.text;
+    cvText = await extractTextFromPDF(file.path);
     processTimes.parsePDF = Date.now() - startParse;
     // Clean up uploaded file
     fs.unlinkSync(file.path);
