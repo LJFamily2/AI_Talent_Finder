@@ -24,9 +24,6 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Mount routes
-app.use(routes);
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
