@@ -125,65 +125,96 @@ exports.searchByI10Index = async (req, res) => {
   }
 };
 
-/**
- * Search only authors with ORCID ID
- * GET /api/authors/search/with-orcid
- */
-exports.searchWithOrcid = async (_req, res) => {
-  try {
-    const authors = await ResearcherProfile.find({
-      "identifiers.orcid": { $exists: true, $ne: "" }
-    }).limit(20);
+// /**
+//  * Search only authors with ORCID ID
+//  * GET /api/authors/search/with-orcid
+//  */
+// exports.searchWithOrcid = async (_req, res) => {
+//   try {
+//     const authors = await ResearcherProfile.find({
+//       "identifiers.orcid": { $exists: true, $ne: "" }
+//     }).limit(20);
 
-    if (authors.length === 0) {
-      return res.status(404).json({ message: "No authors with ORCID ID found" });
-    }
+//     if (authors.length === 0) {
+//       return res.status(404).json({ message: "No authors with ORCID ID found" });
+//     }
 
-    return res.status(200).json({ count: authors.length, authors });
-  } catch (err) {
-    console.error("Error in searchWithOrcid:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
+//     return res.status(200).json({ count: authors.length, authors });
+//   } catch (err) {
+//     console.error("Error in searchWithOrcid:", err.message);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+// /**
+//  * Search only authors with Scopus ID
+//  * GET /api/authors/search/with-scopus
+//  */
+// exports.searchWithScopus = async (_req, res) => {
+//   try {
+//     const authors = await ResearcherProfile.find({
+//       "identifiers.scopus": { $exists: true, $ne: "" }
+//     }).limit(20);
+
+//     if (authors.length === 0) {
+//       return res.status(404).json({ message: "No authors with Scopus ID found" });
+//     }
+
+//     return res.status(200).json({ count: authors.length, authors });
+//   } catch (err) {
+//     console.error("Error in searchWithScopus:", err.message);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+// /**
+//  * Search only authors with OpenAlex ID
+//  * GET /api/search-by-topic/with-openalex
+//  */
+// exports.searchWithOpenAlex = async (_req, res) => {
+//   try {
+//     const authors = await ResearcherProfile.find({
+//       "identifiers.openalex": { $exists: true, $ne: "" }
+//     }).limit(20);
+
+//     if (authors.length === 0) {
+//       return res.status(404).json({ message: "No authors with OpenAlex ID found" });
+//     }
+
+//     return res.status(200).json({ count: authors.length, authors });
+//   } catch (err) {
+//     console.error("Error in searchWithOpenAlex:", err.message);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+exports.searchByIdentifier = async (req, res) => {
+  const { type } = req.query;
+  const allowed = ['orcid','scopus','openalex','google_scholar_id'];
+
+  if (!type || !allowed.includes(type)) {
+    return res
+      .status(400)
+      .json({ error: `type is required and must be one of: ${allowed.join(',')}` });
   }
-};
 
-/**
- * Search only authors with Scopus ID
- * GET /api/authors/search/with-scopus
- */
-exports.searchWithScopus = async (_req, res) => {
+  // Build dynamic field path
+  const field = `identifiers.${type}`;
+
   try {
     const authors = await ResearcherProfile.find({
-      "identifiers.scopus": { $exists: true, $ne: "" }
+      [field]: { $exists: true, $ne: "" }
     }).limit(20);
 
     if (authors.length === 0) {
-      return res.status(404).json({ message: "No authors with Scopus ID found" });
+      return res
+        .status(404)
+        .json({ message: `No authors with ${type} found` });
     }
 
     return res.status(200).json({ count: authors.length, authors });
   } catch (err) {
-    console.error("Error in searchWithScopus:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-/**
- * Search only authors with OpenAlex ID
- * GET /api/search-by-topic/with-openalex
- */
-exports.searchWithOpenAlex = async (_req, res) => {
-  try {
-    const authors = await ResearcherProfile.find({
-      "identifiers.openalex": { $exists: true, $ne: "" }
-    }).limit(20);
-
-    if (authors.length === 0) {
-      return res.status(404).json({ message: "No authors with OpenAlex ID found" });
-    }
-
-    return res.status(200).json({ count: authors.length, authors });
-  } catch (err) {
-    console.error("Error in searchWithOpenAlex:", err.message);
+    console.error(`Error in searchByIdentifier [${type}]:`, err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
