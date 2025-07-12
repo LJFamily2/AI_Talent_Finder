@@ -4,10 +4,11 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 const { createClient } = require('redis');
-
 const routes = require("../routes");
 const cvVerificationRoutes = require("../routes/cvVerificationRoute");
 const authorRoutes = require("../routes/authorRoutes");
+const searchByTopicRoute = require("../routes/searchByTopic");
+
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, "../.env") });
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use(cors());
 app.use("/api/author", authorRoutes);
 app.use("/api/cv", cvVerificationRoutes);
+app.use("/api/search-by-topic", searchByTopicRoute);
 app.use(routes);
 
 // Redis client setup
