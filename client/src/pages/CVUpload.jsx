@@ -4,6 +4,7 @@ import fileUploadIcon from "../assets/document-upload.svg";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Footer from "../components/Footer";
 
 function CVUpload() {
   const [processing, setProcessing] = useState(false);
@@ -89,6 +90,7 @@ function CVUpload() {
         `}
       </style>
 
+      <Footer />
     </div>
   )
 }
