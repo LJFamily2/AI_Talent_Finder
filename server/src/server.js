@@ -1,22 +1,20 @@
 // server.js
 
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const path = require("path");
+const express       = require("express");
+const mongoose      = require("mongoose");
+const cors          = require("cors");
+const dotenv        = require("dotenv");
+const path          = require("path");
 const { createClient } = require("redis");
 
 // Route modules
-const routes = require("../routes");
+const routes              = require("../routes");
 const cvVerificationRoutes = require("../routes/cvVerificationRoute");
-const authorRoutes = require("../routes/authorRoutes");
-const searchFilters = require("../routes/searchFilters");
-// const searchFiltersController = require("../controllers/searchFiltersController");
-
+const authorRoutes        = require("../routes/authorRoutes");
+const searchFilters       = require("../routes/searchFilters");
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 // Create Express app
 const app = express();
@@ -39,7 +37,7 @@ redisClient
   .then(() => console.log("Redis Connected"))
   .catch(err => console.error("Redis Connection Error:", err));
 
-// Expose Redis client to controllers
+// Expose Redis client to controllers via app.locals
 app.locals.redisClient = redisClient;
 
 // Connect to MongoDB
