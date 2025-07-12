@@ -16,7 +16,6 @@
  */
 
 const fs = require("fs");
-const pdfParse = require("pdf-parse");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {
   verifyWithGoogleScholar,
@@ -30,6 +29,7 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
+const { extractTextFromPDF } = require("../utils/pdfUtils");
 //=============================================================================
 // MAIN CV VERIFICATION FUNCTION
 //=============================================================================
@@ -47,48 +47,49 @@ const {
  *
  * @param {Object} file - Uploaded CV file object with path property
  * @returns {Promise<Object>} Comprehensive verification results
- *
- * @example
- * const result = await verifyCV(uploadedFile);
- * console.log(`Verified ${result.verifiedPublications}/${result.total} publications`);
- * console.log(`Publications with author match: ${result.verifiedWithAuthorMatch}`);
- * console.log(`Potential false claims: ${result.falseClaims}`);
  */
 
-// Main function
-// 1. parse the CV PDF to text
-// 2. extract candidate name using AI
-// 3. extract publications using the Google AI model
-// 4. verify each publication with Google Scholar and Scopus
-// 5. check if candidate name matches publication authors
-// 6. return the results
-const verifyCV = async (file, prioritySource = "googleScholar") => {
+const verifyCV = async (file, prioritySource) => {
+  const processTimes = {};
+  const startAll = Date.now();
+  let cvText = "";
   try {
-    // Parse PDF to text
-    const pdfBuffer = fs.readFileSync(file.path);
-    const parsedData = await pdfParse(pdfBuffer);
-    const cvText = parsedData.text;
-
+    // Parse PDF to text (with OCR fallback)
+    const startParse = Date.now();
+    cvText = await extractTextFromPDF(file.path);
+    processTimes.parsePDF = Date.now() - startParse;
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Initialize Google AI model
+    const startModel = Date.now();
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemma-3n-e4b-it",
+      model: "gemini-2.5-flash-lite-preview-06-17",
       generationConfig: {
         temperature: 0.0,
-        topP: 0.1,
+        topP: 0.0,
         maxOutputTokens: 4096,
       },
-    }); // Extract candidate name using AI
+    });
+    processTimes.initModel = Date.now() - startModel;
+
+    // Extract candidate name using AI
+    const startName = Date.now();
     const candidateName = await extractCandidateNameWithAI(model, cvText);
+    processTimes.extractName = Date.now() - startName;
+
+    // Extract publications using AI
+    const startPubs = Date.now();
     const publications = await extractPublicationsFromCV(model, cvText);
+    processTimes.extractPublications = Date.now() - startPubs;
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
-    } // Verify each publication with both Google Scholar and Scopus
-    let falseClaims = 0;
+    }
+
+    // Verify each publication with both Google Scholar and Scopus
+    const startVerify = Date.now();
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
@@ -107,7 +108,6 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
         if (scholarResult.details?.extractedAuthors) {
           allAuthors.push(...scholarResult.details.extractedAuthors);
         }
-
         // Get authors from Scopus
         if (scopusResult.details?.extractedAuthors) {
           allAuthors.push(...scopusResult.details.extractedAuthors);
@@ -133,15 +133,12 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           scholarResult.status === "verified but not same author name" ||
           scopusResult.status === "verified but not same author name" ||
           openAlexResult.status === "verified but not same author name";
-        const isPotentialFalseClaim =
-          isVerified && candidateName && !hasAuthorMatch;
-        if (isPotentialFalseClaim) {
-          falseClaims++;
-        } // Get best available link
+        // Get best available link
         const scholarLink = scholarResult.details?.link;
         const openAlexLink = openAlexResult.details?.id; // OpenAlex ID as fallback link
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
+        // Return detailed verification result for this publication
         return {
           publication: {
             title: pub.title?.trim() || "",
@@ -155,11 +152,11 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
             },
             scopus: {
               status: scopusResult.status,
-              details: scopusResult.details,
+              // details: scopusResult.details,
             },
             openalex: {
               status: openAlexResult.status,
-              details: openAlexResult.details,
+              // details: openAlexResult.details,
             },
             displayData: {
               publication: pub.publication || "Unable to verify",
@@ -191,13 +188,12 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
                 return "Unable to verify";
               })(),
               type: (() => {
-                // Use type from any source
-                return (
+                const type =
                   openAlexResult.details?.type ||
                   scholarResult.details?.type ||
                   scopusResult.details?.subtypeDescription ||
-                  "Not specified"
-                );
+                  "Not specified";
+                return typeof type === "string" ? type.toLowerCase() : type;
               })(),
               year: (() => {
                 const currentYear = new Date().getFullYear();
@@ -295,8 +291,10 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
         };
       })
     );
+    processTimes.verifyPublications = Date.now() - startVerify;
 
     // Aggregate author details from multiple sources
+    const startAggregate = Date.now();
     // Find publications with author matches and collect IDs
     const allAuthorIds = {
       google_scholar: null,
@@ -314,14 +312,12 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
     // Collect author IDs from each source
     verifiedWithAuthorMatch.forEach((result) => {
       const { authorIds } = result.authorVerification;
-
       if (authorIds?.google_scholar && !allAuthorIds.google_scholar) {
         allAuthorIds.google_scholar = authorIds.google_scholar;
       }
       if (authorIds?.scopus && !allAuthorIds.scopus) {
         allAuthorIds.scopus = authorIds.scopus;
       }
-
       if (authorIds?.openalex && !allAuthorIds.openalex) {
         allAuthorIds.openalex = authorIds.openalex;
       }
@@ -340,8 +336,8 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
           // Transform the result to match the expected structure
           aggregatedAuthorDetails = {
             author: rawAuthorDetails.author,
-            articles: rawAuthorDetails.articles,
-            expertises: rawAuthorDetails.expertises,
+            // articles: rawAuthorDetails.articles,
+            expertises: rawAuthorDetails.expertise,
             metrics: {
               h_index: rawAuthorDetails.h_index,
               documentCount: rawAuthorDetails.documentCount,
@@ -354,19 +350,12 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
       } catch (error) {
         console.error("Failed to aggregate author details:", error.message);
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
-        const match = verificationResults.find(
-          (result) =>
-            result.verification.google_scholar.status === "verified" &&
-            result.authorVerification.hasAuthorMatch &&
-            result.verification.google_scholar.details?.authorDetails
-        );
-
-        if (match?.verification.google_scholar.details?.authorDetails) {
-          aggregatedAuthorDetails =
-            match.verification.google_scholar.details.authorDetails;
-        }
       }
     }
+    processTimes.aggregateAuthors = Date.now() - startAggregate;
+
+    processTimes.total = Date.now() - startAll;
+    // console.log("[CV Verification] Process timing (ms):", processTimes);
 
     return {
       success: true,
@@ -374,28 +363,24 @@ const verifyCV = async (file, prioritySource = "googleScholar") => {
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
-          r.verification.google_scholar.status === "verified" ||
-          r.verification.scopus.status === "verified" ||
-          r.verification.google_scholar.status ===
-            "verified but not same author name" ||
-          r.verification.scopus.status === "verified but not same author name"
+          r.verification.displayData.status === "verified" ||
+          r.verification.displayData.status ===
+            "verified but not same author name"
       ).length,
       verifiedWithAuthorMatch: verificationResults.filter(
-        (r) =>
-          r.verification.google_scholar.status === "verified" ||
-          r.verification.scopus.status === "verified"
+        (r) => r.verification.displayData.status === "verified"
       ).length,
       verifiedButDifferentAuthor: verificationResults.filter(
         (r) =>
-          r.verification.google_scholar.status ===
-            "verified but not same author name" ||
-          r.verification.scopus.status === "verified but not same author name"
+          r.verification.displayData.status ===
+          "verified but not same author name"
       ).length,
-      falseClaims: falseClaims,
       results: verificationResults,
       authorDetails: aggregatedAuthorDetails,
+      timings: processTimes,
     };
   } catch (error) {
+    console.error("[CV Verification] Error:", error);
     throw error;
   }
 };
