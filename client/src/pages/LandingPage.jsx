@@ -12,7 +12,6 @@ import orcidLogo from "../assets/orcid-logo.png";
 import openAlexLogo from "../assets/OpenAlex_logo.svg";
 import googleScholarLogo from "../assets/google-scholar-logo.png";
 import updateIcon from "../assets/updated.png";
-import monitorIcon from "../assets/dashboard-monitor.png";
 import reliableIcon from "../assets/shield.png";
 import Accordion from '@mui/material/Accordion';
 import AccordionActions from '@mui/material/AccordionActions';
@@ -21,6 +20,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Button from '@mui/material/Button';
+import monitorIcon from "../assets/dashboard-monitor.png";
 
 function LandingPage() {
 return (
@@ -45,13 +45,13 @@ return (
         <h2 className="text-center font-bold text-3xl text-[#000054] mb-10 mt-15"> What can we provide?</h2>
 
         {/* Feature 1: Find academic talent */}
-        <div className="w-3/4 h-max bg-[#000054] mx-auto rounded-2xl flex pt-10 border-1 border-[#000054]">
+        <div className="w-3/4 h-max bg-[#000054] mx-auto rounded-2xl flex pt-10 border-1 border-[#000054] hover:scale-105 transition-transform duration-300 shadow-md">
             <div className="w-1/2 text-white pl-10 flex flex-col justify-between">
                 <div>
                     <h3 className="font-bold text-3xl mb-5">Academics around the world,<br></br>now in one place</h3>
                     <p className="text-justify">Pulling data from reliable databases such as Scopus, ORCID and OpenAlex, our product presents to you a list of potential academics with the necessary details already given, sparing you much time of looking up on various individual platforms.</p>
                 </div>
-                <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-4 rounded-2xl mb-10">
+                <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-4 rounded-2xl mb-10 hover:underline">
                     <a href="/search-tool">Explore now</a>
                 </button>
             </div>
@@ -66,12 +66,12 @@ return (
         {/* Two remaining features */}
         <div className="w-3/4 h-max flex gap-15 mx-auto text-white">
             {/* Feature 2: Verify candidate CVs */}
-            <div className="w-1/2 h-full bg-[#000054] rounded-2xl pt-10 shadow-md">
+            <div className="w-1/2 h-full bg-[#000054] rounded-2xl pt-10 shadow-md hover:scale-105 transition-transform duration-300 shadow-md">
                 <div className="h-max px-10">
                     <h3 className="font-bold text-3xl mb-4">Verify candidates’ CVs</h3>
                     <p className="text-justify">By comparing candidates’ statements in CV with some of our Internet sources, this product could give early alarms to the recruiters, highlighting which claims of the candidates are unverifiable.
                     </p>
-                    <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-10 rounded-2xl mb-6"><a href="/verify-cv">Explore now</a></button>
+                    <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-10 rounded-2xl mb-6 hover:underline"><a href="/verify-cv">Explore now</a></button>
                 </div>
                                 
                 <div className="bg-white w-full h-1/2 py-8 px-5 border-1 rounded-b-lg border-gray-200 border-1">
@@ -80,14 +80,14 @@ return (
             </div>
 
             {/* Feature 3: Export to report */}
-            <div className="w-1/2 bg-[#000054] rounded-2xl shadow-md grow flex flex-col justify-between">
+            <div className="w-1/2 bg-[#000054] rounded-2xl shadow-md grow flex flex-col justify-between hover:scale-105 transition-transform duration-300 shadow-md">
                     <div className="h-full px-10 pt-10 flex flex-col justify-between">
                             <div>
                                     <h3 className="font-bold text-3xl mb-4">Export to report</h3>
                                     <p className="text-justify">Recruiters can export their search results for further analysis.</p>
                             </div>
                             
-                            <button className="w-max bg-[#E60028] text-white px-8 py-3 mb-6 rounded-2xl"><a href="#">Explore now</a></button>
+                            <button className="w-max bg-[#E60028] text-white px-8 py-3 mb-6 rounded-2xl hover:underline"><a href="#">Explore now</a></button>
                     </div>
                     
                     <div className="bg-white w-full py-8 px-5 rounded-b-lg border-gray-200 border-1 flex justify-around">
@@ -166,7 +166,7 @@ return (
         <div className="bg-[#F3F4F6] w-full h-max text-[#000054] text-center py-20">
             <h2 className="text-3xl mb-20 font-bold">Frequently asked questions</h2>
             
-            <div className="w-2/3 h-max mx-auto mb-10 flex flex-col gap-5 text-justify">
+            <div className="w-2/3 h-max mx-auto mb-10 flex flex-col text-justify">
             <Accordion>
                 <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
