@@ -27,34 +27,34 @@ async function trainModel() {
       "header_training_data.json"
     );
     if (!fs.existsSync(trainingDataPath)) {
-      console.log("Generating training data...");
+      // console.log("Generating training data...");
       await generateTrainingData();
     }
 
     // Load training data
-    console.log("Loading training data...");
+    // console.log("Loading training data...");
     const allTrainingData = JSON.parse(fs.readFileSync(trainingDataPath));
 
     // Use a subset for faster training (first 500 examples)
     const trainingData = allTrainingData.slice(0, 500);
-    console.log(
-      `Using ${trainingData.length} examples out of ${allTrainingData.length} total`
-    );
+    // console.log(
+    //   `Using ${trainingData.length} examples out of ${allTrainingData.length} total`
+    // );
 
     // Initialize and train the classifier
-    console.log("Training classifier...");
+    // console.log("Training classifier...");
     const classifier = new SimpleHeaderClassifier();
     classifier.train(trainingData);
 
     // Save the trained model
-    console.log("Saving model...");
+    // console.log("Saving model...");
     classifier.save(MODEL_PATH);
 
-    console.log(`Model trained and saved to ${MODEL_PATH}`);
-    console.log(`Processed ${trainingData.length} examples`);
+    // console.log(`Model trained and saved to ${MODEL_PATH}`);
+    // console.log(`Processed ${trainingData.length} examples`);
 
     // Test the model on a few examples
-    console.log("\nTesting model on some examples:");
+    // console.log("\nTesting model on some examples:");
     const testExamples = [
       { text: "EDUCATION", index: 10, total: 100 },
       { text: "WORK EXPERIENCE", index: 30, total: 100 },
@@ -119,6 +119,7 @@ async function trainModel() {
       { text: "2013.", index: 47, total: 100 },
       { text: "Some completely unrelated line.", index: 48, total: 100 },
       { text: "Another random line.", index: 49, total: 100 },
+      { text: "ais jdgl;kaj  s;ldkfja l;sdkjf", index: 345, total: 100 },
     ];
 
     testExamples.forEach((example) => {

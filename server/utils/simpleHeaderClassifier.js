@@ -9,17 +9,17 @@ const fs = require("fs");
 class SimpleHeaderClassifier {
   constructor() {
     this.rules = {
-      isAllUpperCase: { weight: 0, threshold: 0.5 },
-      startsWithNumberOrBracket: { weight: 0, threshold: 0.5 },
-      containsYear: { weight: 0, threshold: 0.5 },
-      lengthRange: { weight: 0, threshold: 0.5, minLength: 3, maxLength: 50 },
-      positionRatio: { weight: 0, threshold: 0.5 },
-      wordCount: { weight: 0, threshold: 0.5, maxWords: 8 },
-      hasColon: { weight: 0, threshold: 0.5 },
-      matchesPublicationPattern: { weight: 0, threshold: 0.5 },
-      endsWithPeriodOrPercent: { weight: 0, threshold: 0.5 },
-      isShort: { weight: 0, threshold: 0.5 },
-      indentationLevel: { weight: 0, threshold: 0.5 },
+      isAllUpperCase: { weight: 0 },
+      startsWithNumberOrBracket: { weight: 0 },
+      containsYear: { weight: 0 },
+      lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
+      positionRatio: { weight: 0 },
+      wordCount: { weight: 0, maxWords: 8 },
+      hasColon: { weight: 0 },
+      matchesPublicationPattern: { weight: 0 },
+      endsWithPeriodOrPercent: { weight: 0 },
+      isShort: { weight: 0 },
+      indentationLevel: { weight: 0 },
     };
     this.trained = false;
   }
