@@ -29,8 +29,8 @@ return (
             <Header/>
         </div>
 
-        <div className="w-full h-screen flex justify-center items-center overflow-clip z-0 relative">
-            <video src={autoplayVideo} width={"100%"} autoPlay loop muted className="object-cover brightness-20" />
+        <div className="w-full h-screen flex justify-center items-center overflow-clip z-0 relative mx-auto">
+            <video src={autoplayVideo} width={"100%"} autoPlay loop muted className="object-cover brightness-40" />
             <div className="absolute text-center">
                 <h1 className="text-white text-6xl font-bold mb-15">The world is big,<br></br>we bring talents closer to you</h1>
             </div>
@@ -45,7 +45,7 @@ return (
         <h2 className="text-center font-bold text-3xl text-[#000054] mb-10 mt-15"> What can we provide?</h2>
 
         {/* Feature 1: Find academic talent */}
-        <div className="w-3/4 h-max bg-[#000054] mx-auto rounded-2xl flex pt-10 border-1 border-[#000054] hover:scale-105 transition-transform duration-300 shadow-md">
+        <div className="w-2/3 h-max bg-[#000054] mx-auto rounded-2xl flex pt-10 border-1 border-[#000054] hover:scale-105 transition-transform duration-300 shadow-md">
             <div className="w-1/2 text-white pl-10 flex flex-col justify-between">
                 <div>
                     <h3 className="font-bold text-3xl mb-5">Academics around the world,<br></br>now in one place</h3>
@@ -64,7 +64,7 @@ return (
         <div className="h-15"></div>
 
         {/* Two remaining features */}
-        <div className="w-3/4 h-max flex gap-15 mx-auto text-white">
+        <div className="w-2/3 h-max flex gap-15 mx-auto text-white">
             {/* Feature 2: Verify candidate CVs */}
             <div className="w-1/2 h-full bg-[#000054] rounded-2xl pt-10 shadow-md hover:scale-105 transition-transform duration-300 shadow-md">
                 <div className="h-max px-10">
@@ -120,7 +120,7 @@ return (
             <div className="h-20"></div>
 
             <h3 className="text-3xl mb-13"> We strive for <b>high quality</b> <br></br>in all aspects of our product</h3>
-            <div className="w-3/4 bg-[#000054] text-white mx-auto py-15 px-20 rounded-2xl flex gap-10">
+            <div className="w-2/3 bg-[#000054] text-white mx-auto py-15 px-20 rounded-2xl flex gap-10">
                 <div className="w-1/3 flex flex-col items-center">
                     <img
                     src={monitorIcon}
