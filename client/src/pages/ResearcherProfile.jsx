@@ -2,7 +2,7 @@ import Footer from '../components/Footer';
 import Header from '../components/Header';
 // import { researcherSampleData, sampleWorks } from './seed';
 import { BarChart } from '@mui/x-charts/BarChart';
-import { Chip } from '@mui/material';
+import { Chip, Button } from '@mui/material';
 
 export default function ResearcherProfile() {
     const r = researcherSampleData;
@@ -39,6 +39,19 @@ export default function ResearcherProfile() {
     return (
         <div className="bg-gray-100 min-h-screen">
             <Header />
+            <div className="mx-10 mt-4 px-4 flex justify-between items-center">
+                <button
+                    onClick={() => window.history.back()}
+                    className="text-blue-600 hover:underline text-sm"
+                >
+                    ← Back
+                </button>
+
+                <Button variant="contained" color="primary" size="small">
+                    Export Profile
+                </Button>
+            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 mx-10">
 
@@ -48,13 +61,13 @@ export default function ResearcherProfile() {
                     <div className="bg-white p-4 rounded-md shadow space-y-4 self-start">
                         {/* Top: Thumbnail + Name + Email */}
                         <div className="flex items-center space-x-4">
-                            {thumbnail && (
+                            {/* {thumbnail && (
                                 <img
                                     src={thumbnail}
                                     alt={name}
                                     className="w-24 h-24 rounded-full shadow-md"
                                 />
-                            )}
+                            )} */}
                             <div>
                                 <h2 className="text-xl font-semibold">{name}</h2>
                                 <p className="text-sm text-gray-600">
@@ -198,7 +211,8 @@ export default function ResearcherProfile() {
 
                         <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                             <div>Total Works: {total_works}</div>
-                            <div>2-Yr Mean Citedness: {two_year_mean_citedness?.toFixed(2)}</div>
+                            {/* <div>2-Yr Mean Citedness: {two_year_mean_citedness?.toFixed(2)}</div> */}
+                            <div>Total Citations: {citations.all}</div>
                         </div>
 
                         <table className="w-full text-sm text-left mt-2">
@@ -206,25 +220,26 @@ export default function ResearcherProfile() {
                                 <tr className="border-b">
                                     <th className="py-1 px-2">Metric</th>
                                     <th className="py-1 px-2">All</th>
-                                    <th className="py-1 px-2">Since 2020</th>
+                                    {/* <th className="py-1 px-2">Since 2020</th> */}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="py-1 px-2">Citations</td>
-                                    <td className="py-1 px-2">{citations.all}</td>
-                                    <td className="py-1 px-2">{citations.since_2020}</td>
-                                </tr>
-                                <tr>
                                     <td className="py-1 px-2">h-index</td>
                                     <td className="py-1 px-2">{h_idx.all}</td>
-                                    <td className="py-1 px-2">{h_idx.since_2020}</td>
+                                    {/* <td className="py-1 px-2">{h_idx.since_2020}</td> */}
                                 </tr>
                                 <tr>
                                     <td className="py-1 px-2">i10-index</td>
                                     <td className="py-1 px-2">{i10_idx.all}</td>
-                                    <td className="py-1 px-2">{i10_idx.since_2020}</td>
+                                    {/* <td className="py-1 px-2">{i10_idx.since_2020}</td> */}
                                 </tr>
+                                <tr>
+                                    <td className="py-1 px-2">2-Year Mean Citedness</td>
+                                    <td className="py-1 px-2">{two_year_mean_citedness?.toFixed(2)}</td>
+                                    {/* <td className="py-1 px-2">{citations.since_2020}</td> */}
+                                </tr>
+
                             </tbody>
                         </table>
                     </div>
@@ -235,7 +250,7 @@ export default function ResearcherProfile() {
                         <BarChart
                             xAxis={[{ scaleType: 'band', data: workYears }]}
                             series={[{ data: workCounts, label: 'Works' }]}
-                            height={300}
+                            height={250}
                         />
                     </div>
 
@@ -245,7 +260,7 @@ export default function ResearcherProfile() {
                         <BarChart
                             xAxis={[{ scaleType: 'band', data: citationYears }]}
                             series={[{ data: citationCounts, label: 'Citations' }]}
-                            height={300}
+                            height={250}
                         />
                     </div>
                 </div>
