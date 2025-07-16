@@ -51,10 +51,31 @@ This guide explains how to add new CV samples and retrain the ML header detectio
 ### Step 4: Verify the Updated Model
 
 1. **Automatic Integration**: The main application will automatically use the new model file
-2. **Manual Testing** (optional): You can test the new model by running:
+2. **Performance Metrics**: The training process now includes automatic evaluation with:
+   - **Accuracy**: Overall correctness of predictions
+   - **Precision**: Accuracy of positive predictions (headers)
+   - **Recall**: Coverage of actual headers
+   - **F1 Score**: Balanced measure of precision and recall
+3. **Manual Testing** (optional): You can test the new model by running:
    ```bash
    node -e "const { extractHeadersFromText } = require('./utils/aiHelpers'); const headers = extractHeadersFromText('EDUCATION\\nPhD Computer Science\\nWORK EXPERIENCE\\nSoftware Engineer'); console.log('Headers:', headers.map(h => h.text));"
    ```
+
+### Step 5: Detailed Performance Analysis (Optional)
+
+For comprehensive model evaluation, run the metrics evaluation script:
+
+```bash
+cd "p:\AI Talent Finder\server\utils"
+node evaluateModelMetrics.js
+```
+
+This provides:
+
+- **Cross-validation results** for robust performance estimates
+- **Confusion matrix** showing prediction breakdown
+- **Misclassification analysis** to identify problem areas
+- **Performance comparison** with previous model versions
 
 ## File Structure
 
@@ -101,6 +122,11 @@ p:\AI Talent Finder\server\
 - [ ] Training data generation completed successfully
 - [ ] Model training completed without errors
 - [ ] Model file updated with new timestamp
+- [ ] **Performance metrics meet quality thresholds:**
+  - [ ] Accuracy ≥ 75%
+  - [ ] Precision ≥ 70%
+  - [ ] Recall ≥ 70%
+  - [ ] F1 Score ≥ 70%
 - [ ] Main application loads and uses new model
 
 ### Expected Improvements
@@ -160,6 +186,19 @@ The ML system provides these benefits over regex-based detection:
 - **Better Adaptability**: Learns from your specific CV formats
 - **Reduced Maintenance**: No need to manually update regex patterns
 - **Improved Accuracy**: 80%+ agreement with human judgment
+
+### Current Performance Standards
+
+- **Accuracy**: ≥75% (percentage of correct predictions)
+- **Precision**: ≥70% (accuracy of header predictions)
+- **Recall**: ≥70% (coverage of actual headers)
+- **F1 Score**: ≥70% (balanced precision-recall measure)
+
+### Monitoring Tools
+
+1. **Quick Check**: `node evaluateModelMetrics.js --quick`
+2. **Full Evaluation**: `node evaluateModelMetrics.js`
+3. **Performance Monitoring**: `node modelPerformanceMonitor.js`
 
 ---
 

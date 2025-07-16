@@ -1,31 +1,31 @@
 {
   "rules": {
     "isAllUpperCase": {
-      "weight": 0.905241935483871
+      "weight": 0.9131313131313131
     },
     "startsWithNumberOrBracket": {
       "weight": 0
     },
     "containsYear": {
-      "weight": -0.18346774193548387
+      "weight": -0.26666666666666666
     },
     "lengthRange": {
-      "weight": 0.46370967741935487,
+      "weight": 0.5333333333333333,
       "minLength": 3,
       "maxLength": 50
     },
     "positionRatio": {
-      "weight": 0.1875
+      "weight": 0.2080808080808081
     },
     "wordCount": {
-      "weight": 0.344758064516129,
+      "weight": 0.4161616161616162,
       "maxWords": 8
     },
     "hasColon": {
-      "weight": -0.0846774193548387
+      "weight": -0.14545454545454545
     },
     "matchesPublicationPattern": {
-      "weight": 1
+      "weight": 0.997979797979798
     },
     "endsWithPeriodOrPercent": {
       "weight": 0

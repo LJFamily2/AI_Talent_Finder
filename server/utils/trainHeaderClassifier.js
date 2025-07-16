@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const { SimpleHeaderClassifier } = require("./simpleHeaderClassifier");
 const { generateTrainingData } = require("./trainingDataGenerator");
+const { trainTestSplit } = require("./evaluateModelMetrics");
 
 const TRAINING_DIR = path.join(__dirname, "../data/training");
 const MODEL_DIR = path.join(__dirname, "../models");
@@ -35,23 +36,48 @@ async function trainModel() {
     // console.log("Loading training data...");
     const allTrainingData = JSON.parse(fs.readFileSync(trainingDataPath));
 
-    // Use a subset for faster training (first 500 examples)
-    const trainingData = allTrainingData.slice(0, 500);
+    // Split data for evaluation
+    const { trainData, testData } = trainTestSplit(allTrainingData, 0.2);
+
+    // Use a subset for faster training (first 500 examples from training set)
+    const trainingSubset = trainData.slice(0, 500);
     // console.log(
-    //   `Using ${trainingData.length} examples out of ${allTrainingData.length} total`
+    //   `Using ${trainingSubset.length} examples for training, ${testData.length} for evaluation`
     // );
 
     // Initialize and train the classifier
     // console.log("Training classifier...");
     const classifier = new SimpleHeaderClassifier();
-    classifier.train(trainingData);
+    classifier.train(trainingSubset);
+
+    // Evaluate the model on test set
+    console.log("\n📊 Model Performance Metrics:");
+    console.log("=".repeat(40));
+
+    const metrics = classifier.evaluateMetrics(testData.slice(0, 200)); // Quick evaluation
+    console.log(`Accuracy:  ${metrics.accuracy}%`);
+    console.log(`Precision: ${metrics.precision}%`);
+    console.log(`Recall:    ${metrics.recall}%`);
+    console.log(`F1 Score:  ${metrics.f1Score}%`);
+
+    console.log("\n📋 Confusion Matrix:");
+    console.log(`True Positives:  ${metrics.confusionMatrix.truePositives}`);
+    console.log(`False Positives: ${metrics.confusionMatrix.falsePositives}`);
+    console.log(`True Negatives:  ${metrics.confusionMatrix.trueNegatives}`);
+    console.log(`False Negatives: ${metrics.confusionMatrix.falseNegatives}`);
 
     // Save the trained model
     // console.log("Saving model...");
     classifier.save(MODEL_PATH);
 
     // console.log(`Model trained and saved to ${MODEL_PATH}`);
-    // console.log(`Processed ${trainingData.length} examples`);
+    // console.log(`Processed ${trainingSubset.length} examples`);
+
+    console.log(`\n✅ Model trained and saved to ${MODEL_PATH}`);
+    console.log(`📈 Training completed with ${trainingSubset.length} examples`);
+    console.log(
+      "\n💡 Run 'node evaluateModelMetrics.js' for detailed performance analysis"
+    );
 
     // Test the model on a few examples
     // console.log("\nTesting model on some examples:");
