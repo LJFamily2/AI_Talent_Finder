@@ -1,113 +1,100 @@
-// server/routes/searchFilters.js
-
 const express = require('express');
-const cache   = require('../middleware/cache');
-const ctrl    = require('../controllers/searchFiltersController');
+const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
+const ctrl = require('../controllers/searchFiltersController');
 
 const router = express.Router();
+const LONG = 3600;
 
-// Cache TTLs (seconds)
-const SHORT  = 60;    // 1 minute
-const MEDIUM = 300;   // 5 minutes
-const LONG   = 3600;  // 1 hour
-
-// ─── GET ENDPOINTS ─────────────────────────────────────────────────────────────
-
-/**
- * GET /api/search-filters/by-topic?topic=<string>
- */
+// ─── 1) SEARCH BY TOPIC ──────────────────────────────────────────────
 router.get(
   '/by-topic',
-  cache(MEDIUM, req => `search:topic:${(req.query.topic||'').toLowerCase()}`),
+  cacheRedisInsight(LONG, req => [
+    'searchFilters',
+    `topic=${(req.query.topic || '').toLowerCase()}`,
+    `page=${req.query.page || 1}`,
+    `limit=${req.query.limit || 25}`
+  ]),
   ctrl.searchByTopic
 );
 
-/**
- * GET /api/search-filters/by-country?country=<string>
- */
+// ─── 2) SEARCH BY COUNTRY ────────────────────────────────────────────
 router.get(
   '/by-country',
-  cache(LONG, req => `search:country:${(req.query.country||'').toUpperCase()}`),
+  cacheRedisInsight(LONG, req => [
+    'searchFilters',
+    `country=${(req.query.country || '').toUpperCase()}`,
+    `page=${req.query.page || 1}`,
+    `limit=${req.query.limit || 25}`
+  ]),
   ctrl.searchByCountry
 );
 
-/**
- * GET /api/search-filters/by-hindex?hindex=<int>&op=<gte|lte|eq>
- */
+// ─── 3) SEARCH BY H-INDEX ────────────────────────────────────────────
 router.get(
   '/by-hindex',
-  cache(MEDIUM, req => `search:hindex:${req.query.op||'eq'}:${req.query.hindex||''}`),
+  cacheRedisInsight(LONG, req => [
+    'searchFilters',
+    `hindex_op=${req.query.op || 'eq'}`,
+    `hindex_val=${req.query.hindex || ''}`,
+    `page=${req.query.page || 1}`,
+    `limit=${req.query.limit || 25}`
+  ]),
   ctrl.searchByHIndex
 );
 
-/**
- * GET /api/search-filters/by-i10index?i10index=<int>&op=<gte|lte|eq>
- */
+// ─── 4) SEARCH BY I10-INDEX ──────────────────────────────────────────
 router.get(
   '/by-i10index',
-  cache(MEDIUM, req => `search:i10index:${req.query.op||'eq'}:${req.query.i10index||''}`),
+  cacheRedisInsight(LONG, req => [
+    'searchFilters',
+    `i10_op=${req.query.op || 'eq'}`,
+    `i10_val=${req.query.i10index || ''}`,
+    `page=${req.query.page || 1}`,
+    `limit=${req.query.limit || 25}`
+  ]),
   ctrl.searchByI10Index
 );
 
-/**
- * GET /api/search-filters/with-identifier?type=orcid|scopus|openalex|google_scholar_id
- */
+// ─── 5) SEARCH BY IDENTIFIER ─────────────────────────────────────────
 router.get(
   '/with-identifier',
-  cache(LONG, req => `search:identifier:${req.query.type||''}`),
+  cacheRedisInsight(LONG, req => [
+    'searchFilters',
+    `identifier=${req.query.identifier || ''}`,
+    `page=${req.query.page || 1}`,
+    `limit=${req.query.limit || 25}`
+  ]),
   ctrl.searchByIdentifier
 );
 
-// ─── POST ENDPOINTS ────────────────────────────────────────────────────────────
-
-/**
- * POST /api/search-filters/by-topic
- * body: { topic: string }
- */
-router.post(
-  '/by-topic',
-  cache(MEDIUM, req => `search:topic:${(req.body.topic||'').toLowerCase()}`),
-  ctrl.searchByTopicPOST
+// ─── 6) MULTI-FILTER SEARCH FROM DB ─────────────────────────────────
+router.get(
+  '/multi',
+  cacheRedisInsight(LONG, req => {
+    const key = ['searchFilters'];
+    for (const k of ['country', 'topic', 'hindex', 'i10index', 'identifier']) {
+      if (req.query[k]) key.push(`${k}=${req.query[k].toLowerCase?.() || req.query[k]}`);
+    }
+    key.push(`page=${req.query.page || 1}`);
+    key.push(`limit=${req.query.limit || 25}`);
+    return key;
+  }),
+  ctrl.searchByMultipleFilters
 );
 
-/**
- * POST /api/search-filters/by-country
- * body: { country: string }
- */
-router.post(
-  '/by-country',
-  cache(LONG, req => `search:country:${(req.body.country||'').toUpperCase()}`),
-  ctrl.searchByCountryPOST
-);
-
-/**
- * POST /api/search-filters/by-hindex
- * body: { hindex: number, op: 'gte'|'lte'|'eq' }
- */
-router.post(
-  '/by-hindex',
-  cache(MEDIUM, req => `search:hindex:${req.body.op||'eq'}:${req.body.hindex||''}`),
-  ctrl.searchByHIndexPOST
-);
-
-/**
- * POST /api/search-filters/by-i10index
- * body: { i10index: number, op: 'gte'|'lte'|'eq' }
- */
-router.post(
-  '/by-i10index',
-  cache(MEDIUM, req => `search:i10index:${req.body.op||'eq'}:${req.body.i10index||''}`),
-  ctrl.searchByI10IndexPOST
-);
-
-/**
- * POST /api/search-filters/with-identifier
- * body: { type: 'orcid'|'scopus'|'openalex'|'google_scholar_id' }
- */
-router.post(
-  '/with-identifier',
-  cache(LONG, req => `search:identifier:${req.body.type||''}`),
-  ctrl.searchByIdentifierPOST
+// ─── 7) MULTI-FILTER SEARCH FROM OPENALEX ───────────────────────────
+router.get(
+  '/openalex',
+  cacheRedisInsight(LONG, req => {
+    const key = ['openalexFilters'];
+    for (const k of ['country', 'topic', 'hindex', 'i10index', 'identifier']) {
+      if (req.query[k]) key.push(`${k}=${req.query[k].toLowerCase?.() || req.query[k]}`);
+    }
+    key.push(`page=${req.query.page || 1}`);
+    key.push(`limit=${req.query.limit || 25}`);
+    return key;
+  }),
+  ctrl.searchOpenalexFilters
 );
 
 module.exports = router;
