@@ -1,8 +1,8 @@
-
 const axios = require("axios");
 const readline = require("readline");
 const API_BASE = "http://localhost:5000/api";
 
+// Utility function to prompt user input via CLI
 function question(rl, prompt) {
   return new Promise(resolve => rl.question(prompt, answer => resolve(answer.trim())));
 }
@@ -63,31 +63,38 @@ async function fetchDbCandidates(name, page, limit) {
   const res = await axios.get(`${API_BASE}/author/search-author`, { params: { name, page, limit } });
   return res.data;
 }
+
 async function fetchDbProfile(id) {
   const res = await axios.get(`${API_BASE}/author/search-author`, { params: { id } });
-  return res.data;
+  return res.data.profile || null;
 }
+
 async function fetchOpenCandidates(name, page, limit) {
   const res = await axios.get(`${API_BASE}/author/fetch-author`, { params: { name, page, limit } });
   return res.data;
 }
+
 async function fetchOpenProfile(id) {
   const res = await axios.get(`${API_BASE}/author/fetch-author`, { params: { id } });
-  return res.data;
+  return res.data.profile || null;
 }
+
 async function saveProfile(profile) {
   const res = await axios.post(`${API_BASE}/author/save-profile`, { profile });
   return res.data;
 }
+
 async function deleteProfile(id) {
   const res = await axios.delete(`${API_BASE}/author/delete-profile`, { data: { id } });
   return res.data;
 }
+
 async function flushRedis() {
   const res = await axios.post(`${API_BASE}/author/flush-redis`);
   return res.data;
 }
 
+// Main CLI workflow for DB author search
 function runAuthorFlow(rl, done) {
   const limit = 25;
   rl.question("Enter author name (or b=back, m=main menu): ", async input => {
@@ -112,7 +119,7 @@ function runAuthorFlow(rl, done) {
         Src: "DB"
       })));
 
-      const cmd = await question(rl, "Enter No=view, d<No>=delete, f=fetch(OpenAlex), r=flush Redis, n=next, p=prev, b=back, m=main: ");
+      const cmd = await question(rl, "Enter No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis, n=next, p=prev, b=back, m=main: ");
       const lower = cmd.toLowerCase();
 
       if (lower === "m") return done();
@@ -148,6 +155,7 @@ function runAuthorFlow(rl, done) {
   });
 }
 
+// Fetch authors from OpenAlex and optionally save to DB
 async function runFetchLoop(rl, name, done) {
   const limit = 25;
   let page = 1;

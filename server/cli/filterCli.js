@@ -4,7 +4,7 @@ const readline = require("readline");
 
 const API_BASE = "http://localhost:5000/api";
 
-
+// Utility function to prompt user input
 function question(rl, prompt) {
   return new Promise(resolve => rl.question(prompt, answer => resolve(answer.trim())));
 }
@@ -44,6 +44,7 @@ async function flushRedis() {
   return res.data;
 }
 
+// Main CLI entry for multi-filter workflow
 function runFilterFlow(rl, done) {
   let page = 1, limit = 25;
   const filters = {
@@ -52,6 +53,7 @@ function runFilterFlow(rl, done) {
   };
   let lastList = [];
 
+  // Ask user to fill filter options
   function askFilters() {
     console.clear();
     console.log("┌────────────────────────────────────────────────────────────────┐");
@@ -85,6 +87,7 @@ function runFilterFlow(rl, done) {
     });
   }
 
+  // List MongoDB results
   async function listDbPage() {
     try {
       const params = { ...filters, op: filters.hOp, page, limit };
@@ -99,7 +102,7 @@ function runFilterFlow(rl, done) {
         ID: a._id,
         Src: "DB"
       })));
-      console.log("(No=view, d<No>=delete, f=fetch(OpenAlex), r=flush Redis, n=Next, p=Prev, b=Back, m=Menu)");
+      console.log("(No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis flush, n=Next, p=Prev, b=Back, m=Menu)");
       rl.question("> ", async ans => {
         const cmd = ans.trim().toLowerCase();
         if (cmd === "m") return done();
@@ -132,6 +135,7 @@ function runFilterFlow(rl, done) {
     }
   }
 
+  // List OpenAlex search results
   async function listOpenAlexPage() {
     try {
       const params = { ...filters, page, limit };
@@ -166,6 +170,7 @@ function runFilterFlow(rl, done) {
     }
   }
 
+  // View a profile by ID (either DB or OpenAlex)
   async function viewProfile(id, src, back) {
     try {
       const profile = await fetchProfileById(id);
@@ -178,16 +183,14 @@ function runFilterFlow(rl, done) {
     }
   }
 
-async function showAndMaybeSaveProfile(profile, back) {
+  // View a profile and optionally save to MongoDB
+  async function showAndMaybeSaveProfile(profile, back) {
   if (!profile) {
     console.log("❌ No profile found.");
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     await question(rl, "Press Enter to continue...");
-    rl.close();
     return back();
   }
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   await showProfile(profile, "OpenAlex");
   const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
   if (yn.toLowerCase() === "y") {
@@ -195,11 +198,11 @@ async function showAndMaybeSaveProfile(profile, back) {
     console.log("🟢", result.message);
   }
   await question(rl, "Press Enter to continue...");
-  rl.close();
   back();
 }
 
 
+  // Display full profile details
   async function showProfile(profile, src) {
     console.clear();
     console.log("┌────────────────────────────────────────────────────────────────┐");
@@ -249,7 +252,7 @@ async function showAndMaybeSaveProfile(profile, back) {
         ROR: profile.current_affiliation.ror
       }]);
     }
-    await new Promise(r => rl.question("Press Enter to continue...", r));
+    await question(rl, "Press Enter to continue...");
   }
 
   askFilters();
@@ -257,6 +260,7 @@ async function showAndMaybeSaveProfile(profile, back) {
 
 module.exports = { runFilterFlow };
 
+// Standalone execution support
 if (require.main === module) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   runFilterFlow(rl, () => {

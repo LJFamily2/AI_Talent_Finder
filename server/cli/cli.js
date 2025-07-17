@@ -1,7 +1,7 @@
 // server/cli/cli.js
-// Entry-point: in đây chỉ chứa menu và điều hướng sang 2 flow
+// Entry point: this file only contains the CLI menu and delegates to two main flows
 
-const readline       = require('readline');
+const readline = require('readline');
 const { runAuthorFlow } = require('./authorCli');
 const { runFilterFlow } = require('./filterCli');
 
@@ -37,5 +37,5 @@ function mainMenu() {
   });
 }
 
-// Kick things off
+// Start the CLI application
 mainMenu();
