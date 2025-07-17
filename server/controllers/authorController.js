@@ -1,4 +1,7 @@
-// server/controllers/authorController.js (FINAL SYNCED VERSION)
+//==================================================================
+// Author Controller
+// Handles DB + API routes for searching, fetching, saving, and deleting author profiles
+//==================================================================
 
 const axios = require("axios");
 const ResearcherProfile = require("../models/researcherProfile");
@@ -6,10 +9,10 @@ const { deleteCacheKey } = require("../middleware/cacheRedisInsight");
 
 const OPENALEX_BASE = "https://api.openalex.org";
 
-/**
- * GET /api/author/search-author
- * - Search authors in MongoDB by name or fetch one profile by ID
- */
+//==================================================================
+// [GET] /api/author/search-author
+// Search for author candidates in MongoDB by name, or get single profile by ID
+//==================================================================
 async function searchByCandidates(req, res, next) {
   try {
     const { id, name, page = 1, limit = 25 } = req.query;
@@ -17,7 +20,7 @@ async function searchByCandidates(req, res, next) {
     if (id) {
       const profileDoc = await ResearcherProfile.findById(id);
       if (!profileDoc) return res.status(404).json({ error: "Author not found" });
-      return res.json({ profile: profileDoc }); 
+      return res.json({ profile: profileDoc });
     }
 
     if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
@@ -53,14 +56,15 @@ async function searchByCandidates(req, res, next) {
   }
 }
 
-/**
- * GET /api/author/fetch-author
- * - Fetch author profile(s) from OpenAlex API
- */
+//==================================================================
+// [GET] /api/author/fetch-author
+// Fetch author(s) from OpenAlex API (list or detail by ID)
+//==================================================================
 async function searchByFetch(req, res, next) {
   try {
     const { id, name, page = 1, limit = 25 } = req.query;
 
+    // Fetch single author profile by ID
     if (id) {
       const { data: a } = await axios.get(`${OPENALEX_BASE}/authors/${encodeURIComponent(id)}`);
       const profile = {
@@ -110,9 +114,10 @@ async function searchByFetch(req, res, next) {
           : { institution: "", display_name: "", ror: "" }
       };
 
-      return res.json({ profile }); // ✅ Standardized wrap
+      return res.json({ profile });
     }
 
+    // List authors by name query
     if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
 
     const pageNum = parseInt(page, 10);
@@ -137,9 +142,10 @@ async function searchByFetch(req, res, next) {
   }
 }
 
-/**
- * POST /api/author/save-profile
- */
+//==================================================================
+// [POST] /api/author/save-profile
+// Save or update a profile into MongoDB (upsert)
+//==================================================================
 async function saveToDatabase(req, res, next) {
   try {
     const { profile } = req.body;
@@ -163,9 +169,10 @@ async function saveToDatabase(req, res, next) {
   }
 }
 
-/**
- * DELETE /api/author/delete-profile
- */
+//==================================================================
+// [DELETE] /api/author/delete-profile
+// Remove a profile from MongoDB and clear Redis cache key
+//==================================================================
 async function deleteFromDatabase(req, res, next) {
   try {
     const { id } = req.body;
@@ -184,6 +191,9 @@ async function deleteFromDatabase(req, res, next) {
   }
 }
 
+//==================================================================
+// Exports
+//==================================================================
 module.exports = {
   searchByCandidates,
   searchByFetch,

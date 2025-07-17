@@ -1,14 +1,27 @@
-// server/cli/cli.js
-// Entry point: this file only contains the CLI menu and delegates to two main flows
+//==================================================================
+// CLI Main Entry Point
+// Provides a simple terminal interface to run author search or filter search
+//==================================================================
 
 const readline = require('readline');
 const { runAuthorFlow } = require('./authorCli');
 const { runFilterFlow } = require('./filterCli');
 
+//==================================================================
+// Initialize Readline Interface
+//==================================================================
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
+
+//==================================================================
+// CLI Main Menu Loop
+// - Option 1: Author search and save
+// - Option 2: Multi-filter search (by topic, country, metrics...)
+// - Option q: Quit the CLI program
+//==================================================================
 
 function mainMenu() {
   console.clear();
@@ -19,6 +32,7 @@ function mainMenu() {
   console.log('│ 2) Multi-Filter Search Profiles                                │');
   console.log('│ q) Quit                                                        │');
   console.log('└────────────────────────────────────────────────────────────────┘');
+
   rl.question('Select an option: ', opt => {
     switch (opt.trim()) {
       case '1':
@@ -37,5 +51,8 @@ function mainMenu() {
   });
 }
 
+//==================================================================
 // Start the CLI application
+//==================================================================
+
 mainMenu();

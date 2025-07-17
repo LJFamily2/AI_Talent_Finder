@@ -1,4 +1,8 @@
-// server/routes/authorRoutes.js
+//==================================================================
+// Express Router: Author API
+// Provides endpoints to search, fetch, save, delete author profiles
+// Includes Redis caching middleware for efficient response reuse
+//==================================================================
 
 const express = require("express");
 const router  = express.Router();
@@ -15,7 +19,10 @@ const {
   deleteFromDatabase
 } = require("../controllers/authorController");
 
-// ─── 1. Search author in DB ─────────────────────────────────────────────
+//==================================================================
+// 1. Search author in MongoDB
+// - Uses Redis cache for name or ID-based lookup
+//==================================================================
 router.get(
   "/search-author",
   cacheRedisInsight(3600, (req) => {
@@ -27,7 +34,10 @@ router.get(
   searchByCandidates
 );
 
-// ─── 2. Fetch author from OpenAlex ──────────────────────────────────────
+//==================================================================
+// 2. Fetch author profile from OpenAlex API
+// - Also cached by ID or name-based listing
+//==================================================================
 router.get(
   "/fetch-author",
   cacheRedisInsight(3600, (req) => {
@@ -38,19 +48,26 @@ router.get(
   searchByFetch
 );
 
-// ─── 3. Save author profile to MongoDB ──────────────────────────────────
+//==================================================================
+// 3. Save author profile to MongoDB
+//==================================================================
 router.post("/save-profile", saveToDatabase);
 
-// ─── 4. Delete author profile from MongoDB + Redis ──────────────────────
+//==================================================================
+// 4. Delete author profile from MongoDB and Redis
+//==================================================================
 router.delete("/delete-profile", deleteFromDatabase);
 
-// ─── 5. Flush Redis Cache ──────────────────────────────────────────────
+//==================================================================
+// 5. Flush all Redis cache manually
+// - Useful for admin reset operations
+//==================================================================
 router.post("/flush-redis", async (req, res) => {
   try {
     const redis = req.app?.locals?.redisClient;
     if (!redis) throw new Error("Redis client not found in app.locals");
 
-    // Inject redis vào cacheRedisInsight
+    // Inject redis into internal cache module
     const { initRedisClient } = require("../middleware/cacheRedisInsight");
     initRedisClient(redis);
 
@@ -62,4 +79,7 @@ router.post("/flush-redis", async (req, res) => {
   }
 });
 
+//==================================================================
+// Export the router module
+//==================================================================
 module.exports = router;

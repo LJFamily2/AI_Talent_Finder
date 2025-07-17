@@ -1,12 +1,22 @@
+//==================================================================
+// Author CLI Handler for Academic Talent Finder
+// Handles DB and OpenAlex interactions via command-line interface
+//==================================================================
+
 const axios = require("axios");
 const readline = require("readline");
 const API_BASE = "http://localhost:5000/api";
 
-// Utility function to prompt user input via CLI
+//==================================================================
+// Utility: Promisified readline question prompt
+//==================================================================
 function question(rl, prompt) {
   return new Promise(resolve => rl.question(prompt, answer => resolve(answer.trim())));
 }
 
+//==================================================================
+// CLI Display: Render full profile in terminal view
+//==================================================================
 async function showProfile(profile, src) {
   console.clear();
   console.log(`┌────────────────────────────────────────────────────────────────┐`);
@@ -59,6 +69,9 @@ async function showProfile(profile, src) {
   await question(readline.createInterface({ input: process.stdin, output: process.stdout }), "Press Enter to continue...");
 }
 
+//==================================================================
+// API Request Helpers for DB and OpenAlex endpoints
+//==================================================================
 async function fetchDbCandidates(name, page, limit) {
   const res = await axios.get(`${API_BASE}/author/search-author`, { params: { name, page, limit } });
   return res.data;
@@ -94,7 +107,9 @@ async function flushRedis() {
   return res.data;
 }
 
-// Main CLI workflow for DB author search
+//==================================================================
+// Main Flow: Interactive CLI for DB Author Search & View
+//==================================================================
 function runAuthorFlow(rl, done) {
   const limit = 25;
   rl.question("Enter author name (or b=back, m=main menu): ", async input => {
@@ -155,7 +170,9 @@ function runAuthorFlow(rl, done) {
   });
 }
 
-// Fetch authors from OpenAlex and optionally save to DB
+//==================================================================
+// Sub-Flow: Fetch from OpenAlex and prompt save
+//==================================================================
 async function runFetchLoop(rl, name, done) {
   const limit = 25;
   let page = 1;
@@ -195,6 +212,9 @@ async function runFetchLoop(rl, name, done) {
   }
 }
 
+//==================================================================
+// CLI Entrypoint (if run directly)
+//==================================================================
 if (require.main === module) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   runAuthorFlow(rl, () => {

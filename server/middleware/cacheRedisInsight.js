@@ -1,14 +1,22 @@
-/**
- * Redis cache middleware + utility functions for CLI and server routes.
- */
+//==================================================================
+// Redis Caching Middleware for CLI and Server
+// Provides unified GET/SET cache logic for Express responses, along
+// with manual cache deletion and global cache flush utilities
+//==================================================================
 
-let redisClient; // Will be initialized in app.js or server.js
+let redisClient; // Redis client instance (set externally in app or server)
 
+//==================================================================
+// Initialize the Redis client (called from server.js or app.js)
+//==================================================================
 function initRedisClient(client) {
   redisClient = client;
 }
 
-// ─── TTL Formatter ────────────────────────────────────────────────
+//==================================================================
+// Format TTL (time-to-live) seconds into human-readable strings
+// Example: 3600 → '1 hour', 7200 → '2 hours', 75 → '75 seconds'
+//==================================================================
 function fmtTTL(sec) {
   if (sec % 3600 === 0) {
     const h = sec / 3600;
@@ -17,7 +25,12 @@ function fmtTTL(sec) {
   return `${sec} seconds`;
 }
 
-// ─── Main Middleware ──────────────────────────────────────────────
+//==================================================================
+// Express Middleware: Redis Cache Wrapper for GET APIs
+// - Automatically checks for cached response before hitting DB/API
+// - If not found, caches successful response body with TTL
+// - Key is generated dynamically via keyBuilder(req)
+//==================================================================
 function cacheRedisInsight(ttlSeconds, keyBuilder) {
   const humanTTL = fmtTTL(ttlSeconds);
 
@@ -28,7 +41,7 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
     const segments = keyBuilder(req);
     const key = segments.join(":");
 
-    // 1) Try to serve from cache
+    // Try to fetch from Redis cache first
     try {
       const cached = await redis.get(key);
       if (cached != null) {
@@ -41,7 +54,7 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
       console.error(`❌ Redis GET error for ${key}:`, err);
     }
 
-    // 2) Wrap response to set cache on success
+    // Wrap the response method to intercept .json and cache result
     const originalJson = res.json.bind(res);
     res.json = async (body) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -59,7 +72,10 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
   };
 }
 
-// ─── Delete a Specific Cache Key ──────────────────────────────────
+//==================================================================
+// Manually delete a Redis cache key (for CLI deletion workflows)
+// Logs cache deletion status for clarity
+//==================================================================
 async function deleteCacheKey(key) {
   try {
     if (!redisClient) throw new Error("Redis client not initialized");
@@ -72,7 +88,9 @@ async function deleteCacheKey(key) {
   }
 }
 
-// ─── Flush All Cache ──────────────────────────────────────────────
+//==================================================================
+// Flush all Redis keys (dangerous operation, use only in dev/test)
+//==================================================================
 async function flushAllCache() {
   try {
     if (!redisClient) throw new Error("Redis client not initialized");
@@ -83,6 +101,9 @@ async function flushAllCache() {
   }
 }
 
+//==================================================================
+// Exports
+//==================================================================
 module.exports = {
   cache: cacheRedisInsight,
   flushAllCache,

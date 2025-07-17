@@ -1,13 +1,23 @@
-// server/cli/filterCli.js
+//==================================================================
+// CLI Filter Flow
+// Provides terminal interface for multi-criteria filtering of author profiles
+//==================================================================
+
 const axios = require("axios");
 const readline = require("readline");
 
 const API_BASE = "http://localhost:5000/api";
 
-// Utility function to prompt user input
+//==================================================================
+// Utility: CLI input prompt wrapped in Promise
+//==================================================================
 function question(rl, prompt) {
   return new Promise(resolve => rl.question(prompt, answer => resolve(answer.trim())));
 }
+
+//==================================================================
+// API Fetch Functions
+//==================================================================
 
 async function fetchProfiles(params) {
   const res = await axios.get(`${API_BASE}/search-filters/multi`, { params });
@@ -44,7 +54,10 @@ async function flushRedis() {
   return res.data;
 }
 
-// Main CLI entry for multi-filter workflow
+//==================================================================
+// CLI Workflow: Multi-Filter Flow Entry
+//==================================================================
+
 function runFilterFlow(rl, done) {
   let page = 1, limit = 25;
   const filters = {
@@ -53,7 +66,10 @@ function runFilterFlow(rl, done) {
   };
   let lastList = [];
 
-  // Ask user to fill filter options
+  //==============================================================
+  // Step 1: Ask user for filtering options
+  //==============================================================
+
   function askFilters() {
     console.clear();
     console.log("┌────────────────────────────────────────────────────────────────┐");
@@ -87,13 +103,17 @@ function runFilterFlow(rl, done) {
     });
   }
 
-  // List MongoDB results
+  //==============================================================
+  // Step 2: List filtered MongoDB results
+  //==============================================================
+
   async function listDbPage() {
     try {
       const params = { ...filters, op: filters.hOp, page, limit };
       const { total = 0, authors = [] } = await fetchProfiles(params);
       lastList = authors;
       const pages = Math.max(1, Math.ceil(total / limit));
+
       console.clear();
       console.log(`MongoDB Profiles (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
@@ -102,6 +122,7 @@ function runFilterFlow(rl, done) {
         ID: a._id,
         Src: "DB"
       })));
+
       console.log("(No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis flush, n=Next, p=Prev, b=Back, m=Menu)");
       rl.question("> ", async ans => {
         const cmd = ans.trim().toLowerCase();
@@ -135,12 +156,16 @@ function runFilterFlow(rl, done) {
     }
   }
 
-  // List OpenAlex search results
+  //==============================================================
+  // Step 3: Fetch and list OpenAlex results
+  //==============================================================
+
   async function listOpenAlexPage() {
     try {
       const params = { ...filters, page, limit };
       const { total = 0, authors = [] } = await fetchOpenProfiles(params);
       const pages = Math.max(1, Math.ceil(total / limit));
+
       console.clear();
       console.log(`OpenAlex Profiles (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
@@ -149,13 +174,15 @@ function runFilterFlow(rl, done) {
         ID: a._id,
         Src: "OpenAlex"
       })));
+
       console.log("(No=view, n=Next, p=Prev, b=Back to filters, m=Main menu)");
       rl.question("> ", async ans => {
         const cmd = ans.trim().toLowerCase();
         if (cmd === "m") return done();
         if (cmd === "b") return askFilters();
         if (cmd === "n" && page < pages) { page++; return listOpenAlexPage(); }
-        if (cmd === "p" && page > 1)      { page--; return listOpenAlexPage(); }
+        if (cmd === "p" && page > 1) { page--; return listOpenAlexPage(); }
+
         const idx = parseInt(cmd, 10) - 1;
         if (!isNaN(idx) && idx >= 0 && idx < authors.length) {
           const profile = await fetchOpenProfile(authors[idx]._id);
@@ -170,7 +197,10 @@ function runFilterFlow(rl, done) {
     }
   }
 
-  // View a profile by ID (either DB or OpenAlex)
+  //==============================================================
+  // Step 4: View single profile by ID (MongoDB or OpenAlex)
+  //==============================================================
+
   async function viewProfile(id, src, back) {
     try {
       const profile = await fetchProfileById(id);
@@ -183,26 +213,31 @@ function runFilterFlow(rl, done) {
     }
   }
 
-  // View a profile and optionally save to MongoDB
+  //==============================================================
+  // Step 5: View + optionally save OpenAlex profile
+  //==============================================================
+
   async function showAndMaybeSaveProfile(profile, back) {
-  if (!profile) {
-    console.log("❌ No profile found.");
+    if (!profile) {
+      console.log("❌ No profile found.");
+      await question(rl, "Press Enter to continue...");
+      return back();
+    }
+
+    await showProfile(profile, "OpenAlex");
+    const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
+    if (yn.toLowerCase() === "y") {
+      const result = await saveProfile(profile);
+      console.log("🟢", result.message);
+    }
     await question(rl, "Press Enter to continue...");
-    return back();
+    back();
   }
 
-  await showProfile(profile, "OpenAlex");
-  const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
-  if (yn.toLowerCase() === "y") {
-    const result = await saveProfile(profile);
-    console.log("🟢", result.message);
-  }
-  await question(rl, "Press Enter to continue...");
-  back();
-}
+  //==============================================================
+  // Step 6: Pretty print profile content to CLI
+  //==============================================================
 
-
-  // Display full profile details
   async function showProfile(profile, src) {
     console.clear();
     console.log("┌────────────────────────────────────────────────────────────────┐");
@@ -255,12 +290,22 @@ function runFilterFlow(rl, done) {
     await question(rl, "Press Enter to continue...");
   }
 
+  //==============================================================
+  // Start filter workflow
+  //==============================================================
   askFilters();
 }
 
+//==================================================================
+// Module Export
+//==================================================================
+
 module.exports = { runFilterFlow };
 
-// Standalone execution support
+//==================================================================
+// CLI Standalone Execution
+//==================================================================
+
 if (require.main === module) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   runFilterFlow(rl, () => {

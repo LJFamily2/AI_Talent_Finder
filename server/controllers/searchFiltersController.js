@@ -1,10 +1,16 @@
+//==================================================================
+// Search Filters Controller
+// Provides multiple API endpoints to search researchers by country,
+// topic, metrics (h-index, i10-index), identifier, or composite filters
+//==================================================================
+
 const axios = require("axios");
 const ResearcherProfile = require("../models/researcherProfile");
 
 const OPENALEX_BASE = "https://api.openalex.org";
 const opsMap = { gte: "$gte", lte: "$lte", eq: "$eq" };
 
-// Helper: sanitize authors before caching
+// Utility: Clean format to reduce payload and keep profile list lean
 const simplifyAuthors = (docs) =>
   docs.map((a) => ({
     _id: a._id,
@@ -13,7 +19,10 @@ const simplifyAuthors = (docs) =>
     },
   }));
 
-// ─── 1) SEARCH BY COUNTRY ─────────────────────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/country
+// Filter by country using institution.country_code
+//==================================================================
 exports.searchByCountry = async (req, res) => {
   const { country, page = 1, limit = 20 } = req.query;
   if (!country) return res.status(400).json({ error: "Country code is required" });
@@ -33,8 +42,10 @@ exports.searchByCountry = async (req, res) => {
   }
 };
 
-
-// ─── 2) SEARCH BY TOPIC ──────────────────────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/topic
+// Filter by topic or field match (case-insensitive partial match)
+//==================================================================
 exports.searchByTopic = async (req, res) => {
   const { topic, page = 1, limit = 20 } = req.query;
   if (!topic) return res.status(400).json({ error: "Topic is required" });
@@ -59,7 +70,10 @@ exports.searchByTopic = async (req, res) => {
   }
 };
 
-// ─── 3) SEARCH BY H-INDEX ─────────────────────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/hindex
+// Filter by h-index with operator: eq | gte | lte
+//==================================================================
 exports.searchByHIndex = async (req, res) => {
   const { hindex, op = "eq", page = 1, limit = 20 } = req.query;
   if (!hindex) return res.status(400).json({ error: "h-index value is required" });
@@ -79,7 +93,10 @@ exports.searchByHIndex = async (req, res) => {
   }
 };
 
-// ─── 4) SEARCH BY I10-INDEX ──────────────────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/i10index
+// Filter by i10-index with operator: eq | gte | lte
+//==================================================================
 exports.searchByI10Index = async (req, res) => {
   const { i10index, op = "eq", page = 1, limit = 20 } = req.query;
   if (!i10index) return res.status(400).json({ error: "i10-index value is required" });
@@ -98,7 +115,11 @@ exports.searchByI10Index = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-// ─── 5) SEARCH BY IDENTIFIER ──────────────────────────────────────────────────────────
+
+//==================================================================
+// [GET] /api/search-filters/identifier
+// Filter by presence of a specific identifier (e.g. ORCID, Scopus)
+//==================================================================
 exports.searchByIdentifier = async (req, res) => {
   const { identifier, page = 1, limit = 20 } = req.query;
   const allowed = ["orcid", "scopus", "openalex", "google_scholar_id"];
@@ -121,7 +142,10 @@ exports.searchByIdentifier = async (req, res) => {
   }
 };
 
-// ─── 6) MULTI-FILTER SEARCH IN MONGODB ─────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/multi
+// Apply combined filters: country, topic, metrics, identifier
+//==================================================================
 exports.searchByMultipleFilters = async (req, res) => {
   const { country, topic, hindex, i10index, identifier, op = "eq", page = 1, limit = 20 } = req.query;
   const query = {};
@@ -151,8 +175,10 @@ exports.searchByMultipleFilters = async (req, res) => {
   }
 };
 
-
-// ─── 7) MULTI-FILTER SEARCH FROM OPENALEX ─────────────────────────────────────────────
+//==================================================================
+// [GET] /api/search-filters/openalex
+// Perform external filter search via OpenAlex public API
+//==================================================================
 exports.searchOpenalexFilters = async (req, res) => {
   try {
     const { country, topic, hindex, i10index, identifier, page = 1, limit = 25 } = req.query;

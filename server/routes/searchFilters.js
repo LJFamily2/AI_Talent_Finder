@@ -1,11 +1,19 @@
+//==================================================================
+// Express Router: Search Filters API
+// Connects filter-based routes to controller logic, with Redis caching
+// Each route uses cacheRedisInsight middleware to auto-cache responses
+//==================================================================
+
 const express = require('express');
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 const ctrl = require('../controllers/searchFiltersController');
 
 const router = express.Router();
-const LONG = 3600;
+const LONG = 3600; // 1 hour TTL for cached search results
 
-// ─── 1) SEARCH BY TOPIC ──────────────────────────────────────────────
+//==================================================================
+// 1) Search by Topic
+//==================================================================
 router.get(
   '/by-topic',
   cacheRedisInsight(LONG, req => [
@@ -17,7 +25,9 @@ router.get(
   ctrl.searchByTopic
 );
 
-// ─── 2) SEARCH BY COUNTRY ────────────────────────────────────────────
+//==================================================================
+// 2) Search by Country Code (e.g., US, VN, GB)
+//==================================================================
 router.get(
   '/by-country',
   cacheRedisInsight(LONG, req => [
@@ -29,7 +39,9 @@ router.get(
   ctrl.searchByCountry
 );
 
-// ─── 3) SEARCH BY H-INDEX ────────────────────────────────────────────
+//==================================================================
+// 3) Search by h-index (with operator: eq, gte, lte)
+//==================================================================
 router.get(
   '/by-hindex',
   cacheRedisInsight(LONG, req => [
@@ -42,7 +54,9 @@ router.get(
   ctrl.searchByHIndex
 );
 
-// ─── 4) SEARCH BY I10-INDEX ──────────────────────────────────────────
+//==================================================================
+// 4) Search by i10-index (with operator)
+//==================================================================
 router.get(
   '/by-i10index',
   cacheRedisInsight(LONG, req => [
@@ -55,7 +69,9 @@ router.get(
   ctrl.searchByI10Index
 );
 
-// ─── 5) SEARCH BY IDENTIFIER ─────────────────────────────────────────
+//==================================================================
+// 5) Search by External Identifier (ORCID, SCOPUS, etc.)
+//==================================================================
 router.get(
   '/with-identifier',
   cacheRedisInsight(LONG, req => [
@@ -67,7 +83,10 @@ router.get(
   ctrl.searchByIdentifier
 );
 
-// ─── 6) MULTI-FILTER SEARCH FROM DB ─────────────────────────────────
+//==================================================================
+// 6) Multi-filter search in MongoDB
+// Combines topic, country, hindex, i10index, and identifier
+//==================================================================
 router.get(
   '/multi',
   cacheRedisInsight(LONG, req => {
@@ -82,7 +101,10 @@ router.get(
   ctrl.searchByMultipleFilters
 );
 
-// ─── 7) MULTI-FILTER SEARCH FROM OPENALEX ───────────────────────────
+//==================================================================
+// 7) Multi-filter search from OpenAlex API
+// Same filters as MongoDB version, retrieves live external data
+//==================================================================
 router.get(
   '/openalex',
   cacheRedisInsight(LONG, req => {
@@ -97,4 +119,7 @@ router.get(
   ctrl.searchOpenalexFilters
 );
 
+//==================================================================
+// Export the router
+//==================================================================
 module.exports = router;
