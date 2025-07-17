@@ -1,77 +1,64 @@
-// researcherProfile.js
+const mongoose = require("mongoose");
 
-const mongoose = require('mongoose');
+// Affiliation schema: include country_code to support filtering by country
+const AffiliationSchema = new mongoose.Schema({
+  institution: {
+    display_name: { type: String, default: "" },
+    ror:          { type: String, default: "" },
+    id:           { type: String, default: "" },
+    country_code: { type: String, default: "" }
+  },
+  years: [Number]
+}, { _id: false });
 
-const researcherProfileSchema = new mongoose.Schema({
+const IdentifierSchema = new mongoose.Schema({
+  scopus:            { type: String, default: "" },
+  openalex:          { type: String, default: "" },
+  orcid:             { type: String, default: "" },
+  google_scholar_id: { type: String, default: "" }
+}, { _id: false });
+
+const MetricsSchema = new mongoose.Schema({
+  h_index:                 { type: Number, default: 0 },
+  i10_index:               { type: Number, default: 0 },
+  two_year_mean_citedness: { type: Number, default: 0 },
+  total_citations:         { type: Number, default: 0 },
+  total_works:             { type: Number, default: 0 }
+}, { _id: false });
+
+const ConceptSchema = new mongoose.Schema({
+  display_name: { type: String, default: "" },
+  count:        { type: Number }
+}, { _id: false });
+
+const CitationTrendSchema = new mongoose.Schema({
+  cited_by_table: { type: Array,   default: [] },
+  counts_by_year: { type: Array,   default: [] }
+}, { _id: false });
+
+const CurrentAffSchema = new mongoose.Schema({
+  institution:  { type: String, default: "" },
+  display_name: { type: String, default: "" },
+  ror:          { type: String, default: "" }
+}, { _id: false });
+
+const ResearcherProfileSchema = new mongoose.Schema({
+  _id:               String,  // use OpenAlex author ID as the Mongo _id
   basic_info: {
-    name: {
-      type: String,
-      required: true
-    },
-    email: {
-      type: String,
-      required: true
-    },
-    thumbnail: {
-      type: String
-    },
-    affiliations: [{
-      institution: {
-        display_name: { type: String },
-        ror:          { type: String },
-        id:           { type: String },
-        country_code: { type: String },
-        type:         { type: String },
-        years:        [{ type: Number }],
-        lineage:      [{ type: String }]
-      }
-    }]
+    name:         { type: String, default: "" },
+    affiliations: [AffiliationSchema]
   },
-
-  // one-and-only works field
-  works: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref:  'Publication'
-  }],
-
-  identifiers: {
-    openalex:          { type: String },
-    orcid:             { type: String },
-    google_scholar_id: { type: String }
-  },
-
-  research_metrics: {
-    h_index:               { type: Number },
-    i10_index:             { type: Number },
-    two_year_mean_citedness:{ type: Number },
-    total_citations:       { type: Number },
-    total_works:           { type: Number }
-  },
-
+  identifiers:       IdentifierSchema,
+  research_metrics:  MetricsSchema,
   research_areas: {
-    fields: [{ display_name: { type: String } }],
-    topics: [{
-      display_name: { type: String },
-      count:        { type: Number }
-    }]
+    fields: [new mongoose.Schema({ display_name: String }, { _id: false })],
+    topics: [ConceptSchema]
   },
+  citation_trends:    CitationTrendSchema,
+  current_affiliation: CurrentAffSchema
+}, {
+  timestamps: true,
+  versionKey: false
+});
 
-  citation_trends: {
-    cited_by_table: mongoose.Schema.Types.Mixed,
-    cited_by_graph: mongoose.Schema.Types.Mixed,
-    counts_by_year: [{
-      year:            { type: Number },
-      works_count:     { type: Number },
-      cited_by_count:  { type: Number }
-    }]
-  },
-
-  current_affiliation: {
-    institution:  { type: String },
-    display_name: { type: String },
-    ror:          { type: String }
-  }
-
-}, { timestamps: true });
-
-module.exports = mongoose.model('ResearcherProfile', researcherProfileSchema);
+module.exports = mongoose.model("ResearcherProfile", ResearcherProfileSchema);
