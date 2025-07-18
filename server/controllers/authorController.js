@@ -19,6 +19,7 @@ async function searchByCandidates(req, res, next) {
 
     if (id) {
       const profileDoc = await ResearcherProfile.findById(id);
+      console.log(`📂 [DB INFO] researcherProfiles:${id}`);
       if (!profileDoc) return res.status(404).json({ error: "Author not found" });
       return res.json({ profile: profileDoc });
     }
@@ -29,6 +30,8 @@ async function searchByCandidates(req, res, next) {
     const limNum  = parseInt(limit, 10);
     const skip    = (pageNum - 1) * limNum;
     const regex   = new RegExp(name, "i");
+
+    console.log(`🔍 [DB SEARCH] authorLists:${name}`);
 
     const filter = { "basic_info.name": regex };
     const total = await ResearcherProfile.countDocuments(filter);
@@ -62,11 +65,10 @@ async function searchByCandidates(req, res, next) {
 //==================================================================
 async function searchByFetch(req, res, next) {
   try {
-    const { id, name, page = 1, limit = 25, country, topic, hindex, i10index, identifier } = req.query;
-
-    console.log(`[Fetch Filters] country="${country || ''}", topic="${topic || ''}", h-index="${hindex || ''}", i10-index="${i10index || ''}", identifier="${identifier || ''}`);
+    const { id, name, page = 1, limit = 25 } = req.query;
 
     if (id) {
+      console.log(`📂 [OPENALEX INFO] researcherProfiles:${id}`);
       const { data: a } = await axios.get(`${OPENALEX_BASE}/authors/${encodeURIComponent(id)}`);
 
       const sortedConcepts = Array.isArray(a.x_concepts)
@@ -108,25 +110,25 @@ async function searchByFetch(req, res, next) {
           affiliations: (a.affiliations || []).map(entry => ({
             institution: {
               display_name: entry.institution?.display_name || "",
-              ror:           entry.institution?.ror           || "",
-              id:            entry.institution?.id            || "",
-              country_code:  entry.institution?.country_code  || ""
+              ror: entry.institution?.ror || "",
+              id: entry.institution?.id || "",
+              country_code: entry.institution?.country_code || ""
             },
             years: entry.years || []
           }))
         },
         identifiers: {
-          openalex:          a.id          || "",
-          orcid:             a.orcid       || "",
-          scopus:            "",
+          openalex: a.id || "",
+          orcid: a.orcid || "",
+          scopus: "",
           google_scholar_id: ""
         },
         research_metrics: {
-          h_index:                 a.summary_stats?.h_index                 || 0,
-          i10_index:               a.summary_stats?.i10_index               || 0,
+          h_index: a.summary_stats?.h_index || 0,
+          i10_index: a.summary_stats?.i10_index || 0,
           two_year_mean_citedness: a.summary_stats?.["2yr_mean_citedness"] || 0,
-          total_citations:         a.cited_by_count                         || 0,
-          total_works:             a.works_count                            || 0
+          total_citations: a.cited_by_count || 0,
+          total_works: a.works_count || 0
         },
         research_areas: {
           fields,
@@ -144,19 +146,21 @@ async function searchByFetch(req, res, next) {
 
     if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
 
+    console.log(`📡 [FETCH OPENALEX] openalexLists:${name || 'query'}`);
+
     const pageNum = parseInt(page, 10);
-    const limNum  = parseInt(limit, 10);
+    const limNum = parseInt(limit, 10);
     const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(name)}&page=${pageNum}&per_page=${limNum}`;
     const { data } = await axios.get(url);
 
-    const total   = data.meta?.count ?? 0;
+    const total = data.meta?.count ?? 0;
     const results = Array.isArray(data.results) ? data.results : [];
     const authors = results.map(r => ({ _id: r.id, name: r.display_name || "" }));
 
     return res.json({
       total,
       count: authors.length,
-      page:  pageNum,
+      page: pageNum,
       limit: limNum,
       authors
     });
@@ -165,6 +169,7 @@ async function searchByFetch(req, res, next) {
     next(err);
   }
 }
+
 
 //==================================================================
 // [POST] /api/author/save-profile
@@ -181,7 +186,7 @@ async function saveToDatabase(req, res, next) {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    console.log(`🟢 [DB SAVED] researcherProfiles:${profile._id}`);
+    console.log(`📝 [DB SAVED] researcherProfiles:${profile._id}`);
 
     return res.json({
       message: "Profile saved to DB and cache successfully",
@@ -205,7 +210,7 @@ async function deleteFromDatabase(req, res, next) {
     const deleted = await ResearcherProfile.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "Author not found in DB" });
 
-    console.log(`🗑️ [DB DEL] researcherProfiles:${id}`);
+    console.log(`🗑️  [DB DEL] researcherProfiles:${id}`);
     await deleteCacheKey(`researcherProfiles:${id}`);
 
     return res.json({ message: "Profile deleted from DB successfully" });

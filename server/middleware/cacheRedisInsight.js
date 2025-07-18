@@ -82,11 +82,14 @@ async function deleteCacheKey(key) {
     const result = await redisClient.del(key);
     if (result > 0) {
       console.log(`🔴 [CACHE DEL] ${key}`);
+    } else {
+      console.log(`⚪ [CACHE NOT FOUND] ${key}`);
     }
   } catch (err) {
     console.error(`❌ Redis DEL error for ${key}:`, err);
   }
 }
+
 
 //==================================================================
 // Flush all Redis keys (dangerous operation, use only in dev/test)

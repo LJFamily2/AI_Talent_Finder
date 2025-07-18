@@ -50,7 +50,13 @@ redisClient.on("error", err => console.error("❌ Redis Client Error", err));
 
 redisClient
   .connect()
-  .then(() => console.log("✅ Redis connected"))
+  .then(() => {
+    console.log("✅ Redis connected");
+
+    // Initialize Redis client for manual cache deletion
+    const { initRedisClient } = require("../middleware/cacheRedisInsight");
+    initRedisClient(redisClient);
+  })
   .catch(err => console.error("❌ Redis connection failed:", err));
 
 // Make Redis client accessible in request lifecycle
@@ -65,6 +71,8 @@ mongoose
     useUnifiedTopology: true
   })
   .then(() => console.log("✅ MongoDB connected"))
+
+  
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
 //==================================================================

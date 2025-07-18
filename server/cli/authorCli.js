@@ -139,7 +139,7 @@ function runAuthorFlow(rl, done) {
         Src: "DB"
       })));
 
-      const cmd = await question(rl, "Enter No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis, n=next, p=prev, b=back, m=main: ");
+      const cmd = await question(rl, "Enter No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis flush, n=next, p=prev, b=back, m=main: ");
       const lower = cmd.toLowerCase();
 
       if (lower === "m") return done();
@@ -158,7 +158,7 @@ function runAuthorFlow(rl, done) {
         const idx = parseInt(lower.slice(1), 10) - 1;
         if (!isNaN(idx) && lastList[idx]) {
           const result = await deleteProfile(lastList[idx]._id);
-          console.log("🗑️", result.message);
+          console.log("🗑️ ", result.message);
           await question(rl, "Press Enter to continue...");
         }
         continue;
@@ -194,11 +194,17 @@ async function runFetchLoop(rl, name, done) {
       Src: "OpenAlex"
     })));
 
-    const cmd = await question(rl, "Enter No=view, n=next, p=prev, b=back, m=main: ");
+    const cmd = await question(rl, "Enter No=view, r=Redis flush, n=next, p=prev, b=back, m=main: ");
     const lower = cmd.toLowerCase();
 
     if (lower === "m") return done();
     if (lower === "b") return runAuthorFlow(rl, done);
+    if (lower === "r") {
+        await flushRedis();
+        console.log("🧹 Redis cache flushed.");
+        await question(rl, "Press Enter to continue...");
+        continue;
+      }
     if (lower === "n" && page < pages) { page++; continue; }
     if (lower === "p" && page > 1) { page--; continue; }
 

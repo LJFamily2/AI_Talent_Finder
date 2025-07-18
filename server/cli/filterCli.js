@@ -104,7 +104,7 @@ function runFilterFlow(rl, done) {
                 rl.question("Identifier (or empty): ", idt => {
                   filters.identifier = idt.trim();
                   page = 1;
-                  console.log(`MongoDB filters: Search Candidates in DB for country: \"${filters.country}\", topic: \"${filters.topic}\", hindex: \"${filters.hindex}\", i10index: \"${filters.i10index}\", identifier: \"${filters.identifier}\", op: \"${filters.hOp}\``);
+                  console.clear();
                   listDbPage();
                 });
               });
@@ -127,8 +127,7 @@ function runFilterFlow(rl, done) {
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
-      console.log(`Search Candidates in DB by ${describeFilters()}`);
-      console.log(`MongoDB Profiles (Page ${page}/${pages}, Total ${total})`);
+      console.log(`Search Candidates in DB by ${describeFilters()} (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
@@ -142,7 +141,12 @@ function runFilterFlow(rl, done) {
         if (cmd === "m") return done();
         if (cmd === "b") return askFilters();
         if (cmd === "f") return listOpenAlexPage();
-        if (cmd === "r") { await flushRedis(); console.log("🧹 Redis cache flushed."); return listDbPage(); }
+        if (cmd === "r") { if (cmd === "r") {await flushRedis();
+          console.log("🧹 Redis cache flushed."); 
+          rl.question("Press Enter to continue...", () => listDbPage());
+          return;
+        }
+      }
         if (cmd === "n" && page < pages) { page++; return listDbPage(); }
         if (cmd === "p" && page > 1) { page--; return listDbPage(); }
 
@@ -180,8 +184,7 @@ function runFilterFlow(rl, done) {
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
-      console.log(`Search Candidates by fetch OpenAlex by ${describeFilters()}`);
-      console.log(`OpenAlex Profiles (Page ${page}/${pages}, Total ${total})`);
+      console.log(`Search Candidates by fetch OpenAlex by ${describeFilters()} (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
@@ -189,11 +192,17 @@ function runFilterFlow(rl, done) {
         Src: "OpenAlex"
       })));
 
-      console.log("(No=view, n=Next, p=Prev, b=Back to filters, m=Main menu)");
+      console.log("Enter No=view, r=Redis flush, n=next, p=prev, b=back, m=main: ");
       rl.question("> ", async ans => {
         const cmd = ans.trim().toLowerCase();
         if (cmd === "m") return done();
         if (cmd === "b") return askFilters();
+        if (cmd === "r") { if (cmd === "r") {await flushRedis();
+          console.log("🧹 Redis cache flushed."); 
+          rl.question("Press Enter to continue...", () => listDbPage());
+          return;
+        }
+        }
         if (cmd === "n" && page < pages) { page++; return listOpenAlexPage(); }
         if (cmd === "p" && page > 1) { page--; return listOpenAlexPage(); }
 
