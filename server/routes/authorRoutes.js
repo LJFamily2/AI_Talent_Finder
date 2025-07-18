@@ -29,7 +29,7 @@ router.get(
     const { id, name, page, limit } = req.query;
     if (id) return ["researcherProfiles", id];
     const nameKey = (name || "all").toLowerCase();
-    return ["authorLists", nameKey, `page=${page || 1}`, `limit=${limit || 25}`];
+    return ["authorLists",  nameKey, `page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`];
   }),
   searchByCandidates
 );

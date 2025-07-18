@@ -43,7 +43,11 @@ async function showProfile(profile, src) {
     Value: val
   })));
   console.log("Research Areas – Fields:");
-  profile.research_areas.fields.forEach(f => console.log(` • ${f.display_name}`));
+  profile.research_areas.fields
+  .sort((a, b) => (b.count || 0) - (a.count || 0))
+  .forEach(f =>
+    console.log(` • ${f.display_name} (count: ${f.count || 0})`)
+  );
   console.log("Research Areas – Topics:");
   profile.research_areas.topics.forEach(t =>
     console.log(` • ${t.display_name} (count: ${t.count})`)
@@ -60,12 +64,13 @@ async function showProfile(profile, src) {
     console.table(profile.citation_trends.counts_by_year);
   }
   if (profile.current_affiliation) {
-    console.log("Current Affiliation:");
-    console.table([{
-      Institution: profile.current_affiliation.display_name || profile.current_affiliation.institution,
-      ROR: profile.current_affiliation.ror
-    }]);
-  }
+  console.log("Current Affiliation:");
+  console.table([{
+    Institution: profile.current_affiliation.display_name || profile.current_affiliation.institution,
+    ROR: profile.current_affiliation.ror,
+    Country: profile.current_affiliation.country_code || "(none)"
+  }]);
+}
   await question(readline.createInterface({ input: process.stdin, output: process.stdout }), "Press Enter to continue...");
 }
 
@@ -126,7 +131,7 @@ function runAuthorFlow(rl, done) {
       lastList = candidates;
 
       console.clear();
-      console.log(`Candidates in DB for "${name}" (Page ${page}/${pages}, Total ${total})`);
+      console.log(`Search Candidates in DB for "${name}" (Page ${page}/${pages}, Total ${total})`);
       console.table(candidates.map((c, i) => ({
         No: i + 1,
         Name: c.name,
@@ -181,7 +186,7 @@ async function runFetchLoop(rl, name, done) {
     const pages = Math.max(1, Math.ceil(total / limit));
 
     console.clear();
-    console.log(`OpenAlex search for "${name}" (Page ${page}/${pages}, Total ${total})`);
+    console.log(`fetch OpenAlex for more DBs, by search for "${name}" (Page ${page}/${pages}, Total ${total})`);
     console.table(authors.map((a, i) => ({
       No: i + 1,
       Name: a.name,

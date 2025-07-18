@@ -62,11 +62,45 @@ async function searchByCandidates(req, res, next) {
 //==================================================================
 async function searchByFetch(req, res, next) {
   try {
-    const { id, name, page = 1, limit = 25 } = req.query;
+    const { id, name, page = 1, limit = 25, country, topic, hindex, i10index, identifier } = req.query;
 
-    // Fetch single author profile by ID
+    console.log(`[Fetch Filters] country="${country || ''}", topic="${topic || ''}", h-index="${hindex || ''}", i10-index="${i10index || ''}", identifier="${identifier || ''}`);
+
     if (id) {
       const { data: a } = await axios.get(`${OPENALEX_BASE}/authors/${encodeURIComponent(id)}`);
+
+      const sortedConcepts = Array.isArray(a.x_concepts)
+        ? [...a.x_concepts].sort((a, b) => b.score - a.score)
+        : [];
+
+      const topTopics = sortedConcepts.slice(0, 10).map(c => ({
+        display_name: c.display_name,
+        count: Math.round(c.score * 100)
+      }));
+
+      const fields = sortedConcepts.slice(0, 5).map(c => ({
+        display_name: c.display_name,
+        count: Math.round(c.score * 100)
+      }));
+
+      const fallbackAff = (a.affiliations?.[0]?.institution?.display_name)
+        ? {
+            institution: "",
+            display_name: a.affiliations[0].institution.display_name,
+            ror: a.affiliations[0].institution.ror || "",
+            country_code: a.affiliations[0].institution.country_code || ""
+          }
+        : { institution: "", display_name: "", ror: "", country_code: "" };
+
+      const currentAff = a.last_known_institution?.display_name
+        ? {
+            institution: "",
+            display_name: a.last_known_institution.display_name,
+            ror: a.last_known_institution.ror || "",
+            country_code: a.last_known_institution.country_code || ""
+          }
+        : fallbackAff;
+
       const profile = {
         _id: id,
         basic_info: {
@@ -95,29 +129,19 @@ async function searchByFetch(req, res, next) {
           total_works:             a.works_count                            || 0
         },
         research_areas: {
-          fields: (a.x_concepts || []).slice(0, 5).map(c => ({ display_name: c.display_name })),
-          topics: (a.x_concepts || []).slice(0, 25).map(c => ({
-            display_name: c.display_name,
-            count:        Math.round(c.score * 100)
-          }))
+          fields,
+          topics: topTopics
         },
         citation_trends: {
           cited_by_table: [],
           counts_by_year: a.counts_by_year || []
         },
-        current_affiliation: a.last_known_institution
-          ? {
-              institution:  "",
-              display_name: a.last_known_institution.display_name || "",
-              ror:          a.last_known_institution.ror           || ""
-            }
-          : { institution: "", display_name: "", ror: "" }
+        current_affiliation: currentAff
       };
 
       return res.json({ profile });
     }
 
-    // List authors by name query
     if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
 
     const pageNum = parseInt(page, 10);
@@ -191,9 +215,6 @@ async function deleteFromDatabase(req, res, next) {
   }
 }
 
-//==================================================================
-// Exports
-//==================================================================
 module.exports = {
   searchByCandidates,
   searchByFetch,

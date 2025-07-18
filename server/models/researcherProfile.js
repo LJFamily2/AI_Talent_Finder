@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 
-// Affiliation schema: include country_code to support filtering by country
+//==================================================================
+// Subschemas for Embedded Fields
+//==================================================================
+
+// Institution-level Affiliation Schema
 const AffiliationSchema = new mongoose.Schema({
   institution: {
     display_name: { type: String, default: "" },
@@ -11,6 +15,7 @@ const AffiliationSchema = new mongoose.Schema({
   years: [Number]
 }, { _id: false });
 
+// External Identifier Schema (OpenAlex, ORCID, etc.)
 const IdentifierSchema = new mongoose.Schema({
   scopus:            { type: String, default: "" },
   openalex:          { type: String, default: "" },
@@ -18,6 +23,7 @@ const IdentifierSchema = new mongoose.Schema({
   google_scholar_id: { type: String, default: "" }
 }, { _id: false });
 
+// Research Metric Schema (H-index, total citations...)
 const MetricsSchema = new mongoose.Schema({
   h_index:                 { type: Number, default: 0 },
   i10_index:               { type: Number, default: 0 },
@@ -26,39 +32,56 @@ const MetricsSchema = new mongoose.Schema({
   total_works:             { type: Number, default: 0 }
 }, { _id: false });
 
+// Concept Schema used for both fields and topics
 const ConceptSchema = new mongoose.Schema({
   display_name: { type: String, default: "" },
-  count:        { type: Number }
+  count:        { type: Number, default: 0 }
 }, { _id: false });
 
+// Citation history trends
 const CitationTrendSchema = new mongoose.Schema({
-  cited_by_table: { type: Array,   default: [] },
-  counts_by_year: { type: Array,   default: [] }
+  cited_by_table: { type: Array, default: [] },
+  counts_by_year: { type: Array, default: [] }
 }, { _id: false });
 
+// Most recent known affiliation
 const CurrentAffSchema = new mongoose.Schema({
-  institution:  { type: String, default: "" },
-  display_name: { type: String, default: "" },
-  ror:          { type: String, default: "" }
+  institution:   { type: String, default: "" },
+  display_name:  { type: String, default: "" },
+  ror:           { type: String, default: "" },
+  country_code:  { type: String, default: "" }
 }, { _id: false });
+
+//==================================================================
+// Main Researcher Profile Schema
+//==================================================================
 
 const ResearcherProfileSchema = new mongoose.Schema({
-  _id:               String,  // use OpenAlex author ID as the Mongo _id
+  _id: { type: String }, // Use OpenAlex author ID as primary key
+
   basic_info: {
     name:         { type: String, default: "" },
     affiliations: [AffiliationSchema]
   },
-  identifiers:       IdentifierSchema,
-  research_metrics:  MetricsSchema,
+
+  identifiers:      IdentifierSchema,
+  research_metrics: MetricsSchema,
+
   research_areas: {
-    fields: [new mongoose.Schema({ display_name: String }, { _id: false })],
-    topics: [ConceptSchema]
+    fields: [ConceptSchema],  // updated to allow count like topics
+    topics: [ConceptSchema]   // top 10 topics from OpenAlex by score
   },
-  citation_trends:    CitationTrendSchema,
+
+  citation_trends:     CitationTrendSchema,
   current_affiliation: CurrentAffSchema
+
 }, {
   timestamps: true,
   versionKey: false
 });
+
+//==================================================================
+// Export Mongo Model
+//==================================================================
 
 module.exports = mongoose.model("ResearcherProfile", ResearcherProfileSchema);

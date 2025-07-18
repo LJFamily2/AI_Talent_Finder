@@ -66,6 +66,17 @@ function runFilterFlow(rl, done) {
   };
   let lastList = [];
 
+    function describeFilters() {
+    const desc = [];
+    if (filters.country) desc.push(`country: "${filters.country}"`);
+    if (filters.topic) desc.push(`topic: "${filters.topic}"`);
+    if (filters.hindex) desc.push(`h-index: "${filters.hindex}" (op: "${filters.hOp}")`);
+    if (filters.i10index) desc.push(`i10-index: "${filters.i10index}" (op: "${filters.i10Op}")`);
+    if (filters.identifier) desc.push(`identifier: "${filters.identifier}"`);
+    return desc.join(", ");
+  }
+
+
   //==============================================================
   // Step 1: Ask user for filtering options
   //==============================================================
@@ -93,6 +104,7 @@ function runFilterFlow(rl, done) {
                 rl.question("Identifier (or empty): ", idt => {
                   filters.identifier = idt.trim();
                   page = 1;
+                  console.log(`MongoDB filters: Search Candidates in DB for country: \"${filters.country}\", topic: \"${filters.topic}\", hindex: \"${filters.hindex}\", i10index: \"${filters.i10index}\", identifier: \"${filters.identifier}\", op: \"${filters.hOp}\``);
                   listDbPage();
                 });
               });
@@ -115,6 +127,7 @@ function runFilterFlow(rl, done) {
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
+      console.log(`Search Candidates in DB by ${describeFilters()}`);
       console.log(`MongoDB Profiles (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
         No: i + 1,
@@ -167,6 +180,7 @@ function runFilterFlow(rl, done) {
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
+      console.log(`Search Candidates by fetch OpenAlex by ${describeFilters()}`);
       console.log(`OpenAlex Profiles (Page ${page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
         No: i + 1,
@@ -264,7 +278,11 @@ function runFilterFlow(rl, done) {
       Value: val
     })));
     console.log("Research Areas – Fields:");
-    profile.research_areas.fields.forEach(f => console.log(` • ${f.display_name}`));
+    profile.research_areas.fields
+      .sort((a, b) => (b.count || 0) - (a.count || 0))
+      .forEach(f =>
+    console.log(` • ${f.display_name} (count: ${f.count || 0})`)
+  );
     console.log("Research Areas – Topics:");
     profile.research_areas.topics.forEach(t =>
       console.log(` • ${t.display_name} (count: ${t.count})`)
@@ -284,9 +302,11 @@ function runFilterFlow(rl, done) {
       console.log("Current Affiliation:");
       console.table([{
         Institution: profile.current_affiliation.display_name || profile.current_affiliation.institution,
-        ROR: profile.current_affiliation.ror
-      }]);
-    }
+        ROR: profile.current_affiliation.ror,
+        Country: profile.current_affiliation.country_code || "(none)"
+  }]);
+}
+
     await question(rl, "Press Enter to continue...");
   }
 

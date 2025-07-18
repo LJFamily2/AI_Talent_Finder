@@ -28,6 +28,7 @@ exports.searchByCountry = async (req, res) => {
   if (!country) return res.status(400).json({ error: "Country code is required" });
 
   try {
+    console.log(`search candidates for country: "${country}"`);
     const code = country.toUpperCase();
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "basic_info.affiliations.institution.country_code": code };
@@ -51,6 +52,7 @@ exports.searchByTopic = async (req, res) => {
   if (!topic) return res.status(400).json({ error: "Topic is required" });
 
   try {
+    console.log(`search candidates for topic: "${topic}"`);
     const regex = new RegExp(topic, "i");
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = {
@@ -79,6 +81,7 @@ exports.searchByHIndex = async (req, res) => {
   if (!hindex) return res.status(400).json({ error: "h-index value is required" });
 
   try {
+    console.log(`search candidates for h-index: ${op} ${hindex}`);
     const mongoOp = opsMap[op] || "$eq";
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.h_index": { [mongoOp]: parseInt(hindex) } };
@@ -102,6 +105,7 @@ exports.searchByI10Index = async (req, res) => {
   if (!i10index) return res.status(400).json({ error: "i10-index value is required" });
 
   try {
+    console.log(`search candidates for i10-index: ${op} ${i10index}`);
     const mongoOp = opsMap[op] || "$eq";
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.i10_index": { [mongoOp]: parseInt(i10index) } };
@@ -128,6 +132,7 @@ exports.searchByIdentifier = async (req, res) => {
   }
 
   try {
+    console.log(`search candidates for identifier: ${identifier}`);
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const field = `identifiers.${identifier}`;
     const query = { [field]: { $exists: true, $ne: "" } };
@@ -149,6 +154,8 @@ exports.searchByIdentifier = async (req, res) => {
 exports.searchByMultipleFilters = async (req, res) => {
   const { country, topic, hindex, i10index, identifier, op = "eq", page = 1, limit = 20 } = req.query;
   const query = {};
+
+  console.log(`search candidates for country: "${country}", topic: "${topic}", h-index: "${hindex}", i10-index: "${i10index}", identifier: "${identifier}", op: "${op}"`);
 
   if (country) query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
   if (topic) {
@@ -183,6 +190,8 @@ exports.searchOpenalexFilters = async (req, res) => {
   try {
     const { country, topic, hindex, i10index, identifier, page = 1, limit = 25 } = req.query;
     const filters = [];
+
+    console.log(`openAlex search candidates for country: "${country}", topic: "${topic}", h-index: "${hindex}", i10-index: "${i10index}", identifier: "${identifier}"`);
 
     if (country) filters.push(`last_known_institutions.country_code:${country.toUpperCase()}`);
     if (hindex) filters.push(`summary_stats.h_index:${hindex}`);
