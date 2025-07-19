@@ -20,17 +20,17 @@ const rl = readline.createInterface({
 // CLI Main Menu Loop
 // - Option 1: Author search and save
 // - Option 2: Multi-filter search (by topic, country, metrics...)
-// - Option q: Quit the CLI program
+// - Option 3: Quit the CLI program
 //==================================================================
 
 function mainMenu() {
   console.clear();
   console.log('┌────────────────────────────────────────────────────────────────┐');
-  console.log('│                   CLI Academic Talent Finder                   │');
+  console.log('│       TEAM FRIENDS - CLI Build For Academic Talent Finder      │');
   console.log('├────────────────────────────────────────────────────────────────┤');
   console.log('│ 1) Search & Save Author to DB                                  │');
   console.log('│ 2) Multi-Filter Search Profiles                                │');
-  console.log('│ q) Quit                                                        │');
+  console.log('│ 3) Quit                                                        │');
   console.log('└────────────────────────────────────────────────────────────────┘');
 
   rl.question('Select an option: ', opt => {
@@ -41,8 +41,8 @@ function mainMenu() {
       case '2':
         runFilterFlow(rl, mainMenu);
         break;
-      case 'q':
-        console.log('Goodbye!');
+      case '3':
+        console.log('👋 Goodbye!');
         rl.close();
         process.exit(0);
       default:

@@ -37,6 +37,7 @@ async function searchByCandidates(req, res, next) {
     const total = await ResearcherProfile.countDocuments(filter);
     const docs  = await ResearcherProfile
       .find(filter)
+      .sort({ "basic_info.name": 1 })
       .skip(skip)
       .limit(limNum)
       .select({ _id: 1, "basic_info.name": 1 });

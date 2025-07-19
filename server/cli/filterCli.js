@@ -1,133 +1,68 @@
 //==================================================================
-// CLI Filter Flow
-// Provides terminal interface for multi-criteria filtering of author profiles
+// Filter CLI Handler
+// CLI flow to search researcher profiles via multi-filters
 //==================================================================
 
 const axios = require("axios");
-const readline = require("readline");
+const { showProfile, renderFilterHeader, question } = require("./renderCli");
 
 const API_BASE = "http://localhost:5000/api";
 
-//==================================================================
-// Utility: CLI input prompt wrapped in Promise
-//==================================================================
-function question(rl, prompt) {
-  return new Promise(resolve => rl.question(prompt, answer => resolve(answer.trim())));
-}
-
-//==================================================================
-// API Fetch Functions
-//==================================================================
-
-async function fetchProfiles(params) {
-  const res = await axios.get(`${API_BASE}/search-filters/multi`, { params });
-  return res.data;
-}
-
-async function fetchOpenProfiles(params) {
-  const res = await axios.get(`${API_BASE}/search-filters/openalex`, { params });
-  return res.data;
-}
-
-async function fetchProfileById(id) {
-  const res = await axios.get(`${API_BASE}/author/search-author`, { params: { id } });
-  return res.data.profile || null;
-}
-
-async function fetchOpenProfile(id) {
-  const res = await axios.get(`${API_BASE}/author/fetch-author`, { params: { id } });
-  return res.data.profile || null;
-}
-
-async function saveProfile(profile) {
-  const res = await axios.post(`${API_BASE}/author/save-profile`, { profile });
-  return res.data;
-}
-
-async function deleteProfile(id) {
-  const res = await axios.delete(`${API_BASE}/author/delete-profile`, { data: { id } });
-  return res.data;
-}
-
-async function flushRedis() {
-  const res = await axios.post(`${API_BASE}/author/flush-redis`);
-  return res.data;
-}
-
-//==================================================================
-// CLI Workflow: Multi-Filter Flow Entry
-//==================================================================
-
+//------------------------------------------------------------------
+// Main Exported Flow
+//------------------------------------------------------------------
 function runFilterFlow(rl, done) {
-  let page = 1, limit = 25;
-  const filters = {
-    country: "", topic: "", hindex: "", hOp: "eq",
-    i10index: "", i10Op: "eq", identifier: ""
+  const limit = 25;
+  let filters = {
+    country: '',
+    topic: '',
+    hindex: '',
+    hOp: 'eq',
+    i10index: '',
+    i10Op: 'eq',
+    identifier: '',
+    page: 1
   };
+
   let lastList = [];
 
-    function describeFilters() {
-    const desc = [];
-    if (filters.country) desc.push(`country: "${filters.country}"`);
-    if (filters.topic) desc.push(`topic: "${filters.topic}"`);
-    if (filters.hindex) desc.push(`h-index: "${filters.hindex}" (op: "${filters.hOp}")`);
-    if (filters.i10index) desc.push(`i10-index: "${filters.i10index}" (op: "${filters.i10Op}")`);
-    if (filters.identifier) desc.push(`identifier: "${filters.identifier}"`);
-    return desc.join(", ");
-  }
-
-
   //==============================================================
-  // Step 1: Ask user for filtering options
+  // Prompt Filters
   //==============================================================
-
-  function askFilters() {
+  async function askFilters() {
     console.clear();
     console.log("┌────────────────────────────────────────────────────────────────┐");
     console.log("│                      Multi-Filter Search                       │");
     console.log("├────────────────────────────────────────────────────────────────┤");
-    console.log("│ (enter 'b' to return to main menu)                             │");
+    console.log("│ (enter 'b' at any time to return to main menu)                │");
     console.log("└────────────────────────────────────────────────────────────────┘");
-    rl.question("Country (or empty): ", c => {
-      if (c.trim().toLowerCase() === "b") return done();
-      filters.country = c.trim();
-      rl.question("Topic   (or empty): ", t => {
-        filters.topic = t.trim();
-        rl.question("h-index (or empty): ", hi => {
-          filters.hindex = hi.trim();
-          rl.question("h-op [eq/gte/lte]: ", hop => {
-            filters.hOp = ["eq", "gte", "lte"].includes(hop.trim()) ? hop.trim() : "eq";
-            rl.question("i10-index (or empty): ", i10 => {
-              filters.i10index = i10.trim();
-              rl.question("i10-op [eq/gte/lte]: ", i10op => {
-                filters.i10Op = ["eq", "gte", "lte"].includes(i10op.trim()) ? i10op.trim() : "eq";
-                rl.question("Identifier (or empty): ", idt => {
-                  filters.identifier = idt.trim();
-                  page = 1;
-                  console.clear();
-                  listDbPage();
-                });
-              });
-            });
-          });
-        });
-      });
-    });
+
+    filters.country = await question(rl, "Country code (e.g. VN, ...): ");
+    if (filters.country === "b") return done();
+    filters.topic = await question(rl, "Research topics & fields keyword: ");
+    filters.hindex = await question(rl, "H-index value: ");
+    filters.hOp = await question(rl, "H-index operator (eq|gte|lte): ") || "eq";
+    filters.i10index = await question(rl, "i10-index value: ");
+    filters.i10Op = await question(rl, "i10-index operator (eq|gte|lte): ") || "eq";
+    filters.identifier = await question(rl, "Specific identifier (OpenAlex, ORCID, Scopus, Google Scholar): ");
+
+    filters.page = 1;
+    await runSearch();
   }
 
   //==============================================================
-  // Step 2: List filtered MongoDB results
+  // MongoDB Search
   //==============================================================
-
-  async function listDbPage() {
+  async function runSearch() {
     try {
-      const params = { ...filters, op: filters.hOp, page, limit };
-      const { total = 0, authors = [] } = await fetchProfiles(params);
-      lastList = authors;
+      const res = await axios.get(`${API_BASE}/search-filters/multi`, { params: filters });
+      const { total, authors = [] } = res.data;
       const pages = Math.max(1, Math.ceil(total / limit));
+      lastList = authors;
 
       console.clear();
-      console.log(`Search Candidates in DB by ${describeFilters()} (Page ${page}/${pages}, Total ${total})`);
+      console.log(`Filtered Results (Page ${filters.page}/${pages}, Total ${total})`);
+      console.log("Filters:", renderFilterHeader(filters));
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
@@ -135,56 +70,59 @@ function runFilterFlow(rl, done) {
         Src: "DB"
       })));
 
-      console.log("(No=view, d<No>=delete, f=fetch(OpenAlex), r=Redis flush, n=Next, p=Prev, b=Back, m=Menu)");
-      rl.question("> ", async ans => {
-        const cmd = ans.trim().toLowerCase();
-        if (cmd === "m") return done();
-        if (cmd === "b") return askFilters();
-        if (cmd === "f") return listOpenAlexPage();
-        if (cmd === "r") { if (cmd === "r") {await flushRedis();
-          console.log("🧹 Redis cache flushed."); 
-          rl.question("Press Enter to continue...", () => listDbPage());
-          return;
+      const cmd = await question(rl, "Enter No = View, d <No> = Delete Profile, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Filters, M = Main Menu: ");
+
+      const lower = cmd.toLowerCase();
+
+      if (lower === "m") return done();
+      if (lower === "r") {
+        await axios.post(`${API_BASE}/admin/flush-redis`);
+        console.log("🧹 Redis cache flushed.");
+        await question(rl, "Press Enter to continue...");
+        return runSearch();
+      }
+      if (lower === "f") return fetchOpenAlex();
+      if (lower === "n" && filters.page < pages) { filters.page++; return runSearch(); }
+      if (lower === "p" && filters.page > 1) { filters.page--; return runSearch(); }
+
+      if (lower.startsWith("d")) {
+        const idx = parseInt(lower.slice(1), 10) - 1;
+        if (!isNaN(idx) && lastList[idx]) {
+          const result = await axios.delete(`${API_BASE}/author/delete-profile`, {
+            data: { id: lastList[idx]._id }
+          });
+          console.log("🗑️", result.data.message);
+          await question(rl, "Press Enter to continue...");
+          return runSearch();
         }
       }
-        if (cmd === "n" && page < pages) { page++; return listDbPage(); }
-        if (cmd === "p" && page > 1) { page--; return listDbPage(); }
 
-        if (cmd.startsWith("d")) {
-          const idx = parseInt(cmd.slice(1), 10) - 1;
-          if (!isNaN(idx) && idx >= 0 && idx < lastList.length) {
-            const target = lastList[idx];
-            const { message } = await deleteProfile(target._id);
-            console.log("🗑️", message);
-          }
-          return listDbPage();
-        }
+      const idx = parseInt(lower, 10) - 1;
+      if (!isNaN(idx) && authors[idx]) {
+        const detail = await axios.get(`${API_BASE}/author/detail`, { params: { id: authors[idx]._id } });
+        await showProfile(rl, detail.data, "DB");
+        return runSearch();
+      }
 
-        const idx = parseInt(cmd, 10) - 1;
-        if (!isNaN(idx) && idx >= 0 && idx < authors.length) {
-          return viewProfile(authors[idx]._id, "DB", listDbPage);
-        }
-
-        listDbPage();
-      });
+      return runSearch();
     } catch (err) {
-      console.error("Error fetching profiles:", err.message);
-      askFilters();
+      console.error("❌ Error:", err.message);
+      await question(rl, "Press Enter to return...");
+      return done();
     }
   }
 
   //==============================================================
-  // Step 3: Fetch and list OpenAlex results
+  // Fetch from OpenAlex
   //==============================================================
-
-  async function listOpenAlexPage() {
+  async function fetchOpenAlex() {
     try {
-      const params = { ...filters, page, limit };
-      const { total = 0, authors = [] } = await fetchOpenProfiles(params);
+      const res = await axios.get(`${API_BASE}/search-filters/openalex`, { params: filters });
+      const { total = 0, authors = [] } = res.data;
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
-      console.log(`Search Candidates by fetch OpenAlex by ${describeFilters()} (Page ${page}/${pages}, Total ${total})`);
+      console.log(`OpenAlex Fetch Results (Page ${filters.page}/${pages}, Total ${total})`);
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
@@ -192,154 +130,49 @@ function runFilterFlow(rl, done) {
         Src: "OpenAlex"
       })));
 
-      console.log("Enter No=view, r=Redis flush, n=next, p=prev, b=back, m=main: ");
-      rl.question("> ", async ans => {
-        const cmd = ans.trim().toLowerCase();
-        if (cmd === "m") return done();
-        if (cmd === "b") return askFilters();
-        if (cmd === "r") { if (cmd === "r") {await flushRedis();
-          console.log("🧹 Redis cache flushed."); 
-          rl.question("Press Enter to continue...", () => listDbPage());
-          return;
-        }
-        }
-        if (cmd === "n" && page < pages) { page++; return listOpenAlexPage(); }
-        if (cmd === "p" && page > 1) { page--; return listOpenAlexPage(); }
+      const cmd = await question(rl, "Enter No = View, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Filters, M = Main Menu: ");
+      const lower = cmd.toLowerCase();
 
-        const idx = parseInt(cmd, 10) - 1;
-        if (!isNaN(idx) && idx >= 0 && idx < authors.length) {
-          const profile = await fetchOpenProfile(authors[idx]._id);
-          await showAndMaybeSaveProfile(profile, listOpenAlexPage);
-        } else {
-          listOpenAlexPage();
+      if (lower === "m") return done();
+      if (lower === "b") return runSearch();
+      if (lower === "r") {
+        await axios.post(`${API_BASE}/admin/flush-redis`);
+        console.log("🧹 Redis cache flushed.");
+        await question(rl, "Press Enter to continue...");
+        return fetchOpenAlex();
+      }
+      if (lower === "n" && filters.page < pages) { filters.page++; return fetchOpenAlex(); }
+      if (lower === "p" && filters.page > 1) { filters.page--; return fetchOpenAlex(); }
+
+      const idx = parseInt(lower, 10) - 1;
+      if (!isNaN(idx) && authors[idx]) {
+        const full = await axios.get(`${API_BASE}/author/fetch-author`, { params: { id: authors[idx]._id } });
+        await showProfile(rl, full.data.profile, "OpenAlex");
+
+        const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
+        if (yn.toLowerCase() === "y") {
+          const result = await axios.post(`${API_BASE}/author/save-profile`, {
+            profile: full.data.profile
+          });
+          console.log("🟢", result.data.message);
         }
-      });
+
+        await question(rl, "Press Enter to continue...");
+        return fetchOpenAlex();
+      }
+
+      return fetchOpenAlex();
     } catch (err) {
-      console.error("Error fetching OpenAlex profiles:", err.message);
-      askFilters();
+      console.error("❌ Error fetching OpenAlex:", err.message);
+      await question(rl, "Press Enter to return...");
+      return runSearch();
     }
   }
 
-  //==============================================================
-  // Step 4: View single profile by ID (MongoDB or OpenAlex)
-  //==============================================================
-
-  async function viewProfile(id, src, back) {
-    try {
-      const profile = await fetchProfileById(id);
-      if (!profile) throw new Error("Profile not found");
-      await showProfile(profile, src);
-      back();
-    } catch (err) {
-      console.error("Error loading profile:", err.message);
-      back();
-    }
-  }
-
-  //==============================================================
-  // Step 5: View + optionally save OpenAlex profile
-  //==============================================================
-
-  async function showAndMaybeSaveProfile(profile, back) {
-    if (!profile) {
-      console.log("❌ No profile found.");
-      await question(rl, "Press Enter to continue...");
-      return back();
-    }
-
-    await showProfile(profile, "OpenAlex");
-    const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
-    if (yn.toLowerCase() === "y") {
-      const result = await saveProfile(profile);
-      console.log("🟢", result.message);
-    }
-    await question(rl, "Press Enter to continue...");
-    back();
-  }
-
-  //==============================================================
-  // Step 6: Pretty print profile content to CLI
-  //==============================================================
-
-  async function showProfile(profile, src) {
-    console.clear();
-    console.log("┌────────────────────────────────────────────────────────────────┐");
-    console.log(`│                      Author Profile (${src})                    │`);
-    console.log("├────────────────────────────────────────────────────────────────┤");
-    console.log(`ID:   ${profile._id}`);
-    console.log(`Name: ${profile.basic_info?.name || "(no name)"}`);
-    console.log("──────────────────────────────────────────────────────────────────");
-    console.log("Affiliations:");
-    console.table(profile.basic_info.affiliations.map(a => ({
-      Institution: a.institution.display_name,
-      Country: a.institution.country_code || "(none)",
-      ROR: a.institution.ror,
-      Years: Array.isArray(a.years) ? a.years.join(", ") : "(none)"
-    })));
-    console.log("Identifiers:");
-    console.table(Object.entries(profile.identifiers).map(([key, val]) => ({
-      Identifier: key,
-      Value: val || "(none)"
-    })));
-    console.log("Research Metrics:");
-    console.table(Object.entries(profile.research_metrics).map(([metric, val]) => ({
-      Metric: metric,
-      Value: val
-    })));
-    console.log("Research Areas – Fields:");
-    profile.research_areas.fields
-      .sort((a, b) => (b.count || 0) - (a.count || 0))
-      .forEach(f =>
-    console.log(` • ${f.display_name} (count: ${f.count || 0})`)
-  );
-    console.log("Research Areas – Topics:");
-    profile.research_areas.topics.forEach(t =>
-      console.log(` • ${t.display_name} (count: ${t.count})`)
-    );
-    if (Array.isArray(profile.works) && profile.works.length) {
-      console.log("Works:");
-      console.table(profile.works.map(w => ({
-        Title: w.title || "(no title)",
-        DOI: w.doi || "(none)"
-      })));
-    }
-    if (profile.citation_trends?.counts_by_year) {
-      console.log("Citation Trends (counts_by_year):");
-      console.table(profile.citation_trends.counts_by_year);
-    }
-    if (profile.current_affiliation) {
-      console.log("Current Affiliation:");
-      console.table([{
-        Institution: profile.current_affiliation.display_name || profile.current_affiliation.institution,
-        ROR: profile.current_affiliation.ror,
-        Country: profile.current_affiliation.country_code || "(none)"
-  }]);
-}
-
-    await question(rl, "Press Enter to continue...");
-  }
-
-  //==============================================================
-  // Start filter workflow
-  //==============================================================
   askFilters();
 }
 
-//==================================================================
-// Module Export
-//==================================================================
-
+//------------------------------------------------------------------
+// Export for CLI use
+//------------------------------------------------------------------
 module.exports = { runFilterFlow };
-
-//==================================================================
-// CLI Standalone Execution
-//==================================================================
-
-if (require.main === module) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  runFilterFlow(rl, () => {
-    console.log("Goodbye!");
-    rl.close();
-    process.exit(0);
-  });
-}

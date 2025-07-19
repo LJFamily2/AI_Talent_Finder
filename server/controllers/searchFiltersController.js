@@ -56,7 +56,7 @@ exports.searchByCountry = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "basic_info.affiliations.institution.country_code": code };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -85,7 +85,7 @@ exports.searchByTopic = async (req, res) => {
       ],
     };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -109,7 +109,7 @@ exports.searchByHIndex = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.h_index": { [mongoOp]: parseInt(hindex) } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -133,7 +133,7 @@ exports.searchByI10Index = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.i10_index": { [mongoOp]: parseInt(i10index) } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -160,7 +160,7 @@ exports.searchByIdentifier = async (req, res) => {
     const field = `identifiers.${identifier}`;
     const query = { [field]: { $exists: true, $ne: "" } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -196,7 +196,7 @@ exports.searchByMultipleFilters = async (req, res) => {
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -243,8 +243,8 @@ exports.searchOpenalexFilters = async (req, res) => {
       basic_info: {
         name: a.display_name,
       },
-    }));
-
+    })).sort((a, b) => a.basic_info.name.localeCompare(b.basic_info.name));;
+    
     return res.json({
       total: data.meta?.count || authors.length,
       count: authors.length,
