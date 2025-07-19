@@ -75,6 +75,7 @@ function runFilterFlow(rl, done) {
       const lower = cmd.toLowerCase();
 
       if (lower === "m") return done();
+      if (lower === "b") return askFilters();
       if (lower === "r") {
         await axios.post(`${API_BASE}/admin/flush-redis`);
         console.log("🧹 Redis cache flushed.");
