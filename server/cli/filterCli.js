@@ -61,8 +61,8 @@ function runFilterFlow(rl, done) {
       lastList = authors;
 
       console.clear();
-      console.log(`Filtered Results (Page ${filters.page}/${pages}, Total ${total})`);
-      console.log("Filters:", renderFilterHeader(filters));
+      console.log(`Search Candidates In DB By Filters (Page ${filters.page}/${pages}, Total ${total})`);
+      console.log("Filters By:", renderFilterHeader(filters));
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
@@ -77,7 +77,7 @@ function runFilterFlow(rl, done) {
       if (lower === "m") return done();
       if (lower === "b") return askFilters();
       if (lower === "r") {
-        await axios.post(`${API_BASE}/admin/flush-redis`);
+        await axios.post(`${API_BASE}/author/flush-redis`);
         console.log("🧹 Redis cache flushed.");
         await question(rl, "Press Enter to continue...");
         return runSearch();
@@ -123,7 +123,8 @@ function runFilterFlow(rl, done) {
       const pages = Math.max(1, Math.ceil(total / limit));
 
       console.clear();
-      console.log(`OpenAlex Fetch Results (Page ${filters.page}/${pages}, Total ${total})`);
+      console.log(`Search Candidates By Fetch OpenAlex (Page ${filters.page}/${pages}, Total ${total})`);
+      console.log("Filters By:", renderFilterHeader(filters));
       console.table(authors.map((a, i) => ({
         No: i + 1,
         Name: a.basic_info?.name || "(no name)",
