@@ -107,9 +107,11 @@ const verifyWithOpenAlex = async (
  * @private
  */
 const searchOpenAlex = async (title, maxResults) => {
+  // Add api_key parameter using the OPENALEX_API_KEY from environment variables
+  const apiKey = process.env.OPENALEX_API_KEY;
   const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
     title
-  )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics`;
+  )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics&api_key=${apiKey}`;
 
   const { data: openAlexResult } = await axios.get(openAlexApiUrl);
   return openAlexResult;

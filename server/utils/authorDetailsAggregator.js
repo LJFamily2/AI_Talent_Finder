@@ -22,6 +22,7 @@ require("dotenv").config();
 const googleScholarApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
 const scopusApiKey = process.env.SCOPUS_API_KEY;
 const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
+const openAlexApiKey = process.env.OPENALEX_API_KEY;
 
 /**
  * Default priority order for academic sources
@@ -754,7 +755,7 @@ const fetchOpenAlexAuthor = async (authorId) => {
   // Extract the ID from the full URL format if needed
   const id = authorId.includes("/") ? authorId.split("/").pop() : authorId;
 
-  const url = `https://api.openalex.org/authors/${id}?select=display_name,display_name_alternatives,works_count,cited_by_count,summary_stats,affiliations,counts_by_year,topics`;
+  let url = `https://api.openalex.org/authors/${id}?select=display_name,display_name_alternatives,works_count,cited_by_count,summary_stats,affiliations,counts_by_year,topics&api_key=${openAlexApiKey}`;
 
   try {
     const { data } = await axios.get(url);
@@ -779,7 +780,7 @@ const fetchOpenAlexWorks = async (authorId) => {
   let hasMorePages = true;
   const perPage = 200; // Maximum allowed by OpenAlex
   while (hasMorePages) {
-    const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,topics,counts_by_year&per_page=${perPage}&cursor=${cursor}`;
+    const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,topics,counts_by_year&per_page=${perPage}&cursor=${cursor}&api_key=${openAlexApiKey}`;
 
     try {
       const { data } = await axios.get(url);

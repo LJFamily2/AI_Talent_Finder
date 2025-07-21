@@ -16,7 +16,6 @@
  */
 
 const fs = require("fs");
-const pdfParse = require("pdf-parse");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {
   verifyWithGoogleScholar,
@@ -30,6 +29,7 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
+const { extractTextFromPDF } = require("../utils/pdfUtils");
 //=============================================================================
 // MAIN CV VERIFICATION FUNCTION
 //=============================================================================
@@ -50,31 +50,46 @@ const {
  */
 
 const verifyCV = async (file, prioritySource) => {
+  const processTimes = {};
+  const startAll = Date.now();
+  let cvText = "";
   try {
-    // Parse PDF to text
-    const pdfBuffer = fs.readFileSync(file.path);
-    const parsedData = await pdfParse(pdfBuffer);
-    const cvText = parsedData.text;
-
+    // Parse PDF to text (with OCR fallback)
+    const startParse = Date.now();
+    cvText = await extractTextFromPDF(file.path);
+    processTimes.parsePDF = Date.now() - startParse;
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Initialize Google AI model
+    const startModel = Date.now();
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemma-3n-e4b-it",
+      model: "gemini-2.5-flash-lite-preview-06-17",
       generationConfig: {
         temperature: 0.0,
         topP: 0.0,
         maxOutputTokens: 4096,
       },
-    }); // Extract candidate name using AI
+    });
+    processTimes.initModel = Date.now() - startModel;
+
+    // Extract candidate name using AI
+    const startName = Date.now();
     const candidateName = await extractCandidateNameWithAI(model, cvText);
+    processTimes.extractName = Date.now() - startName;
+
+    // Extract publications using AI
+    const startPubs = Date.now();
     const publications = await extractPublicationsFromCV(model, cvText);
+    processTimes.extractPublications = Date.now() - startPubs;
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
-    } // Verify each publication with both Google Scholar and Scopus
+    }
+
+    // Verify each publication with both Google Scholar and Scopus
+    const startVerify = Date.now();
     const verificationResults = await Promise.all(
       publications.map(async (pub) => {
         const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
@@ -93,7 +108,6 @@ const verifyCV = async (file, prioritySource) => {
         if (scholarResult.details?.extractedAuthors) {
           allAuthors.push(...scholarResult.details.extractedAuthors);
         }
-
         // Get authors from Scopus
         if (scopusResult.details?.extractedAuthors) {
           allAuthors.push(...scopusResult.details.extractedAuthors);
@@ -134,7 +148,7 @@ const verifyCV = async (file, prioritySource) => {
           verification: {
             google_scholar: {
               status: scholarResult.status,
-              // details: scholarResult.details,
+              details: scholarResult.details,
             },
             scopus: {
               status: scopusResult.status,
@@ -277,8 +291,10 @@ const verifyCV = async (file, prioritySource) => {
         };
       })
     );
+    processTimes.verifyPublications = Date.now() - startVerify;
 
     // Aggregate author details from multiple sources
+    const startAggregate = Date.now();
     // Find publications with author matches and collect IDs
     const allAuthorIds = {
       google_scholar: null,
@@ -296,14 +312,12 @@ const verifyCV = async (file, prioritySource) => {
     // Collect author IDs from each source
     verifiedWithAuthorMatch.forEach((result) => {
       const { authorIds } = result.authorVerification;
-
       if (authorIds?.google_scholar && !allAuthorIds.google_scholar) {
         allAuthorIds.google_scholar = authorIds.google_scholar;
       }
       if (authorIds?.scopus && !allAuthorIds.scopus) {
         allAuthorIds.scopus = authorIds.scopus;
       }
-
       if (authorIds?.openalex && !allAuthorIds.openalex) {
         allAuthorIds.openalex = authorIds.openalex;
       }
@@ -336,19 +350,12 @@ const verifyCV = async (file, prioritySource) => {
       } catch (error) {
         console.error("Failed to aggregate author details:", error.message);
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
-        // const match = verificationResults.find(
-        //   (result) =>
-        //     result.verification.google_scholar.status === "verified" &&
-        //     result.authorVerification.hasAuthorMatch &&
-        //     result.verification.google_scholar.details?.authorDetails
-        // );
-
-        // if (match?.verification.google_scholar.details?.authorDetails) {
-        //   aggregatedAuthorDetails =
-        //     match.verification.google_scholar.details.authorDetails;
-        // }
       }
     }
+    processTimes.aggregateAuthors = Date.now() - startAggregate;
+
+    processTimes.total = Date.now() - startAll;
+    // console.log("[CV Verification] Process timing (ms):", processTimes);
 
     return {
       success: true,
@@ -370,8 +377,10 @@ const verifyCV = async (file, prioritySource) => {
       ).length,
       results: verificationResults,
       authorDetails: aggregatedAuthorDetails,
+      timings: processTimes,
     };
   } catch (error) {
+    console.error("[CV Verification] Error:", error);
     throw error;
   }
 };
