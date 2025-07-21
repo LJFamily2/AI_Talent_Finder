@@ -188,47 +188,6 @@ async function evaluateModelMetrics() {
       `F1 Score:  ${cvResults.f1Score.mean}% ± ${cvResults.f1Score.stdDev}%`
     );
 
-    // Compare with existing model if available
-    if (fs.existsSync(MODEL_PATH)) {
-      console.log("\n🔍 Comparing with existing model...");
-      const existingClassifier = new SimpleHeaderClassifier();
-      existingClassifier.load(MODEL_PATH);
-      const existingMetrics = existingClassifier.evaluateMetrics(testData);
-
-      console.log("\n📊 MODEL COMPARISON:");
-      console.log("=".repeat(50));
-      console.log(`Metric     | Existing | New Model | Improvement`);
-      console.log("-".repeat(50));
-      console.log(
-        `Accuracy   | ${existingMetrics.accuracy}%     | ${
-          testMetrics.accuracy
-        }%      | ${
-          testMetrics.accuracy - existingMetrics.accuracy > 0 ? "+" : ""
-        }${(testMetrics.accuracy - existingMetrics.accuracy).toFixed(1)}%`
-      );
-      console.log(
-        `Precision  | ${existingMetrics.precision}%     | ${
-          testMetrics.precision
-        }%      | ${
-          testMetrics.precision - existingMetrics.precision > 0 ? "+" : ""
-        }${(testMetrics.precision - existingMetrics.precision).toFixed(1)}%`
-      );
-      console.log(
-        `Recall     | ${existingMetrics.recall}%     | ${
-          testMetrics.recall
-        }%      | ${
-          testMetrics.recall - existingMetrics.recall > 0 ? "+" : ""
-        }${(testMetrics.recall - existingMetrics.recall).toFixed(1)}%`
-      );
-      console.log(
-        `F1 Score   | ${existingMetrics.f1Score}%     | ${
-          testMetrics.f1Score
-        }%      | ${
-          testMetrics.f1Score - existingMetrics.f1Score > 0 ? "+" : ""
-        }${(testMetrics.f1Score - existingMetrics.f1Score).toFixed(1)}%`
-      );
-    }
-
     // Save metrics to file
     const metricsReport = {
       timestamp: new Date().toISOString(),
@@ -244,7 +203,6 @@ async function evaluateModelMetrics() {
 
     const metricsPath = path.join(MODEL_DIR, "model_metrics.json");
     fs.writeFileSync(metricsPath, JSON.stringify(metricsReport, null, 2));
-    console.log(`\n💾 Detailed metrics saved to: ${metricsPath}`);
 
     // Performance interpretation
     console.log("\n💡 PERFORMANCE INTERPRETATION:");
@@ -272,7 +230,6 @@ async function evaluateModelMetrics() {
       );
     }
 
-    console.log("\n🎉 Evaluation complete!");
   } catch (error) {
     console.error("❌ Error during evaluation:", error);
   }
