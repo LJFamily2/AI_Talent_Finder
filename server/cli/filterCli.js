@@ -100,8 +100,8 @@ function runFilterFlow(rl, done) {
 
       const idx = parseInt(lower, 10) - 1;
       if (!isNaN(idx) && authors[idx]) {
-        const detail = await axios.get(`${API_BASE}/author/detail`, { params: { id: authors[idx]._id } });
-        await showProfile(rl, detail.data, "DB");
+        const res = await axios.get(`${API_BASE}/author/search-author`, { params: { id: authors[idx]._id } });
+        await showProfile(rl, res.data.profile, "DB");
         return runSearch();
       }
 
