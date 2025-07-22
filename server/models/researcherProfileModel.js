@@ -84,4 +84,4 @@ const ResearcherProfileSchema = new mongoose.Schema({
 // Export Mongo Model
 //==================================================================
 
-module.exports = mongoose.model("ResearcherProfile", ResearcherProfileSchema);
+module.exports = mongoose.model("researcherprofiles", ResearcherProfileSchema);

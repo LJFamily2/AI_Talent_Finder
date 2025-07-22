@@ -17,8 +17,9 @@ app.use(cors());
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
   .then(() => console.log("MongoDB Connected"))
+  .then(() => console.log("MongoDB Connected", process.env.MONGODB_URI))
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Mount routes

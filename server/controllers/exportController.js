@@ -1,12 +1,24 @@
 const excel = require("exceljs");
-const ResearcherProfile = require("../models/researcherProfile");
+const researcherProfile = require("../models/researcherProfileModel");
 
 const exportResearchersToExcel = async (req, res) => {
   try {
     const { researcherIds } = req.body;
 
+    // Validate researcherIds
+    if (
+      !researcherIds ||
+      !Array.isArray(researcherIds) ||
+      researcherIds.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an array of researcher IDs",
+      });
+    }
+
     // Fetch researchers data
-    const researchers = await ResearcherProfile.find({
+    const researchers = await researcherProfile.find({
       _id: { $in: researcherIds },
     });
 
@@ -50,12 +62,25 @@ const exportResearchersToExcel = async (req, res) => {
 
     // Add researcher data
     researchers.forEach((researcher) => {
+      // Get the first affiliation if it exists
+      const primaryAffiliation = researcher.basic_info?.affiliations?.[0] || {};
+
+      // Process research fields and topics
+      const fields =
+        researcher.research_areas?.fields
+          ?.map((f) => f.display_name)
+          .join(", ") || "";
+      const topics =
+        researcher.research_areas?.topics
+          ?.map((t) => t.display_name)
+          .join(", ") || "";
+
       worksheet.addRow({
-        name: researcher.name || "",
-        institution: researcher.institution?.display_name || "",
-        institutionRor: researcher.institution?.ror || "",
-        institutionCountry: researcher.institution?.country_code || "",
-        institutionYears: researcher.institution?.years?.join(", ") || "",
+        name: researcher.basic_info?.name || "",
+        institution: primaryAffiliation?.institution?.display_name || "",
+        institutionRor: primaryAffiliation?.institution?.ror || "",
+        institutionCountry: primaryAffiliation?.institution?.country_code || "",
+        institutionYears: primaryAffiliation?.years?.join(", ") || "",
         scopusId: researcher.identifiers?.scopus || "",
         openalexId: researcher.identifiers?.openalex || "",
         orcid: researcher.identifiers?.orcid || "",
@@ -66,8 +91,8 @@ const exportResearchersToExcel = async (req, res) => {
           researcher.research_metrics?.two_year_mean_citedness || "",
         totalCitations: researcher.research_metrics?.total_citations || "",
         totalWorks: researcher.research_metrics?.total_works || "",
-        researchFields: researcher.research_areas?.fields?.join(", ") || "",
-        researchTopics: researcher.research_areas?.topics?.join(", ") || "",
+        researchFields: fields,
+        researchTopics: topics,
         currentInstitution: researcher.current_affiliation?.institution || "",
         currentInstitutionName:
           researcher.current_affiliation?.display_name || "",
