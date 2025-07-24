@@ -37,33 +37,33 @@ const exportResearchersToExcel = async (req, res) => {
     const row1 = worksheet.getRow(1);
     row1.values = [
       "Basic Info", // A1
+      "Identifiers", // B1
+      "Research Metrics", // C1
       "",
       "",
       "",
-      "",
-      "", // B1-F1 (will be merged)
-      "Identifiers", // G1
-      "Research Metrics", // H1
-      "",
-      "",
-      "",
-      "", // I1-L1 (will be merged)
-      "Research Areas", // M1
-      "", // N1 (will be merged)
-      "Current Affiliation", // O1
+      "", // D1-G1 (will be merged)
+      "Research Areas", // H1
+      "", // I1 (will be merged)
+      "Current Affiliation", // J1
       "",
       "",
-      "", // P1-R1 (will be merged)
+      "", // K1-M1 (will be merged)
+      "Affiliations", // N1
+      "",
+      "",
+      "",
+      "", // O1-R1 (will be merged)
     ];
 
     // Merge Level 1 headers
-    worksheet.mergeCells("A1:F1"); // Basic Info
-    worksheet.mergeCells("H1:L1"); // Research Metrics
-    worksheet.mergeCells("M1:N1"); // Research Areas
-    worksheet.mergeCells("O1:R1"); // Current Affiliation
+    worksheet.mergeCells("C1:G1"); // Research Metrics
+    worksheet.mergeCells("H1:I1"); // Research Areas
+    worksheet.mergeCells("J1:M1"); // Current Affiliation
+    worksheet.mergeCells("N1:R1"); // Affiliations
 
     // Style the Level 1 headers
-    ["A1", "G1", "H1", "M1", "O1"].forEach((cell) => {
+    ["A1", "B1", "C1", "H1", "J1", "N1"].forEach((cell) => {
       worksheet.getCell(cell).style = {
         font: { bold: true, size: 12 },
         alignment: { horizontal: "center", vertical: "middle" },
@@ -79,74 +79,33 @@ const exportResearchersToExcel = async (req, res) => {
     const row2 = worksheet.getRow(2);
     row2.values = [
       "Name", // A2
-      "Affiliations", // B2-F2 (will be merged)
-      "",
-      "",
-      "",
-      "", // C2-F2 (affiliations subfields)
-      "ORCID", // G2
-      "H-Index", // H2
-      "i10-Index", // I2
-      "2-Year Mean Citedness", // J2
-      "Total Citations", // K2
-      "Total Works", // L2
-      "Fields", // M2
-      "Topics", // N2
-      "Institution", // O2
-      "Display Name", // P2
-      "ROR", // Q2
-      "Country Code", // R2
+      "ORCID", // B2
+      "H-Index", // C2
+      "i10-Index", // D2
+      "2-Year Mean Citedness", // E2
+      "Total Citations", // F2
+      "Total Works", // G2
+      "Fields", // H2
+      "Topics", // I2
+      "Institution", // J2
+      "Display Name", // K2
+      "ROR", // L2
+      "Country Code", // M2
+      "Display Name", // N2
+      "ROR", // O2
+      "ID", // P2
+      "Country Code", // Q2
+      "Years", // R2
     ];
-
-    // Merge Level 2 headers for Affiliations
-    worksheet.mergeCells("B2:F2"); // Affiliations
-
-    // Add Level 3 headers (for Affiliations)
-    const row3 = worksheet.getRow(3);
-    row3.values = [
-      "", // A3 (Name - extends from above)
-      "Display Name", // B3
-      "ROR", // C3
-      "ID", // D3
-      "Country Code", // E3
-      "Years", // F3
-      "", // G3 (ORCID - extends from above)
-      "",
-      "",
-      "",
-      "",
-      "", // H3-L3 (Research Metrics - extend from above)
-      "",
-      "", // M3-N3 (Research Areas - extend from above)
-      "",
-      "",
-      "",
-      "", // O3-R3 (Current Affiliation - extend from above)
-    ];
-
-    // Merge cells vertically for non-affiliation columns
-    [
-      "A2:A3", // Name
-      "G2:G3", // ORCID
-      "H2:H3",
-      "I2:I3",
-      "J2:J3",
-      "K2:K3",
-      "L2:L3", // Research Metrics
-      "M2:M3",
-      "N2:N3", // Research Areas
-      "O2:O3",
-      "P2:P3",
-      "Q2:Q3",
-      "R2:R3", // Current Affiliation
-    ].forEach((range) => {
-      worksheet.mergeCells(range);
-    });
 
     // Style the Level 2 headers
     [
       "A2",
       "B2",
+      "C2",
+      "D2",
+      "E2",
+      "F2",
       "G2",
       "H2",
       "I2",
@@ -171,28 +130,10 @@ const exportResearchersToExcel = async (req, res) => {
       };
     });
 
-    // Style the Level 3 headers
-    ["B3", "C3", "D3", "E3", "F3"].forEach((cell) => {
-      worksheet.getCell(cell).style = {
-        font: { bold: true },
-        alignment: { horizontal: "center", vertical: "middle" },
-        fill: {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFF8F8F8" },
-        },
-      };
-    });
-
     // Define columns with widths
     worksheet.columns = [
       { key: "name", width: 20 }, // Basic Info - Name
-      { key: "affiliation_display_name", width: 30 }, // Affiliation details
-      { key: "affiliation_ror", width: 20 },
-      { key: "affiliation_id", width: 20 },
-      { key: "affiliation_country_code", width: 15 },
-      { key: "affiliation_years", width: 15 },
-      { key: "orcid", width: 20 }, // Identifiers - ORCID only
+      { key: "orcid", width: 20 }, // Identifiers - ORCID
       { key: "hIndex", width: 10 }, // Research Metrics
       { key: "i10Index", width: 10 },
       { key: "meanCitedness", width: 20 },
@@ -204,56 +145,130 @@ const exportResearchersToExcel = async (req, res) => {
       { key: "currentDisplayName", width: 30 },
       { key: "currentRor", width: 20 },
       { key: "currentCountryCode", width: 15 },
+      { key: "affiliation_display_name", width: 30 }, // Affiliations
+      { key: "affiliation_ror", width: 20 },
+      { key: "affiliation_id", width: 20 },
+      { key: "affiliation_country_code", width: 15 },
+      { key: "affiliation_years", width: 15 },
     ];
 
-    // Add researcher data starting from row 4
+    // Add researcher data starting from row 3
+    let currentRow = 3;
+
     researchers.forEach((researcher) => {
       // Process research fields and topics
-      const fields =
-        researcher.research_areas?.fields
-          ?.map((f) => f.display_name)
-          .join(", ") || "";
-      const topics =
-        researcher.research_areas?.topics
-          ?.map((t) => t.display_name)
-          .join(", ") || "";
+      const fields = researcher.research_areas?.fields || [];
+      const topics = researcher.research_areas?.topics || [];
+      const affiliations = researcher.basic_info?.affiliations || [];
 
-      // Get the first affiliation
-      const primaryAffiliation = researcher.basic_info?.affiliations?.[0] || {};
+      // Find the maximum array length to determine how many rows this researcher needs
+      const maxArrayLength = Math.max(
+        fields.length || 1,
+        topics.length || 1,
+        affiliations.length || 1
+      );
 
-      worksheet.addRow({
-        name: researcher.basic_info?.name || "",
-        affiliation_display_name:
-          primaryAffiliation?.institution?.display_name || "",
-        affiliation_ror: primaryAffiliation?.institution?.ror || "",
-        affiliation_id: primaryAffiliation?.institution?.id || "",
-        affiliation_country_code:
-          primaryAffiliation?.institution?.country_code || "",
-        affiliation_years: primaryAffiliation?.years?.join(", ") || "",
-        orcid: researcher.identifiers?.orcid || "",
-        hIndex: researcher.research_metrics?.h_index || "",
-        i10Index: researcher.research_metrics?.i10_index || "",
-        meanCitedness:
-          researcher.research_metrics?.two_year_mean_citedness || "",
-        totalCitations: researcher.research_metrics?.total_citations || "",
-        totalWorks: researcher.research_metrics?.total_works || "",
-        researchFields: fields,
-        researchTopics: topics,
-        currentInstitution: researcher.current_affiliation?.institution || "",
-        currentDisplayName: researcher.current_affiliation?.display_name || "",
-        currentRor: researcher.current_affiliation?.ror || "",
-        currentCountryCode: researcher.current_affiliation?.country_code || "",
-      });
+      const startRow = currentRow;
+
+      // Add rows for each array element
+      for (let i = 0; i < maxArrayLength; i++) {
+        const field = fields[i]?.display_name || "";
+        const topic = topics[i]?.display_name || "";
+        const affiliation = affiliations[i] || {};
+
+        worksheet.addRow({
+          name: i === 0 ? researcher.basic_info?.name || "" : "",
+          orcid: i === 0 ? researcher.identifiers?.orcid || "" : "",
+          hIndex: i === 0 ? researcher.research_metrics?.h_index || "" : "",
+          i10Index: i === 0 ? researcher.research_metrics?.i10_index || "" : "",
+          meanCitedness:
+            i === 0
+              ? researcher.research_metrics?.two_year_mean_citedness || ""
+              : "",
+          totalCitations:
+            i === 0 ? researcher.research_metrics?.total_citations || "" : "",
+          totalWorks:
+            i === 0 ? researcher.research_metrics?.total_works || "" : "",
+          researchFields: field,
+          researchTopics: topic,
+          currentInstitution:
+            i === 0 ? researcher.current_affiliation?.institution || "" : "",
+          currentDisplayName:
+            i === 0 ? researcher.current_affiliation?.display_name || "" : "",
+          currentRor: i === 0 ? researcher.current_affiliation?.ror || "" : "",
+          currentCountryCode:
+            i === 0 ? researcher.current_affiliation?.country_code || "" : "",
+          affiliation_display_name:
+            affiliation?.institution?.display_name || "",
+          affiliation_ror: affiliation?.institution?.ror || "",
+          affiliation_id: affiliation?.institution?.id || "",
+          affiliation_country_code:
+            affiliation?.institution?.country_code || "",
+          affiliation_years: affiliation?.years?.join(", ") || "",
+        });
+        currentRow++;
+      }
+
+      const endRow = currentRow - 1;
+
+      // Merge cells for single-value fields (non-array fields)
+      if (maxArrayLength > 1) {
+        // Merge Name
+        if (researcher.basic_info?.name) {
+          worksheet.mergeCells(`A${startRow}:A${endRow}`);
+        }
+
+        // Merge ORCID
+        if (researcher.identifiers?.orcid) {
+          worksheet.mergeCells(`B${startRow}:B${endRow}`);
+        }
+
+        // Merge Research Metrics
+        if (researcher.research_metrics?.h_index !== undefined) {
+          worksheet.mergeCells(`C${startRow}:C${endRow}`);
+        }
+        if (researcher.research_metrics?.i10_index !== undefined) {
+          worksheet.mergeCells(`D${startRow}:D${endRow}`);
+        }
+        if (
+          researcher.research_metrics?.two_year_mean_citedness !== undefined
+        ) {
+          worksheet.mergeCells(`E${startRow}:E${endRow}`);
+        }
+        if (researcher.research_metrics?.total_citations !== undefined) {
+          worksheet.mergeCells(`F${startRow}:F${endRow}`);
+        }
+        if (researcher.research_metrics?.total_works !== undefined) {
+          worksheet.mergeCells(`G${startRow}:G${endRow}`);
+        }
+
+        // Merge Current Affiliation
+        if (researcher.current_affiliation?.institution) {
+          worksheet.mergeCells(`J${startRow}:J${endRow}`);
+        }
+        if (researcher.current_affiliation?.display_name) {
+          worksheet.mergeCells(`K${startRow}:K${endRow}`);
+        }
+        if (researcher.current_affiliation?.ror) {
+          worksheet.mergeCells(`L${startRow}:L${endRow}`);
+        }
+        if (researcher.current_affiliation?.country_code) {
+          worksheet.mergeCells(`M${startRow}:M${endRow}`);
+        }
+      }
     });
 
     // Set column styles
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 3) {
-        // Skip header rows (now 3 rows)
-        row.eachCell((cell) => {
-          cell.alignment = { vertical: "middle", wrapText: true };
-        });
-      }
+      row.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      });
     });
 
     // Set response headers
