@@ -34,3 +34,5 @@ Thumbs.db
 **/data/training/cvs/
 
 eng.traineddata
+# Seeding samples
+**/seed.js
