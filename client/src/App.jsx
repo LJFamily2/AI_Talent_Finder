@@ -37,7 +37,7 @@ function App() {
           <Route path="/landing-page" element={<LandingPage/>} />
 
           <Route path="/researcher-profile" element={<ResearcherProfile />} />
-          <Route path="/saved-researcher" element={<SavedResearchers />} />
+          <Route path="/saved-researchers" element={<SavedResearchers />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
