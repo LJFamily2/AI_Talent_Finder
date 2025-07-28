@@ -11,6 +11,7 @@ import ResearcherProfile from "./pages/ResearcherProfile";
 import SearchInterface from "./pages/SearchInterface";
 import SearchStart from "./pages/SearchStart";
 import LandingPage from "./pages/LandingPage";
+import SavedResearchers from "./pages/SavedResearchers";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/landing-page" element={<LandingPage/>} />
 
           <Route path="/researcher-profile" element={<ResearcherProfile />} />
+          <Route path="/saved-researcher" element={<SavedResearchers />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
