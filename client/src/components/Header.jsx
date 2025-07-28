@@ -32,6 +32,11 @@ function Header() {
                             <p className={`font-medium hover:underline ${path === '/search-tool' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Search Tool</p>
                         </a>
                     </div>
+                    <div className={`flex items-center justify-center px-8 h-full ${path === '/saved-researchers' ? 'bg-white' : 'hover:bg-[#000032]'}`}>
+                        <a href="/saved-researchers">
+                            <p className={`font-medium hover:underline ${path === '/saved-researchers' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Saved Profiles</p>
+                        </a>
+                    </div>
                 </div>
             </div>
         </nav>
