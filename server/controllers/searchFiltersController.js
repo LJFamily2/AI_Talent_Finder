@@ -1,7 +1,8 @@
 //==================================================================
 // Search Filters Controller
 // Provides multiple API endpoints to search researchers by country,
-// topic, metrics (h-index, i10-index), identifier, or composite filters
+// topic, metrics (h-index, i10-index), identifier, affiliation, current affiliation,
+// year range, or composite filters
 //==================================================================
 
 const axios = require("axios");
@@ -15,32 +16,106 @@ const externalOpsMap = { eq: "", gt: ">", gte: ">=", lt: "<", lte: "<=" };
 //==================================================================
 // Helper: Simplify author object for responses
 //==================================================================
-const simplifyAuthors = (docs) =>
-  docs.map((a) => ({
+const simplifyAuthors = docs =>
+  docs.map(a => ({
     _id: a._id,
-    basic_info: {
-      name: a.basic_info?.name || "(no name)",
-    },
+    basic_info: { name: a.basic_info?.name || "(no name)" }
   }));
 
 //==================================================================
-// Helper: Build Redis-style key only with used filters
+// [GET] /api/search-filters/affiliation
+// Filter by past affiliation (institution.display_name)
 //==================================================================
-function buildFilterKey(prefix, filters) {
-  const { country, topic, hindex, i10index, identifier, op, page, limit } = filters;
-  const segments = [prefix];
+exports.searchByAffiliation = async (req, res) => {
+  const { affiliation, page = 1, limit = 20 } = req.query;
+  if (!affiliation) return res.status(400).json({ error: "Affiliation is required" });
 
-  if (country)    segments.push(`country=${country}`);
-  if (topic)      segments.push(`topic=${topic}`);
-  if (hindex)     segments.push(`hindex=${hindex}`);
-  if (i10index)   segments.push(`i10index=${i10index}`);
-  if (identifier) segments.push(`identifier=${identifier}`);
-  if (hindex || i10index) segments.push(`op=${op}`);
-  segments.push(`page=${page}`);
-  segments.push(`limit=${limit}`);
+  try {
+    console.log(`🔎 [FILTERS DB] searchFilters:affiliation=${affiliation}:page=${page}:limit=${limit}`);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = { "basic_info.affiliations.institution.display_name": new RegExp(affiliation, "i") };
+    const total = await ResearcherProfile.countDocuments(query);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
+    const authors = simplifyAuthors(raw);
 
-  return segments.join(":");
-}
+    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+  } catch (err) {
+    console.error("Error in searchByAffiliation:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+//==================================================================
+// [GET] /api/search-filters/current-affiliation
+// Filter by current affiliation (current_affiliation.display_name)
+//==================================================================
+exports.searchByCurrentAffiliation = async (req, res) => {
+  const { current_affiliation, page = 1, limit = 20 } = req.query;
+  if (!current_affiliation)
+    return res.status(400).json({ error: "Current affiliation is required" });
+
+  try {
+    console.log(`🔎 [FILTERS DB] searchFilters:current_affiliation=${current_affiliation}:page=${page}:limit=${limit}`);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = { "current_affiliation.display_name": new RegExp(current_affiliation, "i") };
+    const total = await ResearcherProfile.countDocuments(query);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
+    const authors = simplifyAuthors(raw);
+
+    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+  } catch (err) {
+    console.error("Error in searchByCurrentAffiliation:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+//==================================================================
+// [GET] /api/search-filters/year-range
+// Filter by affiliation years between year_from and year_to
+//==================================================================
+exports.searchByYearRange = async (req, res) => {
+  const { year_from, year_to, page = 1, limit = 20 } = req.query;
+  if (!year_from && !year_to)
+    return res.status(400).json({ error: "At least one of year_from or year_to is required" });
+
+  try {
+    console.log(`🔎 [FILTERS DB] searchFilters:year_from=${year_from || ''}:year_to=${year_to || ''}:page=${page}:limit=${limit}`);
+    const from = parseInt(year_from);
+    const to = parseInt(year_to);
+    const currentYear = new Date().getFullYear();
+
+    let minYear = isNaN(from) ? null : from;
+    let maxYear = isNaN(to) ? null : to;
+    if (minYear !== null && maxYear !== null && minYear > maxYear) {
+      console.warn(`⚠️ Invalid year range: year_from (${minYear}) > year_to (${maxYear})`);
+      minYear = null;
+    }
+
+    const rangeFilter = {};
+    if (minYear !== null) rangeFilter.$gte = minYear;
+    if (maxYear !== null) rangeFilter.$lte = maxYear;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = { "basic_info.affiliations.years": { $elemMatch: rangeFilter } };
+    const total = await ResearcherProfile.countDocuments(query);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
+    const authors = simplifyAuthors(raw);
+
+    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+  } catch (err) {
+    console.error("Error in searchByYearRange:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 //==================================================================
 // [GET] /api/search-filters/country
@@ -56,7 +131,10 @@ exports.searchByCountry = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "basic_info.affiliations.institution.country_code": code };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -78,14 +156,15 @@ exports.searchByTopic = async (req, res) => {
     console.log(`🔎 [FILTERS DB] searchFilters:topic=${topic}:page=${page}:limit=${limit}`);
     const regex = new RegExp(topic, "i");
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = {
-      $or: [
-        { "research_areas.topics.display_name": regex },
-        { "research_areas.fields.display_name": regex },
-      ],
-    };
+    const query = { $or: [
+      { "research_areas.topics.display_name": regex },
+      { "research_areas.fields.display_name": regex }
+    ]};
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -109,7 +188,10 @@ exports.searchByHIndex = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.h_index": { [mongoOp]: parseInt(hindex) } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -133,7 +215,10 @@ exports.searchByI10Index = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const query = { "research_metrics.i10_index": { [mongoOp]: parseInt(i10index) } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -160,7 +245,10 @@ exports.searchByIdentifier = async (req, res) => {
     const field = `identifiers.${identifier}`;
     const query = { [field]: { $exists: true, $ne: "" } };
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -172,31 +260,78 @@ exports.searchByIdentifier = async (req, res) => {
 
 //==================================================================
 // [GET] /api/search-filters/multi
-// Apply combined filters: country, topic, metrics, identifier
+// Apply combined filters: country, topic, metrics, identifiers,
+// affiliation, current affiliation, year range
 //==================================================================
 exports.searchByMultipleFilters = async (req, res) => {
-  const { country, topic, hindex, i10index, identifier, op = "eq", page = 1, limit = 20 } = req.query;
+  const {
+    country, topic, hindex, i10index, identifier,
+    affiliation, current_affiliation, year_from, year_to,
+    op = "eq", page = 1, limit = 25
+  } = req.query;
+
+  // Build Redis key & log
+  const rawKey = [
+    "searchFilters",
+    country && `country=${country}`,
+    topic && `topic=${topic}`,
+    hindex && `hindex=${hindex}`,
+    i10index && `i10index=${i10index}`,
+    identifier && `identifier=${identifier}`,
+    op && (hindex||i10index) && `op=${op}`,
+    affiliation && `affiliation=${affiliation}`,
+    current_affiliation && `current_affiliation=${current_affiliation}`,
+    year_from && `year_from=${year_from}`,
+    year_to && `year_to=${year_to}`,
+    `page=${page}`,
+    `limit=${limit}`
+  ]
+    .filter(Boolean)
+    .join(":");
+  console.log(`🔎 [FILTERS DB] ${rawKey}`);
+
+  // Construct Mongo query
   const query = {};
+  if (country)
+    query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
 
-  const redisKey = buildFilterKey("searchFilters", { country, topic, hindex, i10index, identifier, op, page, limit });
-  console.log(`🔎 [FILTERS DB] ${redisKey}`);
-
-  if (country) query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
   if (topic) {
-    const regex = new RegExp(topic, "i");
+    const re = new RegExp(topic, "i");
     query["$or"] = [
-      { "research_areas.topics.display_name": regex },
-      { "research_areas.fields.display_name": regex },
+      { "research_areas.topics.display_name": re },
+      { "research_areas.fields.display_name": re }
     ];
   }
-  if (hindex) query["research_metrics.h_index"] = { [opsMap[op] || "$eq"]: parseInt(hindex) };
-  if (i10index) query["research_metrics.i10_index"] = { [opsMap[op] || "$eq"]: parseInt(i10index) };
-  if (identifier) query[`identifiers.${identifier}`] = { $exists: true, $ne: "" };
+  if (hindex)
+    query["research_metrics.h_index"] = { [opsMap[op]||"$eq"]: parseInt(hindex) };
+  if (i10index)
+    query["research_metrics.i10_index"] = { [opsMap[op]||"$eq"]: parseInt(i10index) };
+  if (identifier)
+    query[`identifiers.${identifier}`] = { $exists:true, $ne:"" };
+  if (affiliation)
+    query["basic_info.affiliations.institution.display_name"] = new RegExp(affiliation, "i");
+  if (current_affiliation)
+    query["current_affiliation.display_name"] = new RegExp(current_affiliation, "i");
+  if (year_from || year_to) {
+    const from = parseInt(year_from);
+    const to = parseInt(year_to);
+    const cr = new Date().getFullYear();
+    let minY = isNaN(from)?null:from;
+    let maxY = isNaN(to)?null:to;
+    if (minY!=null && maxY!=null && minY>maxY) minY=null;
+    query["basic_info.affiliations.years"] = { $elemMatch: {
+      ...(minY!=null?{$gte:minY}:{}),
+      ...(maxY!=null?{$lte:maxY}:{}),
+    }};
+  }
 
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query).sort({ "basic_info.name": 1 }).skip(skip).limit(+limit);
+    const raw = await ResearcherProfile.find(query)
+      .sort({ "basic_info.name": 1 })
+      .skip(skip)
+      .limit(+limit);
     const authors = simplifyAuthors(raw);
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
@@ -211,16 +346,24 @@ exports.searchByMultipleFilters = async (req, res) => {
 // Perform external filter search via OpenAlex public API
 //==================================================================
 exports.searchOpenalexFilters = async (req, res) => {
+  const {
+    country, topic, hindex, i10index, identifier,
+    affiliation, current_affiliation, year_from, year_to,
+    op = "eq", page = 1, limit = 25
+  } = req.query;
   try {
-    const { country, topic, hindex, i10index, identifier, op = "eq", page = 1, limit = 25 } = req.query;
-    const filters = [];
-
-    const redisKey = buildFilterKey("openalexFilters", { country, topic, hindex, i10index, identifier, op, page, limit });
+    const redisKey = buildFilterKey("openalexFilters", {
+      country, topic, hindex, i10index, identifier,
+      affiliation, current_affiliation, year_from, year_to,
+      op, page, limit
+    });
     console.log(`🌐 [FILTERS OPENALEX] ${redisKey}`);
 
+    const filters = [];
     if (country) filters.push(`last_known_institutions.country_code:${country.toUpperCase()}`);
-    if (hindex) filters.push(`summary_stats.h_index:${externalOpsMap[op] || ""}${hindex}`);
-    if (i10index) filters.push(`summary_stats.i10_index:${externalOpsMap[op] || ""}${i10index}`);
+    if (topic) {/* search param handled below */}
+    if (hindex) filters.push(`summary_stats.h_index:${externalOpsMap[op]||""}${hindex}`);
+    if (i10index) filters.push(`summary_stats.i10_index:${externalOpsMap[op]||""}${i10index}`);
     if (identifier) filters.push(`${identifier}!=null`);
 
     const params = new URLSearchParams();
@@ -229,29 +372,19 @@ exports.searchOpenalexFilters = async (req, res) => {
     params.append("page", page);
     params.append("per_page", limit);
 
-    const url = `${OPENALEX_BASE}/authors?${params.toString()}`;
+    const url = `${OPENALEX_BASE}/authors?${params}`;
     const { data } = await axios.get(url, {
       headers: {
-        "User-Agent": "AcademicTalentFinder/1.0 (daithanhnguyen2711@gmail.com)",
-        Accept: "application/json",
-      },
+        "User-Agent": "AcademicTalentFinder/1.0",
+        Accept: "application/json"
+      }
     });
 
     const results = Array.isArray(data.results) ? data.results : [];
-    const authors = results.map((a) => ({
-      _id: a.id,
-      basic_info: {
-        name: a.display_name,
-      },
-    })).sort((a, b) => a.basic_info.name.localeCompare(b.basic_info.name));;
-    
-    return res.json({
-      total: data.meta?.count || authors.length,
-      count: authors.length,
-      page: +page,
-      limit: +limit,
-      authors,
-    });
+    const authors = results.map(a => ({ _id: a.id, basic_info: { name: a.display_name } }))
+      .sort((a, b) => a.basic_info.name.localeCompare(b.basic_info.name));
+
+    return res.json({ total: data.meta?.count||authors.length, count: authors.length, page: +page, limit: +limit, authors });
   } catch (err) {
     console.error("Error in searchOpenalexFilters:", err.message);
     return res.status(500).json({ error: "Internal Server Error" });
