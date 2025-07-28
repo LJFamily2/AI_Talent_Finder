@@ -1,180 +1,169 @@
 //==================================================================
 // Filter CLI Handler
-// CLI flow to search researcher profiles via multi-filters
+// Provides interactive CLI for multi-filter searching,
+// viewing, deleting, Redis-flushing profiles, and OpenAlex fallback
+// using Inquirer with grouped actions for view and delete
 //==================================================================
 
-const axios = require("axios");
-const { showProfile, renderFilterHeader, question } = require("./renderCli");
+const inquirer = require('inquirer');
+const axios    = require('axios');
+const { showProfile, renderFilterHeader } = require('./renderCli');
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = 'http://localhost:5000/api';
+const LIMIT    = 25;
 
-//------------------------------------------------------------------
-// Main Exported Flow
-//------------------------------------------------------------------
-function runFilterFlow(rl, done) {
-  const limit = 25;
-  let filters = {
-    country: '',
-    topic: '',
-    hindex: '',
-    hOp: 'eq',
-    i10index: '',
-    i10Op: 'eq',
-    identifier: '',
-    page: 1
-  };
-
-  let lastList = [];
-
-  //==============================================================
-  // Prompt Filters
-  //==============================================================
-  async function askFilters() {
-    console.clear();
-    console.log("┌────────────────────────────────────────────────────────────────┐");
-    console.log("│                      Multi-Filter Search                       │");
-    console.log("├────────────────────────────────────────────────────────────────┤");
-    console.log("│ (enter 'b' at any time to return to main menu)                │");
-    console.log("└────────────────────────────────────────────────────────────────┘");
-
-    filters.country = await question(rl, "Country code (e.g. VN, ...): ");
-    if (filters.country === "b") return done();
-    filters.topic = await question(rl, "Research topics & fields keyword: ");
-    filters.hindex = await question(rl, "H-index value: ");
-    filters.hOp = await question(rl, "H-index operator (eq|gte|lte): ") || "eq";
-    filters.i10index = await question(rl, "i10-index value: ");
-    filters.i10Op = await question(rl, "i10-index operator (eq|gte|lte): ") || "eq";
-    filters.identifier = await question(rl, "Specific identifier (OpenAlex, ORCID, Scopus, Google Scholar): ");
-
-    filters.page = 1;
-    await runSearch();
-  }
-
-  //==============================================================
-  // MongoDB Search
-  //==============================================================
-  async function runSearch() {
-    try {
-      const res = await axios.get(`${API_BASE}/search-filters/multi`, { params: filters });
-      const { total, authors = [] } = res.data;
-      const pages = Math.max(1, Math.ceil(total / limit));
-      lastList = authors;
-
-      console.clear();
-      console.log(`Search Candidates In DB By Filters (Page ${filters.page}/${pages}, Total ${total})`);
-      console.log("Filters By:", renderFilterHeader(filters));
-      console.table(authors.map((a, i) => ({
-        No: i + 1,
-        Name: a.basic_info?.name || "(no name)",
-        ID: a._id,
-        Src: "DB"
-      })));
-
-      const cmd = await question(rl, "Enter No = View, d <No> = Delete Profile, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Filters, M = Main Menu: ");
-
-      const lower = cmd.toLowerCase();
-
-      if (lower === "m") return done();
-      if (lower === "b") return askFilters();
-      if (lower === "r") {
-        await axios.post(`${API_BASE}/author/flush-redis`);
-        console.log("🧹 Redis cache flushed.");
-        await question(rl, "Press Enter to continue...");
-        return runSearch();
-      }
-      if (lower === "f") return fetchOpenAlex();
-      if (lower === "n" && filters.page < pages) { filters.page++; return runSearch(); }
-      if (lower === "p" && filters.page > 1) { filters.page--; return runSearch(); }
-
-      if (lower.startsWith("d")) {
-        const idx = parseInt(lower.slice(1), 10) - 1;
-        if (!isNaN(idx) && lastList[idx]) {
-          const result = await axios.delete(`${API_BASE}/author/delete-profile`, {
-            data: { id: lastList[idx]._id }
-          });
-          console.log("🗑️", result.data.message);
-          await question(rl, "Press Enter to continue...");
-          return runSearch();
-        }
-      }
-
-      const idx = parseInt(lower, 10) - 1;
-      if (!isNaN(idx) && authors[idx]) {
-        const res = await axios.get(`${API_BASE}/author/search-author`, { params: { id: authors[idx]._id } });
-        await showProfile(rl, res.data.profile, "DB");
-        return runSearch();
-      }
-
-      return runSearch();
-    } catch (err) {
-      console.error("❌ Error:", err.message);
-      await question(rl, "Press Enter to return...");
-      return done();
-    }
-  }
-
-  //==============================================================
-  // Fetch from OpenAlex
-  //==============================================================
-  async function fetchOpenAlex() {
-    try {
-      const res = await axios.get(`${API_BASE}/search-filters/openalex`, { params: filters });
-      const { total = 0, authors = [] } = res.data;
-      const pages = Math.max(1, Math.ceil(total / limit));
-
-      console.clear();
-      console.log(`Search Candidates By Fetch OpenAlex (Page ${filters.page}/${pages}, Total ${total})`);
-      console.log("Filters By:", renderFilterHeader(filters));
-      console.table(authors.map((a, i) => ({
-        No: i + 1,
-        Name: a.basic_info?.name || "(no name)",
-        ID: a._id,
-        Src: "OpenAlex"
-      })));
-
-      const cmd = await question(rl, "Enter No = View, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Filters, M = Main Menu: ");
-      const lower = cmd.toLowerCase();
-
-      if (lower === "m") return done();
-      if (lower === "b") return runSearch();
-      if (lower === "r") {
-        await axios.post(`${API_BASE}/admin/flush-redis`);
-        console.log("🧹 Redis cache flushed.");
-        await question(rl, "Press Enter to continue...");
-        return fetchOpenAlex();
-      }
-      if (lower === "n" && filters.page < pages) { filters.page++; return fetchOpenAlex(); }
-      if (lower === "p" && filters.page > 1) { filters.page--; return fetchOpenAlex(); }
-
-      const idx = parseInt(lower, 10) - 1;
-      if (!isNaN(idx) && authors[idx]) {
-        const full = await axios.get(`${API_BASE}/author/fetch-author`, { params: { id: authors[idx]._id } });
-        await showProfile(rl, full.data.profile, "OpenAlex");
-
-        const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
-        if (yn.toLowerCase() === "y") {
-          const result = await axios.post(`${API_BASE}/author/save-profile`, {
-            profile: full.data.profile
-          });
-          console.log("🟢", result.data.message);
-        }
-
-        await question(rl, "Press Enter to continue...");
-        return fetchOpenAlex();
-      }
-
-      return fetchOpenAlex();
-    } catch (err) {
-      console.error("❌ Error fetching OpenAlex:", err.message);
-      await question(rl, "Press Enter to return...");
-      return runSearch();
-    }
-  }
-
-  askFilters();
+//-------------------------------
+// API Helpers
+//-------------------------------
+async function fetchDbCandidates(filters) {
+  const res = await axios.get(`${API_BASE}/search-filters/multi`, { params: filters });
+  return res.data; // { total, authors: [] }
 }
 
-//------------------------------------------------------------------
-// Export for CLI use
-//------------------------------------------------------------------
-module.exports = { runFilterFlow };
+async function fetchDbProfile(id) {
+  const res = await axios.get(`${API_BASE}/author/search-author`, { params: { id } });
+  return res.data.profile;
+}
+
+async function deleteProfile(id) {
+  const res = await axios.delete(`${API_BASE}/author/delete-profile`, { data: { id } });
+  return res.data;
+}
+
+async function flushRedis() {
+  const res = await axios.post(`${API_BASE}/author/flush-redis`);
+  return res.data;
+}
+
+async function fetchOpenCandidates(filters) {
+  const res = await axios.get(`${API_BASE}/search-filters/openalex`, { params: filters });
+  return res.data; // { total, authors: [] }
+}
+
+async function fetchOpenProfile(id) {
+  const res = await axios.get(`${API_BASE}/author/fetch-author`, { params: { id } });
+  return res.data.profile;
+}
+
+//==================================================================
+// Main Flow: Multi-Filter Search & Manage Profiles
+//==================================================================
+async function runFilterFlow(done) {
+  // Initialize filter state
+  let filters = { country:'', topic:'', hindex:'', hOp:'eq', i10index:'', i10Op:'eq', identifier:'', affiliation:'', current_affiliation:'', year_from:'', year_to:'', page:1 };
+  let candidates = [];
+  let total = 0;
+
+  // Step 1: Ask filters
+  async function askFilters() {
+    filters.page = 1;
+    const answers = await inquirer.prompt([
+      { type:'input', name:'country', message:'Country code:', default:filters.country },
+      { type:'input', name:'topic', message:'Topic keyword:', default:filters.topic },
+      { type:'input', name:'hindex', message:'H-index:', default:filters.hindex },
+      { type:'list',  name:'hOp',    message:'H-index op:', choices:['eq','gte','lte'], default:filters.hOp },
+      { type:'input', name:'i10index', message:'i10-index:', default:filters.i10index },
+      { type:'list',  name:'i10Op', message:'i10-index op:', choices:['eq','gte','lte'], default:filters.i10Op },
+      { type:'list',  name:'identifier', message:'Identifier type:', choices:['','orcid','scopus','openalex','google_scholar_id'], default:filters.identifier },
+      { type:'input', name:'affiliation', message:'Affiliation (past):', default:filters.affiliation },
+      { type:'input', name:'current_affiliation', message:'Current affiliation:', default:filters.current_affiliation },
+      { type:'input', name:'year_from', message:'Year from:', default:filters.year_from },
+      { type:'input', name:'year_to', message:'Year to:', default:filters.year_to }
+    ]);
+    Object.assign(filters, answers);
+    return runSearch();
+  }
+
+  // Step 2: DB Search
+  async function runSearch() {
+    ({ total, authors: candidates } = await fetchDbCandidates(filters));
+    const pages = Math.max(1, Math.ceil(total / LIMIT));
+
+    console.clear();
+    console.log(`Search Results (Page ${filters.page}/${pages}, Total ${total})`);
+    console.log('Filters By:', renderFilterHeader(filters));
+    console.table(candidates.map((a,i) => ({ No:i+1, Name:a.basic_info?.name||'(no name)', ID:a._id })));
+
+    // Grouped actions
+    const choices = [
+      { name:'👁️   View profiles', value:'view_all' },
+      { name:'🗑️   Del profiles',  value:'delete_all' }
+    ];
+    if (!candidates.length) {
+      choices.push({ name:'🌐 OpenAlex fallback', value:'openalex' });
+    }
+    choices.push(
+      new inquirer.Separator(),
+      { name:'▶️   Next Page',      value:'next'  },
+      { name:'◀️   Prev Page',      value:'prev'  },
+      { name:'↩️   Back to Filters', value:'back'  },
+      { name:'🏠  Main Menu',      value:'menu'  },
+      { name:'🧹  Flush Redis',     value:'flush' },
+    );
+
+    const { action } = await inquirer.prompt([
+      { type:'list', name:'action', message:'Select action:', choices }
+    ]);
+
+    if (action==='view_all') {
+      const { idx } = await inquirer.prompt([{ type:'input', name:'idx', message:'Enter number to view:', validate:v=>{const n=parseInt(v);return n>=1&&n<=candidates.length||'Invalid';}}]);
+      const prof=await fetchDbProfile(candidates[parseInt(idx)-1]._id);
+      await showProfile(prof,'DB');
+      return runSearch();
+    }
+    if (action==='delete_all') {
+      const { idx } = await inquirer.prompt([{ type:'input', name:'idx', message:'Enter number to delete:', validate:v=>{const n=parseInt(v);return n>=1&&n<=candidates.length||'Invalid';}}]);
+      const res=await deleteProfile(candidates[parseInt(idx)-1]._id);
+      console.log('🗑️ ',res.message);
+      return runSearch();
+    }
+    if (action==='flush') {
+      const r=await flushRedis(); console.log('🧹',r.message||'Redis flushed'); return runSearch();
+    }
+    if (action==='next'&&filters.page<pages){filters.page++;return runSearch();}
+    if (action==='prev'&&filters.page>1){filters.page--;return runSearch();}
+    if (action==='openalex')return runOpenAlex();
+    if (action==='back')    return askFilters();
+    if (action==='menu')    return done();
+    return runSearch();
+  }
+
+  // Step 3: OpenAlex fallback
+  async function runOpenAlex() {
+    ({ total, authors: candidates } = await fetchOpenCandidates(filters));
+    const pages = Math.max(1, Math.ceil(total / LIMIT));
+
+    console.clear();
+    console.log(`OpenAlex Results (Page ${filters.page}/${pages}, Total ${total})`);
+    console.log('Filters By:', renderFilterHeader(filters));
+    console.table(candidates.map((a,i)=>({No:i+1,Name:a.basic_info?.name||'(no name)',ID:a._id})));
+
+    const choices=[
+      { name:'👁️   View profiles', value:'view_all' },
+      { name:'💾   Save all to DB',  value:'save_all' },
+      new inquirer.Separator(),
+      { name:'↩️   Back to DB Search', value:'db'   },
+      { name:'🏠  Main Menu',         value:'menu' }
+    ];
+    const { action }=await inquirer.prompt([{type:'list',name:'action',message:'Select action:',choices}]);
+
+    if(action==='view_all'){
+      const { idx } = await inquirer.prompt([{ type:'input', name:'idx', message:'Enter number to view:', validate:v=>{const n=parseInt(v);return n>=1&&n<=candidates.length||'Invalid';}}]);
+      const prof=await fetchOpenProfile(candidates[parseInt(idx)-1]._id);
+      await showProfile(prof,'OpenAlex');
+      return runOpenAlex();
+    }
+    if(action==='save_all'){
+      for(const p of candidates){const r=await axios.post(`${API_BASE}/author/save-profile`,p);console.log('💾 ',r.data.message);}      
+      return runOpenAlex();
+    }
+    if(action==='db') return runSearch();
+    if(action==='menu') return done();
+    return runOpenAlex();
+  }
+
+  // Start flow
+  await askFilters();
+}
+
+module.exports={ runFilterFlow };

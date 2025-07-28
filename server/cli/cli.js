@@ -1,58 +1,48 @@
 //==================================================================
 // CLI Main Entry Point
-// Provides a simple terminal interface to run author search or filter search
+// Provides a simple terminal interface to run author search or multi-filter search
 //==================================================================
 
-const readline = require('readline');
+const inquirer = require('inquirer');
 const { runAuthorFlow } = require('./authorCli');
 const { runFilterFlow } = require('./filterCli');
 
-//==================================================================
-// Initialize Readline Interface
-//==================================================================
+//-------------------------------
+// Main Menu Loop
+//-------------------------------
+async function mainMenu() {
+  while (true) {
+    console.clear();
+    const { action } = await inquirer.prompt([{ 
+      type: 'list',
+      name: 'action',
+      message: 'Select an option:',
+      choices: [
+        { name: '👤 Search Authors',         value: 'author' },
+        { name: '🔍 Multi-Filter Search',    value: 'filter' },
+        { name: '🚪 Quit',                   value: 'quit' }
+      ]
+    }]);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-//==================================================================
-// CLI Main Menu Loop
-// - Option 1: Author search and save
-// - Option 2: Multi-filter search (by topic, country, metrics...)
-// - Option 3: Quit the CLI program
-//==================================================================
-
-function mainMenu() {
-  console.clear();
-  console.log('┌────────────────────────────────────────────────────────────────┐');
-  console.log('│       TEAM FRIENDS - CLI Build For Academic Talent Finder      │');
-  console.log('├────────────────────────────────────────────────────────────────┤');
-  console.log('│ 1) Search & Save Author to DB                                  │');
-  console.log('│ 2) Multi-Filter Search Profiles                                │');
-  console.log('│ 3) Quit                                                        │');
-  console.log('└────────────────────────────────────────────────────────────────┘');
-
-  rl.question('Select an option: ', opt => {
-    switch (opt.trim()) {
-      case '1':
-        runAuthorFlow(rl, mainMenu);
+    switch (action) {
+      case 'author':
+        // Run author search flow, then return here
+        await runAuthorFlow(mainMenu);
         break;
-      case '2':
-        runFilterFlow(rl, mainMenu);
+      case 'filter':
+        // Run multi-filter search flow, then return here
+        await runFilterFlow(mainMenu);
         break;
-      case '3':
+      case 'quit':
         console.log('👋 Goodbye!');
-        rl.close();
         process.exit(0);
       default:
-        mainMenu();
+        break;
     }
-  });
+  }
 }
 
-//==================================================================
-// Start the CLI application
-//==================================================================
-
+//-------------------------------
+// Start the CLI Application
+//-------------------------------
 mainMenu();

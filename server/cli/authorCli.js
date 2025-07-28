@@ -1,162 +1,268 @@
 //==================================================================
 // Author CLI Handler
-// CLI interface to search, view, fetch, save, delete author profiles
+// Provides interactive CLI for searching, viewing, deleting, and saving author profiles
+// using Inquirer for all user input with grouped actions and OpenAlex fallback
 //==================================================================
 
-const axios = require("axios");
-const readline = require("readline");
-const { showProfile, question } = require("./renderCli");
+const inquirer = require('inquirer');
+const axios    = require('axios');
+const { showProfile, renderList } = require('./renderCli');
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = 'http://localhost:5000/api';
+const LIMIT    = 25;
 
-
-//------------------------------------------------------------------
+//-------------------------------
 // API Helpers
-//------------------------------------------------------------------
-const fetchDbCandidates = async (name, page, limit) =>
-  (await axios.get(`${API_BASE}/author/search-author`, { params: { name, page, limit } })).data;
-
-const fetchDbProfile = async (id) =>
-  (await axios.get(`${API_BASE}/author/search-author`, { params: { id } })).data.profile || null;
-
-const fetchOpenCandidates = async (name, page, limit) =>
-  (await axios.get(`${API_BASE}/author/fetch-author`, { params: { name, page, limit } })).data;
-
-const fetchOpenProfile = async (id) =>
-  (await axios.get(`${API_BASE}/author/fetch-author`, { params: { id } })).data.profile || null;
-
-const saveProfile = async (profile) =>
-  (await axios.post(`${API_BASE}/author/save-profile`, { profile })).data;
-
-const deleteProfile = async (id) =>
-  (await axios.delete(`${API_BASE}/author/delete-profile`, { data: { id } })).data;
-
-const flushRedis = async () =>
-  (await axios.post(`${API_BASE}/author/flush-redis`)).data;
-
-//==================================================================
-// Main Entry Flow
-//==================================================================
-function runAuthorFlow(rl, done) {
-  const limit = 25;
-
-  rl.question("Enter author name (or b=back, m=main menu): ", async input => {
-    const name = input.trim();
-    if (!name || name === "b") return runAuthorFlow(rl, done);
-    if (name === "m") return done();
-
-    let page = 1;
-    let lastList = [];
-
-    while (true) {
-      const { total, candidates = [] } = await fetchDbCandidates(name, page, limit);
-      const pages = Math.max(1, Math.ceil(total / limit));
-      lastList = candidates;
-
-      console.clear();
-      console.log(`Search Candidates in DB for "${name}" (Page ${page}/${pages}, Total ${total})`);
-      console.table(candidates.map((c, i) => ({
-        No: i + 1,
-        Name: c.name,
-        ID: c._id,
-        Src: "DB"
-      })));
-
-      const cmd = await question(rl, "Enter No = View, d <No> = Delete Profile, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Candidates, M = Main Menu: ");
-      const lower = cmd.toLowerCase();
-
-      if (lower === "m") return done();
-      if (lower === "b") break;
-      if (lower === "f") return runFetchLoop(rl, name, done);
-      if (lower === "r") {
-        await flushRedis();
-        console.log("🧹 Redis cache flushed.");
-        await question(rl, "Press Enter to continue...");
-        continue;
-      }
-      if (lower === "n" && page < pages) { page++; continue; }
-      if (lower === "p" && page > 1) { page--; continue; }
-
-      if (lower.startsWith("d")) {
-        const idx = parseInt(lower.slice(1), 10) - 1;
-        if (!isNaN(idx) && lastList[idx]) {
-          const result = await deleteProfile(lastList[idx]._id);
-          console.log("🗑️", result.message);
-          await question(rl, "Press Enter to continue...");
-        }
-        continue;
-      }
-
-      const idx = parseInt(lower, 10) - 1;
-      if (!isNaN(idx) && candidates[idx]) {
-        const profile = await fetchDbProfile(candidates[idx]._id);
-        await showProfile(rl, profile, "DB");
-      }
-    }
-
-    runAuthorFlow(rl, done);
+//-------------------------------
+/**
+ * Search authors in local DB by name
+ */
+async function fetchDbCandidates(name, page, limit) {
+  const res = await axios.get(`${API_BASE}/author/search-author`, {
+    params: { name, page, limit }
   });
+  return res.data; // { total, candidates: [] }
+}
+
+/**
+ * Retrieve a single author profile from DB
+ */
+async function fetchDbProfile(id) {
+  const res = await axios.get(`${API_BASE}/author/search-author`, {
+    params: { id }
+  });
+  return res.data.profile;
+}
+
+/**
+ * Delete an author profile from DB by ID
+ */
+async function deleteProfile(id) {
+  const res = await axios.delete(`${API_BASE}/author/delete-profile`, {
+    data: { id }
+  });
+  return res.data;
+}
+
+/**
+ * Flush Redis cache for authors
+ */
+async function flushRedis() {
+  const res = await axios.post(`${API_BASE}/author/flush-redis`);
+  return res.data;
+}
+
+/**
+ * Fetch authors from OpenAlex by name
+ */
+async function fetchOpenCandidates(name, page, limit) {
+  const res = await axios.get(`${API_BASE}/author/fetch-author`, {
+    params: { name, page, limit }
+  });
+  return res.data; // { total, authors: [] }
+}
+
+/**
+ * Retrieve a single author profile from OpenAlex
+ */
+async function fetchOpenProfile(id) {
+  const res = await axios.get(`${API_BASE}/author/fetch-author`, {
+    params: { id }
+  });
+  return res.data.profile;
+}
+
+/**
+ * Save a profile (from OpenAlex) into local DB
+ */
+async function saveProfile(profile) {
+  const res = await axios.post(`${API_BASE}/author/save-profile`, profile);
+  return res.data;
 }
 
 //==================================================================
-// Sub-Flow: Fetch from OpenAlex API
+// Main Flow: Author Search & Manage Profiles
 //==================================================================
-async function runFetchLoop(rl, name, done) {
-  const limit = 25;
+async function runAuthorFlow(done) {
+  let name = '';
   let page = 1;
+  let candidates = [];
+  let total = 0;
 
-  while (true) {
-    const { total, authors = [] } = await fetchOpenCandidates(name, page, limit);
-    const pages = Math.max(1, Math.ceil(total / limit));
+  // Step 1: Prompt for author name
+  async function askName() {
+    const { inputName } = await inquirer.prompt([
+      { type: 'input', name: 'inputName', message: 'Enter author name to search:' }
+    ]);
+    name = inputName.trim();
+    page = 1;
+    return runSearch();
+  }
+
+  // Step 2: Search local DB
+  async function runSearch() {
+    // Fetch from DB
+    ({ total, candidates } = await fetchDbCandidates(name, page, LIMIT));
+    const pages = Math.max(1, Math.ceil(total / LIMIT));
 
     console.clear();
-    console.log(`Fetch OpenAlex for "${name}" (Page ${page}/${pages}, Total ${total})`);
-    console.table(authors.map((a, i) => ({
-      No: i + 1,
-      Name: a.name,
-      ID: a._id,
-      Src: "OpenAlex"
-    })));
+    console.log(`DB Search Results for "${name}" (Page ${page}/${pages}, Total ${total})`);
+    renderList(candidates, page, total, 'DB');
 
-    const cmd = await question(rl, "Enter No = View, r = Redis flush, n = Next Page, p = Prev Page, b = Back To Search Candidates, M = Main Menu: ");
-    const lower = cmd.toLowerCase();
-
-    if (lower === "m") return done();
-    if (lower === "b") return runAuthorFlow(rl, done);
-    if (lower === "r") {
-      await flushRedis();
-      console.log("🧹 Redis cache flushed.");
-      await question(rl, "Press Enter to continue...");
-      continue;
+    // Build menu choices
+    const choices = [
+      { name: '👁️   View profiles', value: 'view_all' },
+      { name: '🗑️   Del profiles',  value: 'delete_all' },
+    ];
+    if (total === 0) {
+      choices.push({ name: '🌐 Fetch from OpenAlex', value: 'openalex' });
     }
-    if (lower === "n" && page < pages) { page++; continue; }
-    if (lower === "p" && page > 1) { page--; continue; }
-
-    const idx = parseInt(lower, 10) - 1;
-    if (!isNaN(idx) && authors[idx]) {
-      const profile = await fetchOpenProfile(authors[idx]._id);
-      await showProfile(rl, profile, "OpenAlex");
-
-      const yn = await question(rl, "Save this profile to MongoDB? (y/n): ");
-      if (yn.toLowerCase() === "y") {
-        const result = await saveProfile(profile);
-        console.log("🟢", result.message);
-        await question(rl, "Press Enter to continue...");
-      }
+    choices.push(
+      new inquirer.Separator(),
+      { name: '▶️   Next Page',      value: 'next' },
+      { name: '◀️   Prev Page',      value: 'prev' },
+      { name: '↩️   Back to Search', value: 'back' },
+      { name: '🏠  Main Menu',       value: 'menu' },
+      { name: '🧹  Flush Redis',     value: 'flush' },
+    );
+    if (total === 0) {
+      choices.push({ name: '🌐  Fetch from OpenAlex', value: 'openalex' });
     }
+    choices.push(
+      new inquirer.Separator(),
+      { name: '▶️   Next Page',      value: 'next' },
+      { name: '◀️   Prev Page',      value: 'prev' },
+      { name: '↩️   Back to Search', value: 'back' },
+      { name: '🏠  Main Menu',      value: 'menu' }
+    );
+
+    const { action } = await inquirer.prompt([
+      { type: 'list', name: 'action', message: 'Select action:', choices }
+    ]);
+
+    // Handle view_all
+    if (action === 'view_all') {
+      const { idx } = await inquirer.prompt([
+        { type: 'input', name: 'idx',
+          message: 'Enter number for view profile:',
+          validate: v => {
+            const n = parseInt(v, 10);
+            return (n >= 1 && n <= candidates.length) || 'Invalid selection';
+          }
+        }
+      ]);
+      const i = parseInt(idx, 10) - 1;
+      const profile = await fetchDbProfile(candidates[i]._id);
+      await showProfile(profile, 'DB');
+      return runSearch();
+    }
+
+    // Handle delete_all
+    if (action === 'delete_all') {
+      const { idx } = await inquirer.prompt([
+        { type: 'input', name: 'idx',
+          message: 'Enter number to delete profile:',
+          validate: v => {
+            const n = parseInt(v, 10);
+            return (n >= 1 && n <= candidates.length) || 'Invalid selection';
+          }
+        }
+      ]);
+      const i = parseInt(idx, 10) - 1;
+      const result = await deleteProfile(candidates[i]._id);
+      console.log('🗑️ ', result.message);
+      return runSearch();
+    }
+
+    // Fetch from OpenAlex if chosen
+    if (action === 'openalex') return runOpenAlex();
+
+    // Pagination actions
+    if (action === 'next' && page < pages) {
+      page++;
+      return runSearch();
+    }
+    if (action === 'prev' && page > 1) {
+      page--;
+      return runSearch();
+    }
+
+        // Handle flush Redis action
+    if (action === 'flush') {
+      const result = await flushRedis();
+      console.log('🧹 ', result.message || 'Redis cache flushed.');
+      return runSearch();
+    }
+
+    // Navigation
+    if (action === 'back') return askName();
+    if (action === 'menu') return done();
+
+    return runSearch();
   }
+
+  // Step 3: OpenAlex fallback
+  async function runOpenAlex() {
+    const { total: oTotal, authors } = await fetchOpenCandidates(name, page, LIMIT);
+    const pages = Math.max(1, Math.ceil(oTotal / LIMIT));
+
+    console.clear();
+    console.log(`OpenAlex Results for "${name}" (Page ${page}/${pages}, Total ${oTotal})`);
+    renderList(authors, page, oTotal, 'OpenAlex');
+
+    // Build menu choices
+    const choices = [
+      { name: '👁️  View profiles', value: 'view_all' },
+      { name: '💾  Save all to DB', value: 'save_all' },
+      new inquirer.Separator(),
+      { name: '↩️  Back to DB Search', value: 'db'   },
+      { name: '🏠  Main Menu',          value: 'menu' }
+    ];
+
+    const { action } = await inquirer.prompt([
+      { type: 'list', name: 'action', message: 'Select action:', choices }
+    ]);
+
+    // View from OpenAlex
+    if (action === 'view_all') {
+      const { idx } = await inquirer.prompt([
+        { type: 'input', name: 'idx',
+          message: 'Enter number for view profile:',
+          validate: v => {
+            const n = parseInt(v, 10);
+            return (n >= 1 && n <= authors.length) || 'Invalid selection';
+          }
+        }
+      ]);
+      const i = parseInt(idx, 10) - 1;
+      const profile = await fetchOpenProfile(authors[i]._id);
+      await showProfile(profile, 'OpenAlex');
+      return runOpenAlex();
+    }
+
+    // Save all to DB
+    if (action === 'save_all') {
+      for (const prof of authors) {
+        const res = await saveProfile(prof);
+        console.log('💾 ', res.message);
+      }
+      return runOpenAlex();
+    }
+
+    // Back to DB search
+    if (action === 'db') return runSearch();
+
+    // Main Menu
+    if (action === 'menu') return done();
+
+    return runOpenAlex();
+  }
+
+  // Kick off the flow
+  await askName();
 }
 
-//==================================================================
-// CLI Entrypoint
-//==================================================================
-if (require.main === module) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  runAuthorFlow(rl, () => {
-    console.log("Goodbye!");
-    rl.close();
-    process.exit(0);
-  });
-}
-
+//-------------------------------
+// Export for CLI use
+//-------------------------------
 module.exports = { runAuthorFlow };
