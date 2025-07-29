@@ -6,7 +6,7 @@
 //==================================================================
 
 const axios = require("axios");
-const ResearcherProfile = require("../models/researcherProfile");
+const ResearcherProfile = require("../models/researcherProfileController");
 
 const OPENALEX_BASE = "https://api.openalex.org";
 

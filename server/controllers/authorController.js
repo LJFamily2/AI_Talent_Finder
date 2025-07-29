@@ -4,7 +4,7 @@
 //==================================================================
 
 const axios = require("axios");
-const ResearcherProfile = require("../models/researcherProfile");
+const ResearcherProfile = require("../models/researcherProfileController");
 const { deleteCacheKey } = require("../middleware/cacheRedisInsight");
 
 const OPENALEX_BASE = "https://api.openalex.org";
