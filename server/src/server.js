@@ -72,18 +72,6 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected", process.env.MONGODB_URI))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-
-// MonggoDB connection local host for development search filters
-//   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/academic_profiles", {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true
-//   })
-//   .then(() => console.log("✅ MongoDB connected"))
-// >>>>>>> d0dce0e1ac5356adc4b2129d96665dbb69fb145c
-
-  
-//   .catch(err => console.error("❌ MongoDB connection error:", err));
-
 //==================================================================
 // Global Error Handler Middleware
 //==================================================================
