@@ -5,6 +5,7 @@
  */
 
 const fs = require("fs");
+const path = require("path");
 
 class SimpleHeaderClassifier {
   constructor() {
@@ -14,7 +15,7 @@ class SimpleHeaderClassifier {
       containsYear: { weight: 0 },
       lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
       positionRatio: { weight: 0 },
-      wordCount: { weight: 0, maxWords: 8 },
+      wordCount: { weight: 0, maxWords: 10 },
       hasColon: { weight: 0 },
       matchesPublicationPattern: { weight: 0 },
       endsWithPeriodOrPercent: { weight: 0 },
@@ -22,6 +23,27 @@ class SimpleHeaderClassifier {
       indentationLevel: { weight: 0 },
     };
     this.trained = false;
+    this.knownHeaders = [];
+    this.loadKnownHeaders();
+  }
+
+  /**
+   * Load known headers from detected_headers.json
+   */
+  loadKnownHeaders() {
+    try {
+      const headersPath = path.join(
+        __dirname,
+        "../data/training/detected_headers.json"
+      );
+      this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
+      console.log(
+        `Loaded ${this.knownHeaders.length} known publication headers`
+      );
+    } catch (error) {
+      console.warn("Could not load detected headers:", error);
+      this.knownHeaders = [];
+    }
   }
 
   /**
@@ -109,7 +131,6 @@ class SimpleHeaderClassifier {
    * Extract features from a line
    */
   extractFeatures(line, lineIndex, totalLines) {
-    const { PUBLICATION_PATTERNS } = require("./constants");
     return {
       isAllUpperCase: line === line.toUpperCase(),
       startsWithNumberOrBracket: /^\s*(\[\w+\]|\d+\.)/.test(line),
@@ -118,8 +139,8 @@ class SimpleHeaderClassifier {
       positionRatio: lineIndex / totalLines,
       wordCount: line.split(/\s+/).filter(Boolean).length,
       hasColon: line.includes(":"),
-      matchesPublicationPattern: PUBLICATION_PATTERNS.some((pattern) =>
-        pattern.test(line)
+      matchesPublicationPattern: this.knownHeaders.some((header) =>
+        line.toLowerCase().includes(header.toLowerCase())
       ),
       endsWithPeriodOrPercent: /[\.%)]\s*$/.test(line),
       isShort: line.trim().length < 5,
@@ -138,13 +159,18 @@ class SimpleHeaderClassifier {
     const features = this.extractFeatures(line, lineIndex, totalLines);
     let score = 0;
 
+    // No need to check isKnownHeader separately since we're using it in matchesPublicationPattern
+    if (features.matchesPublicationPattern) {
+      score += 2.0; // Give boost to lines matching known publication headers
+    }
+
     Object.keys(this.rules).forEach((feature) => {
       if (this.evaluateFeature(feature, features)) {
         score += this.rules[feature].weight;
       }
     });
 
-    // Post-processing filter: only accept as header if matchesPublicationPattern is true
+    // Post-processing: Must match known publication headers
     if (!features.matchesPublicationPattern) {
       return false;
     }
