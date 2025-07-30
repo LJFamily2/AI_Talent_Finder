@@ -33,28 +33,20 @@ async function trainModel() {
     }
 
     // Load training data
-    // console.log("Loading training data...");
     const allTrainingData = JSON.parse(fs.readFileSync(trainingDataPath));
 
     // Split data for evaluation
     const { trainData, testData } = trainTestSplit(allTrainingData, 0.2);
 
-    // Use a subset for faster training (first 500 examples from training set)
-    const trainingSubset = trainData.slice(0, 500);
-    // console.log(
-    //   `Using ${trainingSubset.length} examples for training, ${testData.length} for evaluation`
-    // );
-
     // Initialize and train the classifier
-    // console.log("Training classifier...");
     const classifier = new SimpleHeaderClassifier();
-    classifier.train(trainingSubset);
+    classifier.train(trainData);
 
     // Evaluate the model on test set
     console.log("\n📊 Model Performance Metrics:");
     console.log("=".repeat(40));
 
-    const metrics = classifier.evaluateMetrics(testData.slice(0, 200)); // Quick evaluation
+    const metrics = classifier.evaluateMetrics(testData); // Quick evaluation
     console.log(`Accuracy:  ${metrics.accuracy}%`);
     console.log(`Precision: ${metrics.precision}%`);
     console.log(`Recall:    ${metrics.recall}%`);
@@ -74,7 +66,7 @@ async function trainModel() {
     // console.log(`Processed ${trainingSubset.length} examples`);
 
     console.log(`\n✅ Model trained and saved to ${MODEL_PATH}`);
-    console.log(`📈 Training completed with ${trainingSubset.length} examples`);
+    // console.log(`📈 Training completed with ${trainingSubset.length} examples`);
     console.log(
       "\n💡 Run 'node evaluateModelMetrics.js' for detailed performance analysis"
     );

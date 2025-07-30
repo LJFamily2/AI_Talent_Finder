@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "isAllUpperCase": {
+      "weight": 0.3550331179912407
+    },
+    "containsYear": {
+      "weight": -0.34676187431169847
+    },
+    "lengthRange": {
+      "weight": 0.7010939847793384,
+      "minLength": 3,
+      "maxLength": 30
+    },
+    "positionRatio": {
+      "weight": 0.047919338619471286
+    },
+    "wordCount": {
+      "weight": 0.3476500053287861,
+      "maxWords": 10
+    },
+    "hasColon": {
+      "weight": -0.16395032971052034
+    },
+    "matchesPublicationPattern": {
+      "weight": 0.9800361586920118
+    }
+  },
+  "trained": true
+}

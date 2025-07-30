@@ -36,8 +36,8 @@ Thumbs.db
 **/data/training/header_training_data.json
 **/data/training/detected_headers.json
 **/models/metrics_history.json
-**/models/*
-!**/models/header_classifier.json  # Keep the main model file
+**/data/training/
+
 
 eng.traineddata
 # Seeding samples

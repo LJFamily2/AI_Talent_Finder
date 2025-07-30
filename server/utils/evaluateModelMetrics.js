@@ -58,7 +58,7 @@ async function evaluateModelMetrics() {
     console.log(`📊 Loaded ${allData.length} total examples`);
 
     // Create train/test split
-    const { trainData, testData } = trainTestSplit(allData, 0.2);
+    const { trainData, testData } = trainTestSplit(allData, 0.4);
     console.log(
       `🔄 Split: ${trainData.length} training, ${testData.length} testing`
     );
@@ -128,7 +128,7 @@ async function evaluateModelMetrics() {
 
     // Generate detailed classification report
     console.log("\n📝 Generating classification report...");
-    const report = classifier.generateClassificationReport(testData);
+    const report = classifier.generateClassificationReport(testData, 1000);
 
     // Show misclassified examples
     if (report.misclassified.falsePositives.length > 0) {
@@ -136,18 +136,11 @@ async function evaluateModelMetrics() {
         "\n❌ FALSE POSITIVES (Predicted Header, Actually Non-Header):"
       );
       console.log("-".repeat(60));
-      report.misclassified.falsePositives.slice(0, 5).forEach((example, i) => {
+      report.misclassified.falsePositives.forEach((example, i) => {
         console.log(
-          `${i + 1}. "${example.text.substring(0, 60)}${
-            example.text.length > 60 ? "..." : ""
-          }"`
+          `${i + 1}. "${example.text}"`
         );
       });
-      if (report.misclassified.falsePositives.length > 5) {
-        console.log(
-          `... and ${report.misclassified.falsePositives.length - 5} more`
-        );
-      }
     }
 
     if (report.misclassified.falseNegatives.length > 0) {

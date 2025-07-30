@@ -11,16 +11,12 @@ class SimpleHeaderClassifier {
   constructor() {
     this.rules = {
       isAllUpperCase: { weight: 0 },
-      startsWithNumberOrBracket: { weight: 0 },
       containsYear: { weight: 0 },
-      lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
+      lengthRange: { weight: 0, minLength: 3, maxLength: 30 },
       positionRatio: { weight: 0 },
       wordCount: { weight: 0, maxWords: 10 },
       hasColon: { weight: 0 },
       matchesPublicationPattern: { weight: 0 },
-      endsWithPeriodOrPercent: { weight: 0 },
-      isShort: { weight: 0 },
-      indentationLevel: { weight: 0 },
     };
     this.trained = false;
     this.knownHeaders = [];
@@ -98,8 +94,6 @@ class SimpleHeaderClassifier {
     switch (featureName) {
       case "isAllUpperCase":
         return features.isAllUpperCase;
-      case "startsWithNumberOrBracket":
-        return features.startsWithNumberOrBracket;
       case "containsYear":
         return features.containsYear;
       case "lengthRange":
@@ -116,12 +110,7 @@ class SimpleHeaderClassifier {
         return features.hasColon;
       case "matchesPublicationPattern":
         return features.matchesPublicationPattern;
-      case "endsWithPeriodOrPercent":
-        return features.endsWithPeriodOrPercent;
-      case "isShort":
-        return features.isShort;
-      case "indentationLevel":
-        return features.indentationLevel === 0;
+
       default:
         return false;
     }
@@ -133,18 +122,14 @@ class SimpleHeaderClassifier {
   extractFeatures(line, lineIndex, totalLines) {
     return {
       isAllUpperCase: line === line.toUpperCase(),
-      startsWithNumberOrBracket: /^\s*(\[\w+\]|\d+\.)/.test(line),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
       length: line.length,
       positionRatio: lineIndex / totalLines,
       wordCount: line.split(/\s+/).filter(Boolean).length,
       hasColon: line.includes(":"),
-      matchesPublicationPattern: this.knownHeaders.some((header) =>
-        line.toLowerCase().includes(header.toLowerCase())
+      matchesPublicationPattern: this.knownHeaders.some(
+        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
       ),
-      endsWithPeriodOrPercent: /[\.%)]\s*$/.test(line),
-      isShort: line.trim().length < 5,
-      indentationLevel: line.search(/\S/),
     };
   }
 
@@ -160,8 +145,16 @@ class SimpleHeaderClassifier {
     let score = 0;
 
     // No need to check isKnownHeader separately since we're using it in matchesPublicationPattern
-    if (features.matchesPublicationPattern) {
-      score += 2.0; // Give boost to lines matching known publication headers
+    if (
+      this.knownHeaders.some(
+        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
+      )
+    ) {
+      score += 1; // Give boost only for exact header match
+    }
+
+    if (features.wordCount === 1) {
+      score -= 1.0;
     }
 
     Object.keys(this.rules).forEach((feature) => {
@@ -175,7 +168,7 @@ class SimpleHeaderClassifier {
       return false;
     }
 
-    return score > 1.2;
+    return score > 1.7;
   }
 
   /**
@@ -209,7 +202,7 @@ class SimpleHeaderClassifier {
    * @param {number} totalLines - Total number of lines for position ratio calculation
    * @returns {Object} Object containing accuracy, precision, recall, F1 score, and confusion matrix
    */
-  evaluateMetrics(testData, totalLines = 100) {
+  evaluateMetrics(testData, totalLines = 1000) {
     if (!this.trained) {
       throw new Error("Classifier not trained yet");
     }
@@ -259,7 +252,7 @@ class SimpleHeaderClassifier {
     };
 
     return {
-      accuracy: Math.round(accuracy * 10000) / 100, // Round to 2 decimal places as percentage
+      accuracy: Math.round(accuracy * 10000) / 100,
       precision: Math.round(precision * 10000) / 100,
       recall: Math.round(recall * 10000) / 100,
       f1Score: Math.round(f1Score * 10000) / 100,
@@ -270,10 +263,6 @@ class SimpleHeaderClassifier {
         falseNegatives,
       },
       support,
-      detailed: {
-        predictions,
-        actualLabels,
-      },
     };
   }
 

@@ -62,10 +62,8 @@ function splitIntoChunks(text) {
 // Rate Limiter for API calls
 class RateLimiter {
   constructor() {
-    this.delay = 4000; // 4.5 seconds between requests
+    this.delay = 4400; // 4.4 seconds between requests
     this.lastRequest = 0;
-    this.totalTokens = 0;
-    this.requestCount = 0;
     this.resetTime = Date.now(); // Track when we last reset counts
     this.monthlyTokenLimit = 250000; // 250k tokens per minute limit
   }
@@ -79,8 +77,6 @@ class RateLimiter {
       console.log(
         `Resetting token counters after ${Math.floor(minuteElapsed)} minutes`
       );
-      this.totalTokens = 0;
-      this.requestCount = 0;
       this.resetTime = now;
       return true;
     }
@@ -96,14 +92,7 @@ class RateLimiter {
   }
 
   updateTokenCount(tokens) {
-    if (tokens > 0) {
-      // Only update if we have valid token count
-      this.totalTokens += tokens;
-      this.requestCount++;
-      console.log(
-        `Updated totals - Request #${this.requestCount}, Tokens this request: ${tokens}, Running total: ${this.totalTokens}`
-      );
-    }
+    // No longer tracking tokens or request count
   }
 
   async wait() {
@@ -229,18 +218,14 @@ function generateLineFeatures(line, lineIndex, totalLines, knownHeaders) {
     text: line,
     features: {
       isAllUpperCase: line === line.toUpperCase(),
-      startsWithNumber: /^\d+\./.test(line),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
       length: line.length,
       positionRatio: lineIndex / totalLines,
       wordCount: line.split(/\s+/).length,
       hasColon: line.includes(":"),
       matchesPublicationPattern: knownHeaders.some((header) =>
-        line.toLowerCase().includes(header.toLowerCase())
+        line.trim().toLowerCase().includes(header.toLowerCase())
       ),
-      precedingBlankLine: false, // Will be set during processing
-      followingBlankLine: false, // Will be set during processing
-      indentationLevel: line.search(/\S/), // Number of leading spaces
     },
   };
 }
@@ -283,11 +268,6 @@ async function processCV(filePath, model) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const features = generateLineFeatures(line, i, lines.length, allHeaders);
-
-      // Set blank line context
-      features.features.precedingBlankLine = i > 0 && !lines[i - 1].trim();
-      features.features.followingBlankLine =
-        i < lines.length - 1 && !lines[i + 1].trim();
 
       // Use AI-detected headers instead of static patterns
       features.isHeader = allHeaders.includes(line.trim());
@@ -368,15 +348,7 @@ async function generateTrainingData() {
     `Processed ${files.length} CVs, generated ${allTrainingData.length} training examples`
   );
 
-  // Log final token usage statistics
-  console.log("\nToken Usage Statistics:");
-  console.log(`Total Requests Made: ${rateLimiter.requestCount}`);
-  console.log(`Total Tokens Used: ${rateLimiter.totalTokens}`);
-  console.log(
-    `Average Tokens per Request: ${Math.round(
-      rateLimiter.totalTokens / rateLimiter.requestCount
-    )}`
-  );
+  // Token usage statistics removed
 }
 
 // Run the script if directly
