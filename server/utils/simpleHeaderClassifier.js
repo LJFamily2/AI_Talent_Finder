@@ -9,17 +9,17 @@ const fs = require("fs");
 class SimpleHeaderClassifier {
   constructor() {
     this.rules = {
-      isAllUpperCase: { weight: 0, threshold: 0.5 },
-      startsWithNumberOrBracket: { weight: 0, threshold: 0.5 },
-      containsYear: { weight: 0, threshold: 0.5 },
-      lengthRange: { weight: 0, threshold: 0.5, minLength: 3, maxLength: 50 },
-      positionRatio: { weight: 0, threshold: 0.5 },
-      wordCount: { weight: 0, threshold: 0.5, maxWords: 8 },
-      hasColon: { weight: 0, threshold: 0.5 },
-      matchesPublicationPattern: { weight: 0, threshold: 0.5 },
-      endsWithPeriodOrPercent: { weight: 0, threshold: 0.5 },
-      isShort: { weight: 0, threshold: 0.5 },
-      indentationLevel: { weight: 0, threshold: 0.5 },
+      isAllUpperCase: { weight: 0 },
+      startsWithNumberOrBracket: { weight: 0 },
+      containsYear: { weight: 0 },
+      lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
+      positionRatio: { weight: 0 },
+      wordCount: { weight: 0, maxWords: 8 },
+      hasColon: { weight: 0 },
+      matchesPublicationPattern: { weight: 0 },
+      endsWithPeriodOrPercent: { weight: 0 },
+      isShort: { weight: 0 },
+      indentationLevel: { weight: 0 },
     };
     this.trained = false;
   }
@@ -175,6 +175,187 @@ class SimpleHeaderClassifier {
     const modelData = JSON.parse(fs.readFileSync(modelPath));
     this.rules = modelData.rules;
     this.trained = modelData.trained;
+  }
+
+  /**
+   * Evaluate model performance using standard ML metrics
+   * @param {Array} testData - Array of test examples with {text, features, isHeader} structure
+   * @param {number} totalLines - Total number of lines for position ratio calculation
+   * @returns {Object} Object containing accuracy, precision, recall, F1 score, and confusion matrix
+   */
+  evaluateMetrics(testData, totalLines = 100) {
+    if (!this.trained) {
+      throw new Error("Classifier not trained yet");
+    }
+
+    let truePositives = 0;
+    let falsePositives = 0;
+    let trueNegatives = 0;
+    let falseNegatives = 0;
+
+    const predictions = [];
+    const actualLabels = [];
+
+    testData.forEach((example, index) => {
+      const predicted = this.predict(example.text, index, totalLines);
+      const actual = example.isHeader;
+
+      predictions.push(predicted);
+      actualLabels.push(actual);
+
+      if (predicted && actual) {
+        truePositives++;
+      } else if (predicted && !actual) {
+        falsePositives++;
+      } else if (!predicted && !actual) {
+        trueNegatives++;
+      } else if (!predicted && actual) {
+        falseNegatives++;
+      }
+    });
+
+    // Calculate metrics
+    const accuracy = (truePositives + trueNegatives) / testData.length;
+    const precision =
+      truePositives > 0 ? truePositives / (truePositives + falsePositives) : 0;
+    const recall =
+      truePositives > 0 ? truePositives / (truePositives + falseNegatives) : 0;
+    const f1Score =
+      precision + recall > 0
+        ? (2 * precision * recall) / (precision + recall)
+        : 0;
+
+    // Support metrics
+    const support = {
+      positive: truePositives + falseNegatives,
+      negative: trueNegatives + falsePositives,
+      total: testData.length,
+    };
+
+    return {
+      accuracy: Math.round(accuracy * 10000) / 100, // Round to 2 decimal places as percentage
+      precision: Math.round(precision * 10000) / 100,
+      recall: Math.round(recall * 10000) / 100,
+      f1Score: Math.round(f1Score * 10000) / 100,
+      confusionMatrix: {
+        truePositives,
+        falsePositives,
+        trueNegatives,
+        falseNegatives,
+      },
+      support,
+      detailed: {
+        predictions,
+        actualLabels,
+      },
+    };
+  }
+
+  /**
+   * Perform cross-validation to get more robust performance estimates
+   * @param {Array} data - Full dataset for cross-validation
+   * @param {number} folds - Number of cross-validation folds (default: 5)
+   * @returns {Object} Cross-validation results with mean and std dev of metrics
+   */
+  crossValidate(data, folds = 5) {
+    if (!data || data.length < folds) {
+      throw new Error(`Dataset too small for ${folds}-fold cross-validation`);
+    }
+
+    const foldSize = Math.floor(data.length / folds);
+    const results = [];
+
+    for (let i = 0; i < folds; i++) {
+      // Create train/test split
+      const testStart = i * foldSize;
+      const testEnd = i === folds - 1 ? data.length : (i + 1) * foldSize;
+
+      const testData = data.slice(testStart, testEnd);
+      const trainData = [...data.slice(0, testStart), ...data.slice(testEnd)];
+
+      // Train on fold
+      const foldClassifier = new SimpleHeaderClassifier();
+      foldClassifier.train(trainData);
+
+      // Evaluate on test fold
+      const metrics = foldClassifier.evaluateMetrics(testData);
+      results.push(metrics);
+    }
+
+    // Calculate mean and standard deviation
+    const calculateStats = (values) => {
+      const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+      const variance =
+        values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+        values.length;
+      const stdDev = Math.sqrt(variance);
+      return {
+        mean: Math.round(mean * 100) / 100,
+        stdDev: Math.round(stdDev * 100) / 100,
+      };
+    };
+
+    return {
+      folds,
+      accuracy: calculateStats(results.map((r) => r.accuracy)),
+      precision: calculateStats(results.map((r) => r.precision)),
+      recall: calculateStats(results.map((r) => r.recall)),
+      f1Score: calculateStats(results.map((r) => r.f1Score)),
+      individualFolds: results,
+    };
+  }
+
+  /**
+   * Generate a detailed classification report
+   * @param {Array} testData - Test dataset
+   * @param {number} totalLines - Total lines for position calculation
+   * @returns {Object} Detailed report with per-class metrics and examples
+   */
+  generateClassificationReport(testData, totalLines = 100) {
+    const metrics = this.evaluateMetrics(testData, totalLines);
+
+    // Find misclassified examples
+    const misclassified = {
+      falsePositives: [],
+      falseNegatives: [],
+    };
+
+    testData.forEach((example, index) => {
+      const predicted = this.predict(example.text, index, totalLines);
+      const actual = example.isHeader;
+
+      if (predicted && !actual) {
+        misclassified.falsePositives.push({
+          text: example.text,
+          features: example.features,
+          index,
+        });
+      } else if (!predicted && actual) {
+        misclassified.falseNegatives.push({
+          text: example.text,
+          features: example.features,
+          index,
+        });
+      }
+    });
+
+    return {
+      summary: {
+        totalSamples: testData.length,
+        headerSamples: metrics.support.positive,
+        nonHeaderSamples: metrics.support.negative,
+      },
+      metrics,
+      misclassified,
+      classDistribution: {
+        headers:
+          Math.round((metrics.support.positive / testData.length) * 10000) /
+          100,
+        nonHeaders:
+          Math.round((metrics.support.negative / testData.length) * 10000) /
+          100,
+      },
+    };
   }
 }
 

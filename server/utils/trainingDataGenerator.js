@@ -38,13 +38,6 @@ function generateLineFeatures(line, lineIndex, totalLines) {
   };
 }
 
-// Load manual header labels if available
-const HEADER_LABELS_FILE = path.join(TRAINING_DIR, "header_labels.json");
-let manualLabels = {};
-if (fs.existsSync(HEADER_LABELS_FILE)) {
-  manualLabels = JSON.parse(fs.readFileSync(HEADER_LABELS_FILE, "utf-8"));
-}
-
 /**
  * Processes a single CV file and generates training data
  */
@@ -58,7 +51,7 @@ async function processCV(filePath) {
       .filter(Boolean);
 
     const trainingData = [];
-    const fileName = path.basename(filePath);
+
     // Process each line
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];

@@ -1,54 +1,4 @@
-/**
- * Detects the end of the publications section in a CV, using robust pattern-based and document structure cues.
- * @param {string[]} lines - Array of lines from the CV text
- * @param {number} startIndex - Index to start searching for the section (after the main Publications header)
- * @param {RegExp[]} publicationSubheadings - List of regexes for valid publication subheadings
- * @returns {number} The index of the last line in the publications section (inclusive)
- */
-function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
-  // Helper: is a year line (strict 4-digit year)
-  const isYearLine = (line) => /^\d{4}$/.test(line.trim());
-  // Helper: is a publication subheading
-  const isPubSubheading = (line) =>
-    publicationSubheadings.some((re) => re.test(line.trim()));
-  // Helper: is a publication entry (not bullet/indent, just not a heading or year)
-  // For now, treat any non-blank, non-heading, non-year line as a possible entry
-  // Helper: is a blank or navigation line
-  const isSkipLine = (line) => !line.trim() || /back to top/i.test(line);
 
-  let nonPubCount = 0;
-  let lastPubIdx = startIndex;
-  for (let i = startIndex; i < lines.length; i++) {
-    const line = lines[i];
-    if (isSkipLine(line)) continue;
-    if (isYearLine(line) || isPubSubheading(line)) {
-      nonPubCount = 0;
-      lastPubIdx = i;
-      continue;
-    }
-    // If line is not a year, not a subheading, not blank, not nav, treat as publication entry if it looks like one
-    // For this version, treat any line that is not a known section heading as a publication entry
-    // If you want to be stricter, add more logic here
-    if (/^[A-Z][^a-z]*$/.test(line.trim())) {
-      // All caps, likely a new section
-      nonPubCount++;
-    } else {
-      // If it looks like a publication entry (e.g., contains a year, or is not a heading)
-      if (/\b(19|20)\d{2}\b/.test(line) || /\./.test(line)) {
-        nonPubCount = 0;
-        lastPubIdx = i;
-        continue;
-      } else {
-        nonPubCount++;
-      }
-    }
-    if (nonPubCount >= 5) {
-      // Stop after 5 consecutive non-publication lines
-      return lastPubIdx;
-    }
-  }
-  return lastPubIdx;
-}
 
 /**
  * AI Helper Utilities
@@ -157,6 +107,56 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
 //=============================================================================
 
 /**
+ * Detects the end of the publications section in a CV, using robust pattern-based and document structure cues.
+ * @param {string[]} lines - Array of lines from the CV text
+ * @param {number} startIndex - Index to start searching for the section (after the main Publications header)
+ * @param {RegExp[]} publicationSubheadings - List of regexes for valid publication subheadings
+ * @returns {number} The index of the last line in the publications section (inclusive)
+ */
+function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
+  // is a year line (strict 4-digit year)
+  const isYearLine = (line) => /^\d{4}$/.test(line.trim());
+
+  // is a publication subheading
+  const isPubSubheading = (line) =>
+    publicationSubheadings.some((re) => re.test(line.trim()));
+  
+  // is a blank or navigation line
+  const isSkipLine = (line) => !line.trim() || /back to top/i.test(line);
+
+  let nonPubCount = 0;
+  let lastPubIdx = startIndex;
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i];
+    if (isSkipLine(line)) continue;
+    if (isYearLine(line) || isPubSubheading(line)) {
+      nonPubCount = 0;
+      lastPubIdx = i;
+      continue;
+    }
+
+    // All caps, likely a new section
+    if (/^[A-Z][^a-z]*$/.test(line.trim())) {
+      nonPubCount++;
+    } else {
+      // If it looks like a publication entry (e.g., contains a year, or is not a heading)
+      if (/\b(19|20)\d{2}\b/.test(line) || /\./.test(line)) {
+        nonPubCount = 0;
+        lastPubIdx = i;
+        continue;
+      } else {
+        nonPubCount++;
+      }
+    }
+    if (nonPubCount >= 5) {
+      // Stop after 5 consecutive non-publication lines
+      return lastPubIdx;
+    }
+  }
+  return lastPubIdx;
+}
+
+/**
  * Extracts academic publications from CV text using AI
  *
  * Intelligently identifies publication sections in a CV and extracts individual
@@ -202,30 +202,6 @@ const extractPublicationsFromCV = async (model, cvText) => {
       header: header.text,
       content: sectionContent,
     });
-  }
-
-  if (publicationSections.length === 0) {
-    // Expanded pattern matching for publications (fallback)
-    const pubEntries = lines.filter(
-      (line) =>
-        /^\[\w+\]/.test(line) || // [1], [P1], etc.
-        /^[0-9]+\./.test(line) || // Numbered entries
-        /(19|20)[0-9]{2}/.test(line) || // Contains a year
-        /et al\./i.test(line) || // Contains et al.
-        /journal|conference|proceedings/i.test(line) || // Publication venues
-        /In .+edited by|Press|Publisher/i.test(line) // Book identifiers
-    );
-
-    // Create smaller chunks of publications if there are many
-    if (pubEntries.length > 0) {
-      const chunkSize = 50;
-      for (let i = 0; i < pubEntries.length; i += chunkSize) {
-        publicationSections.push({
-          header: `Publications (Group ${Math.floor(i / chunkSize) + 1})`,
-          content: pubEntries.slice(i, i + chunkSize).join("\n"),
-        });
-      }
-    }
   }
 
   // console.log(`Found ${publicationSections.length} publication sections`);
@@ -441,16 +417,6 @@ function extractHeadersFromText(cvText) {
             !/^PG\.\s*\d+$/.test(line)) ||
           PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
       }
-    } else {
-      // Use existing regex rules
-      isHeader =
-        (line === line.toUpperCase() &&
-          line.length > 3 &&
-          !/^[A-Z]\.$/.test(line) &&
-          !/^\d+\.?$/.test(line) &&
-          !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-          !/^PG\.\s*\d+$/.test(line)) ||
-        PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
     }
 
     if (isHeader) {

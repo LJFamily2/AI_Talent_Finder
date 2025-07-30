@@ -38,14 +38,30 @@ This guide explains how to add new CV samples and retrain the machine learning (
 
 ---
 
-## 4. (Optional) Test the New Model
+## 4. Evaluate Model Performance
+
+- Check the training metrics displayed after training
+- For detailed evaluation, run:
+  ```bash
+  cd server/utils
+  node evaluateModelMetrics.js
+  ```
+- Performance metrics include:
+  - **Accuracy**: Overall correctness
+  - **Precision**: Header prediction accuracy
+  - **Recall**: Coverage of actual headers
+  - **F1 Score**: Balanced measure
+
+---
+
+## 5. (Optional) Test the New Model
 
 - You can test the new model by running your main application or any test scripts you have.
 - The application will automatically use the updated model file.
 
 ---
 
-## 5. Use the Updated Model
+## 6. Use the Updated Model
 
 - No code changes are needed.
 - The ML header detection will use the new model automatically.
@@ -66,6 +82,8 @@ This guide explains how to add new CV samples and retrain the machine learning (
 - [ ] Add new CV PDFs to `server/data/training/cvs`
 - [ ] Run `node trainingDataGenerator.js`
 - [ ] Run `node trainHeaderClassifier.js`
+- [ ] Check performance metrics meet standards (≥75% accuracy)
+- [ ] (Optional) Run `node evaluateModelMetrics.js` for detailed analysis
 - [ ] (Optional) Test the new model
 - [ ] Use your application as normal
 
