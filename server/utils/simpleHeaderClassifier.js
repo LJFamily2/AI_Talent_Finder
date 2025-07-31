@@ -120,6 +120,16 @@ class SimpleHeaderClassifier {
    * Extract features from a line
    */
   extractFeatures(line, lineIndex, totalLines) {
+    const trimmedLine = line.trim().toLowerCase();
+    const exactMatch = this.knownHeaders.some(
+      (header) => trimmedLine === header.trim().toLowerCase()
+    );
+    const containsHeaderWord = this.knownHeaders.some((header) =>
+      trimmedLine.includes(header.trim().toLowerCase())
+    );
+    const hasSurroundingWords =
+      containsHeaderWord && !exactMatch && trimmedLine.split(/\s+/).length > 1;
+
     return {
       isAllUpperCase: line === line.toUpperCase(),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
@@ -127,9 +137,8 @@ class SimpleHeaderClassifier {
       positionRatio: lineIndex / totalLines,
       wordCount: line.split(/\s+/).filter(Boolean).length,
       hasColon: line.includes(":"),
-      matchesPublicationPattern: this.knownHeaders.some(
-        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
-      ),
+      matchesPublicationPattern: exactMatch,
+      hasSurroundingWords,
     };
   }
 
@@ -145,16 +154,11 @@ class SimpleHeaderClassifier {
     let score = 0;
 
     // No need to check isKnownHeader separately since we're using it in matchesPublicationPattern
-    if (
-      this.knownHeaders.some(
-        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
-      )
-    ) {
-      score += 1; // Give boost only for exact header match
+    if (features.matchesPublicationPattern) {
+      score += 1.0; // Give boost only for exact header match
     }
-
-    if (features.wordCount === 1) {
-      score -= 1.0;
+    if (features.hasSurroundingWords) {
+      score -= 1.0; // Penalize for header word inside a sentence
     }
 
     Object.keys(this.rules).forEach((feature) => {

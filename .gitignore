@@ -31,12 +31,14 @@
 .DS_Store
 Thumbs.db
 
-# ML Training and Data files
-**/data/training/cvs/
-**/data/training/header_training_data.json
-**/data/training/detected_headers.json
-**/models/metrics_history.json
-**/data/training/
+# ML training and data files
+server/data/training/
+server/models/metrics_history.json
+server/models/model_metrics.json
+
+# Ignore raw CVs and large/unnecessary data
+server/data/training/*.pdf
+server/data/training/*.docx
 
 
 eng.traineddata
