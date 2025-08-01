@@ -477,10 +477,9 @@ Guiding Principles for Parsing:
    - How to Spot Annotations: They are often indented, on a new line directly following a main entry, and crucially, they do not begin with a new, full list of authors.
 
 Rules:
-
 1. Combine all text belonging to a single publication into one "publication" field. This includes the main citation and all its annotations.
 2. Extract the "title" from the primary citation line, not from the annotation text.
-3. If no publications are found, return an empty array [].
+3. If NO publications are found, return an empty array [].
 4. Do not invent or infer any information. The "publication" field must be an exact copy of the source text for that entry.
 5. Output ONLY a valid JSON array. Do not include any commentary, markdown code blocks, or other text outside the JSON.
 

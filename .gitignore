@@ -31,15 +31,17 @@
 .DS_Store
 Thumbs.db
 
-# ML training and data files
-server/data/training/
-server/models/metrics_history.json
-server/models/model_metrics.json
 
-# Ignore raw CVs and large/unnecessary data
-server/data/training/*.pdf
-server/data/training/*.docx
+# ML training data
+# Ignore everything in the ml folder...
+**/ml/*
 
+# ...except these files
+!**/ml/simpleHeaderClassifier.js
+!**/ml/detected_headers.json
+!**/ml/header_classifier.json
+
+**data/
 
 eng.traineddata
 # Seeding samples

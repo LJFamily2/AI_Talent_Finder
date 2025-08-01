@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "isAllUpperCase": {
+      "weight": 0.3290657643947341
+    },
+    "containsYear": {
+      "weight": -0.3439168505730761
+    },
+    "lengthRange": {
+      "weight": 0.6894907057304924,
+      "minLength": 3,
+      "maxLength": 30
+    },
+    "positionRatio": {
+      "weight": 0.021292063973909703
+    },
+    "wordCount": {
+      "weight": 0.35253078949241834,
+      "maxWords": 10
+    },
+    "hasColon": {
+      "weight": -0.16721835791164702
+    },
+    "matchesPublicationPattern": {
+      "weight": 0.9776820673453407
+    },
+    "containNumbers": {
+      "weight": -0.5172634726276073
+    }
+  },
+  "trained": true
+}

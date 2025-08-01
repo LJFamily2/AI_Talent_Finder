@@ -17,6 +17,7 @@ class SimpleHeaderClassifier {
       wordCount: { weight: 0, maxWords: 10 },
       hasColon: { weight: 0 },
       matchesPublicationPattern: { weight: 0 },
+      containNumbers: { weight: 0 },
     };
     this.trained = false;
     this.knownHeaders = [];
@@ -28,10 +29,7 @@ class SimpleHeaderClassifier {
    */
   loadKnownHeaders() {
     try {
-      const headersPath = path.join(
-        __dirname,
-        "../data/training/detected_headers.json"
-      );
+      const headersPath = path.join(__dirname, "../ml/detected_headers.json");
       this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
       console.log(
         `Loaded ${this.knownHeaders.length} known publication headers`
@@ -72,7 +70,9 @@ class SimpleHeaderClassifier {
       const nonHeaderRatio = nonHeaderCount / nonHeaderExamples.length;
 
       // Weight is positive if feature is more common in headers
-      this.rules[feature].weight = headerRatio - nonHeaderRatio;
+      let weight = headerRatio - nonHeaderRatio;
+
+      this.rules[feature].weight = weight;
 
       console.log(
         `${feature}: header=${headerRatio.toFixed(
@@ -101,15 +101,17 @@ class SimpleHeaderClassifier {
           features.length >= this.rules.lengthRange.minLength &&
           features.length <= this.rules.lengthRange.maxLength &&
           features.length <= 50
-        ); // Most headers are shorter
+        );
       case "positionRatio":
-        return features.positionRatio < 0.8; // Headers usually appear earlier
+        return features.positionRatio > 0.3 && features.positionRatio < 0.7;
       case "wordCount":
         return features.wordCount <= this.rules.wordCount.maxWords;
       case "hasColon":
         return features.hasColon;
       case "matchesPublicationPattern":
         return features.matchesPublicationPattern;
+      case "containNumbers":
+        return features.containNumbers;
 
       default:
         return false;
@@ -139,6 +141,7 @@ class SimpleHeaderClassifier {
       hasColon: line.includes(":"),
       matchesPublicationPattern: exactMatch,
       hasSurroundingWords,
+      containNumbers: /\d/.test(line),
     };
   }
 
@@ -157,9 +160,6 @@ class SimpleHeaderClassifier {
     if (features.matchesPublicationPattern) {
       score += 1.0; // Give boost only for exact header match
     }
-    if (features.hasSurroundingWords) {
-      score -= 1.0; // Penalize for header word inside a sentence
-    }
 
     Object.keys(this.rules).forEach((feature) => {
       if (this.evaluateFeature(feature, features)) {
@@ -172,7 +172,7 @@ class SimpleHeaderClassifier {
       return false;
     }
 
-    return score > 1.7;
+    return score > 2.3;
   }
 
   /**
