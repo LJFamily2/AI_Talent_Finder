@@ -1,5 +1,3 @@
-
-
 /**
  * AI Helper Utilities
  *
@@ -22,21 +20,37 @@
  */
 
 const { getTitleSimilarity } = require("./textUtils");
-const { SimpleHeaderClassifier } = require("./simpleHeaderClassifier");
-const { PUBLICATION_PATTERNS } = require("./constants");
+const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
+const fs = require("fs");
 const path = require("path");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
 //=============================================================================
 
+// Load detected headers and convert to regex patterns
+let DETECTED_HEADER_PATTERNS = [];
+try {
+  const detectedHeaders = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../ml/detected_headers.json"), "utf8")
+  );
+  DETECTED_HEADER_PATTERNS = detectedHeaders.map(
+    (header) =>
+      new RegExp(`^${header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+  );
+} catch (error) {
+  console.warn(
+    "Could not load detected headers for section detection:",
+    error.message
+  );
+  DETECTED_HEADER_PATTERNS = [];
+}
+
 // Initialize header classifier
 let headerClassifier = null;
 try {
   headerClassifier = new SimpleHeaderClassifier();
-  headerClassifier.load(
-    path.join(__dirname, "../models/header_classifier.json")
-  );
+  headerClassifier.load(path.join(__dirname, "../ml/header_classifier.json"));
 } catch (error) {
   console.warn("Could not load header classifier model:", error.message);
 }
@@ -120,7 +134,7 @@ function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
   // is a publication subheading
   const isPubSubheading = (line) =>
     publicationSubheadings.some((re) => re.test(line.trim()));
-  
+
   // is a blank or navigation line
   const isSkipLine = (line) => !line.trim() || /back to top/i.test(line);
 
@@ -168,6 +182,7 @@ function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
  */
 const extractPublicationsFromCV = async (model, cvText) => {
+  console.log(`Extracting publications from CV text (${cvText.length} chars)`);
   if (cvText.length <= MAX_CHUNK_SIZE) {
     return extractPublicationsFromChunk(model, cvText);
   }
@@ -194,7 +209,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
         findPublicationsSectionEnd(
           lines,
           header.index + 1,
-          PUBLICATION_PATTERNS // Use only publication subheadings from PUBLICATION_PATTERNS
+          DETECTED_HEADER_PATTERNS
         ) + 1; // inclusive
     }
     const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
@@ -390,15 +405,6 @@ function extractHeadersFromText(cvText) {
       continue;
     }
 
-    // Skip standalone years when they appear in contact info section (near top)
-    if (
-      /^(19|20)[0-9]{2}$/i.test(line) &&
-      i < 30 &&
-      !PUBLICATION_PATTERNS.some((p) => p.test(line))
-    ) {
-      continue;
-    }
-
     // Try ML model first, fall back to regex rules
     let isHeader = false;
 
@@ -407,15 +413,6 @@ function extractHeadersFromText(cvText) {
         isHeader = headerClassifier.predict(line, i, lines.length);
       } catch (error) {
         console.warn("Error using ML header detection:", error.message);
-        // Fall back to regex rules
-        isHeader =
-          (line === line.toUpperCase() &&
-            line.length > 3 &&
-            !/^[A-Z]\.$/.test(line) &&
-            !/^\d+\.?$/.test(line) &&
-            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-            !/^PG\.\s*\d+$/.test(line)) ||
-          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
       }
     }
 
@@ -427,6 +424,8 @@ function extractHeadersFromText(cvText) {
       });
     }
   }
+
+  console.log(headers);
 
   return headers;
 }
