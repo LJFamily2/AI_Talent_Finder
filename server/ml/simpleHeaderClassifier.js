@@ -21,7 +21,7 @@ class SimpleHeaderClassifier {
     };
     this.trained = false;
     this.knownHeaders = [];
-    this.loadKnownHeaders();
+    // this.loadKnownHeaders();
   }
 
   /**
@@ -103,7 +103,7 @@ class SimpleHeaderClassifier {
           features.length <= 50
         );
       case "positionRatio":
-        return features.positionRatio > 0.3 && features.positionRatio < 0.7;
+        return features.positionRatio > 0.2 && features.positionRatio < 0.8;
       case "wordCount":
         return features.wordCount <= this.rules.wordCount.maxWords;
       case "hasColon":
@@ -156,7 +156,6 @@ class SimpleHeaderClassifier {
     const features = this.extractFeatures(line, lineIndex, totalLines);
     let score = 0;
 
-    // No need to check isKnownHeader separately since we're using it in matchesPublicationPattern
     if (features.matchesPublicationPattern) {
       score += 1.0; // Give boost only for exact header match
     }
@@ -166,11 +165,6 @@ class SimpleHeaderClassifier {
         score += this.rules[feature].weight;
       }
     });
-
-    // Post-processing: Must match known publication headers
-    if (!features.matchesPublicationPattern) {
-      return false;
-    }
 
     return score > 2.3;
   }

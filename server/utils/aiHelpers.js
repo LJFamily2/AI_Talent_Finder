@@ -48,11 +48,20 @@ try {
 
 // Initialize header classifier
 let headerClassifier = null;
-try {
-  headerClassifier = new SimpleHeaderClassifier();
-  headerClassifier.load(path.join(__dirname, "../ml/header_classifier.json"));
-} catch (error) {
-  console.warn("Could not load header classifier model:", error.message);
+
+function getHeaderClassifier() {
+  if (!headerClassifier) {
+    headerClassifier = new SimpleHeaderClassifier();
+    headerClassifier.loadKnownHeaders();
+    try {
+      headerClassifier.load(
+        path.join(__dirname, "../ml/header_classifier.json")
+      );
+    } catch (error) {
+      console.warn("Could not load header classifier model:", error.message);
+    }
+  }
+  return headerClassifier;
 }
 
 /**
@@ -408,9 +417,11 @@ function extractHeadersFromText(cvText) {
     // Try ML model first, fall back to regex rules
     let isHeader = false;
 
-    if (headerClassifier && headerClassifier.trained) {
+    const classifier = getHeaderClassifier();
+
+    if (classifier && classifier.trained) {
       try {
-        isHeader = headerClassifier.predict(line, i, lines.length);
+        isHeader = classifier.predict(line, i, lines.length);
       } catch (error) {
         console.warn("Error using ML header detection:", error.message);
       }

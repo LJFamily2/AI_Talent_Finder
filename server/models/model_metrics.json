@@ -1,0 +1,163 @@
+{
+  "timestamp": "2025-08-02T16:07:02.236Z",
+  "datasetSize": {
+    "total": 36177,
+    "train": 21707,
+    "test": 14470
+  },
+  "testMetrics": {
+    "accuracy": 100,
+    "precision": 100,
+    "recall": 100,
+    "f1Score": 100,
+    "confusionMatrix": {
+      "truePositives": 427,
+      "falsePositives": 0,
+      "trueNegatives": 14043,
+      "falseNegatives": 0
+    },
+    "support": {
+      "positive": 427,
+      "negative": 14043,
+      "total": 14470
+    }
+  },
+  "crossValidation": {
+    "folds": 5,
+    "accuracy": {
+      "mean": 99.9,
+      "stdDev": 0.2
+    },
+    "precision": {
+      "mean": 80,
+      "stdDev": 40
+    },
+    "recall": {
+      "mean": 78.46,
+      "stdDev": 39.34
+    },
+    "f1Score": {
+      "mean": 79.2,
+      "stdDev": 39.63
+    },
+    "individualFolds": [
+      {
+        "accuracy": 100,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "confusionMatrix": {
+          "truePositives": 0,
+          "falsePositives": 0,
+          "trueNegatives": 200,
+          "falseNegatives": 0
+        },
+        "support": {
+          "positive": 0,
+          "negative": 200,
+          "total": 200
+        }
+      },
+      {
+        "accuracy": 99.5,
+        "precision": 100,
+        "recall": 92.31,
+        "f1Score": 96,
+        "confusionMatrix": {
+          "truePositives": 12,
+          "falsePositives": 0,
+          "trueNegatives": 187,
+          "falseNegatives": 1
+        },
+        "support": {
+          "positive": 13,
+          "negative": 187,
+          "total": 200
+        }
+      },
+      {
+        "accuracy": 100,
+        "precision": 100,
+        "recall": 100,
+        "f1Score": 100,
+        "confusionMatrix": {
+          "truePositives": 18,
+          "falsePositives": 0,
+          "trueNegatives": 182,
+          "falseNegatives": 0
+        },
+        "support": {
+          "positive": 18,
+          "negative": 182,
+          "total": 200
+        }
+      },
+      {
+        "accuracy": 100,
+        "precision": 100,
+        "recall": 100,
+        "f1Score": 100,
+        "confusionMatrix": {
+          "truePositives": 21,
+          "falsePositives": 0,
+          "trueNegatives": 179,
+          "falseNegatives": 0
+        },
+        "support": {
+          "positive": 21,
+          "negative": 179,
+          "total": 200
+        }
+      },
+      {
+        "accuracy": 100,
+        "precision": 100,
+        "recall": 100,
+        "f1Score": 100,
+        "confusionMatrix": {
+          "truePositives": 21,
+          "falsePositives": 0,
+          "trueNegatives": 179,
+          "falseNegatives": 0
+        },
+        "support": {
+          "positive": 21,
+          "negative": 179,
+          "total": 200
+        }
+      }
+    ]
+  },
+  "classificationReport": {
+    "summary": {
+      "totalSamples": 14470,
+      "headerSamples": 427,
+      "nonHeaderSamples": 14043
+    },
+    "metrics": {
+      "accuracy": 100,
+      "precision": 100,
+      "recall": 100,
+      "f1Score": 100,
+      "confusionMatrix": {
+        "truePositives": 427,
+        "falsePositives": 0,
+        "trueNegatives": 14043,
+        "falseNegatives": 0
+      },
+      "support": {
+        "positive": 427,
+        "negative": 14043,
+        "total": 14470
+      }
+    },
+    "misclassified": {
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "classDistribution": {
+      "headers": 2.95,
+      "nonHeaders": 97.05
+    }
+  }
+}
