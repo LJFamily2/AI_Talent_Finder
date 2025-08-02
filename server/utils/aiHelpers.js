@@ -579,5 +579,4 @@ Begin your response with the JSON array only.
 module.exports = {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
-  extractHeadersFromText,
 };

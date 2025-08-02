@@ -21,7 +21,7 @@ class SimpleHeaderClassifier {
     };
     this.trained = false;
     this.knownHeaders = [];
-    // this.loadKnownHeaders();
+    this.loadKnownHeaders();
   }
 
   /**
@@ -123,15 +123,34 @@ class SimpleHeaderClassifier {
    */
   extractFeatures(line, lineIndex, totalLines) {
     const trimmedLine = line.trim().toLowerCase();
+
+    // Exact match
     const exactMatch = this.knownHeaders.some(
       (header) => trimmedLine === header.trim().toLowerCase()
     );
-    const containsHeaderWord = this.knownHeaders.some((header) =>
-      trimmedLine.includes(header.trim().toLowerCase())
-    );
-    const hasSurroundingWords =
-      containsHeaderWord && !exactMatch && trimmedLine.split(/\s+/).length > 1;
 
+    // Partial match: line starts with or ends with a known header, and the rest is only punctuation
+    const partialMatch = this.knownHeaders.some((header) => {
+      const headerNorm = header.trim().toLowerCase();
+      if (trimmedLine === headerNorm) return false; // already handled by exactMatch
+
+      // Check if line starts with header and only has punctuation after
+      if (trimmedLine.startsWith(headerNorm)) {
+        const after = trimmedLine.slice(headerNorm.length).trim();
+        return after === "" || /^[\s:.,;()-]+$/.test(after);
+      }
+      // Check if line ends with header and only has punctuation before
+      if (trimmedLine.endsWith(headerNorm)) {
+        const before = trimmedLine
+          .slice(0, trimmedLine.length - headerNorm.length)
+          .trim();
+        return before === "" || /^[\s:.,;()-]+$/.test(before);
+      }
+      return false;
+    });
+
+    const matchesPublicationPattern = exactMatch || partialMatch;
+    
     return {
       isAllUpperCase: line === line.toUpperCase(),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
@@ -139,8 +158,7 @@ class SimpleHeaderClassifier {
       positionRatio: lineIndex / totalLines,
       wordCount: line.split(/\s+/).filter(Boolean).length,
       hasColon: line.includes(":"),
-      matchesPublicationPattern: exactMatch,
-      hasSurroundingWords,
+      matchesPublicationPattern,
       containNumbers: /\d/.test(line),
     };
   }
@@ -156,17 +174,13 @@ class SimpleHeaderClassifier {
     const features = this.extractFeatures(line, lineIndex, totalLines);
     let score = 0;
 
-    if (features.matchesPublicationPattern) {
-      score += 1.0; // Give boost only for exact header match
-    }
-
     Object.keys(this.rules).forEach((feature) => {
       if (this.evaluateFeature(feature, features)) {
         score += this.rules[feature].weight;
       }
     });
 
-    return score > 2.3;
+    return score > 2;
   }
 
   /**
