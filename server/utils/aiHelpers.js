@@ -68,7 +68,7 @@ function getHeaderClassifier() {
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 4000;
+const MAX_CHUNK_SIZE = 8000;
 
 /**
  * Similarity threshold for duplicate publication detection
@@ -191,7 +191,6 @@ function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
  * @returns {Promise<Array<Object>>} Array of publication objects with title, DOI, and full text
  */
 const extractPublicationsFromCV = async (model, cvText) => {
-  console.log(`Extracting publications from CV text (${cvText.length} chars)`);
   if (cvText.length <= MAX_CHUNK_SIZE) {
     return extractPublicationsFromChunk(model, cvText);
   }
@@ -228,17 +227,14 @@ const extractPublicationsFromCV = async (model, cvText) => {
     });
   }
 
-  // console.log(`Found ${publicationSections.length} publication sections`);
-  // publicationSections.forEach((section, index) => {
-  //   console.log(
-  //     `Section ${index + 1}: ${section.header} (${
-  //       section.content.length
-  //     } chars)`
-  //   );
-  // });
-
-  // Process each section in chunks
+  // Step 2: Batch sections together to optimize AI requests
   const allPublications = [];
+  const batches = [];
+  let currentBatch = {
+    content: "",
+    sections: [],
+    size: 0,
+  };
 
   for (
     let sectionIndex = 0;
@@ -248,86 +244,49 @@ const extractPublicationsFromCV = async (model, cvText) => {
     const section = publicationSections[sectionIndex];
 
     if (section.content.length === 0) {
-      continue; // Skip to the next section
+      continue; // Skip empty sections
     }
 
-    // Analyze content for potential publication entries
-    const contentLines = section.content.split("\n");
+    // Add section header as context
+    const sectionWithHeader = `\n=== ${section.header} ===\n${section.content}`;
+    const sectionSize = sectionWithHeader.length;
 
-    // Split section into chunks if needed
-    if (section.content.length > MAX_CHUNK_SIZE) {
-      const chunks = [];
-      let currentChunk = "";
-      let currentSize = 0;
+    // If adding this section would exceed MAX_CHUNK_SIZE and we already have content
+    if (
+      currentBatch.size + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.content.length > 0
+    ) {
+      // Process the current batch
+      batches.push(currentBatch);
 
-      // Split at logical boundaries (lines)
-      for (const line of contentLines) {
-        if (
-          currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
-          currentChunk.length > 0
-        ) {
-          chunks.push(currentChunk.trim());
-          currentChunk = "";
-          currentSize = 0;
-        }
-        currentChunk += line + "\n";
-        currentSize += line.length + 1;
-      }
-      if (currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-      }
-
-      const chunkResults = await Promise.all(
-        chunks.map(async (chunk, idx) => {
-          // console.log(
-          //   `\n[extractPublicationsFromChunk] Input chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}):\n`,
-          //   chunk
-          // );
-          const result = await extractPublicationsFromChunk(model, chunk);
-          // console.log(
-          //   `[extractPublicationsFromChunk] Output for chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}):\n`,
-          //   result
-          // );
-          // console.log(
-          //   `[extractPublicationsFromChunk] Total publications in chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}): ${result.length}`
-          // );
-          return result;
-        })
-      );
-
-      chunkResults.forEach((chunkPubs) => {
-        allPublications.push(...chunkPubs);
-      });
+      // Start a new batch with the current section
+      currentBatch = {
+        content: sectionWithHeader,
+        sections: [section.header],
+        size: sectionSize,
+      };
     } else {
-      // console.log(
-      //   `\n[extractPublicationsFromChunk] Input section (section ${
-      //     sectionIndex + 1
-      //   }):\n`,
-      //   section.content
-      // );
-      const sectionPubs = await extractPublicationsFromChunk(
-        model,
-        section.content
-      );
-      // console.log(
-      //   `[extractPublicationsFromChunk] Output for section (section ${
-      //     sectionIndex + 1
-      //   }):\n`,
-      //   sectionPubs
-      // );
-      // console.log(
-      //   `[extractPublicationsFromChunk] Total publications in section ${
-      //     sectionIndex + 1
-      //   }: ${sectionPubs.length}`
-      // );
-      allPublications.push(...sectionPubs);
+      // Add to current batch
+      currentBatch.content += sectionWithHeader;
+      currentBatch.sections.push(section.header);
+      currentBatch.size += sectionSize;
     }
+  }
+
+  // Don't forget the last batch
+  if (currentBatch.content.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  // Step 3: Process each batch
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+
+    const batchPublications = await extractPublicationsFromChunk(
+      model,
+      batch.content
+    );
+    allPublications.push(...batchPublications);
   }
 
   // Remove duplicates (based on title similarity) and validate publications
@@ -436,8 +395,6 @@ function extractHeadersFromText(cvText) {
     }
   }
 
-  console.log(headers);
-
   return headers;
 }
 
@@ -459,12 +416,7 @@ function extractHeadersFromText(cvText) {
  * @private
  */
 
-let extractPublicationsFromChunkCallCount = 0;
 async function extractPublicationsFromChunk(model, chunkText) {
-  extractPublicationsFromChunkCallCount++;
-  // console.log(
-  //   `[extractPublicationsFromChunk] Call count: ${extractPublicationsFromChunkCallCount}`
-  // );
   // Create a more specific prompt with strong anti-hallucination instructions
   let prompt = `${chunkText}
 
@@ -516,7 +468,6 @@ Begin your response with the JSON array only.
   try {
     // Check if chunkText is too short to process
     if (chunkText.length < 20) {
-      console.log("Chunk text is too short for processing.");
       return [];
     }
     const result = await model.generateContent(prompt);
