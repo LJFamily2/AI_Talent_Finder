@@ -58,6 +58,7 @@ exports.searchFilters = async (req, res) => {
 
   // Construct Mongo query
   const query = {};
+  
   if (country)
     query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
 
@@ -68,28 +69,31 @@ exports.searchFilters = async (req, res) => {
       { "research_areas.fields.display_name": re }
     ];
   }
+
   if (hindex)
     query["research_metrics.h_index"] = { [opsMap[op]||"$eq"]: parseInt(hindex) };
+
   if (i10index)
     query["research_metrics.i10_index"] = { [opsMap[op]||"$eq"]: parseInt(i10index) };
+
   if (identifier)
     query[`identifiers.${identifier}`] = { $exists:true, $ne:"" };
-  if (affiliation)
-    query["basic_info.affiliations.institution.display_name"] = new RegExp(affiliation, "i");
+
+  if (affiliation || year_from || year_to) {const affMatch = {};
+  if (affiliation) {affMatch["institution.display_name"] = new RegExp(affiliation, "i");}
+  const from = parseInt(year_from);
+  const to = parseInt(year_to);
+  if (!isNaN(from) || !isNaN(to)) {
+    const yearsMatch = {};
+    if (!isNaN(from)) yearsMatch.$gte = from;
+    if (!isNaN(to))   yearsMatch.$lte = to;
+    affMatch["years"] = { $elemMatch: yearsMatch };
+  }
+  query["basic_info.affiliations"] = { $elemMatch: affMatch };
+}
+
   if (current_affiliation)
     query["current_affiliation.display_name"] = new RegExp(current_affiliation, "i");
-  if (year_from || year_to) {
-    const from = parseInt(year_from);
-    const to = parseInt(year_to);
-    const cr = new Date().getFullYear();
-    let minY = isNaN(from)?null:from;
-    let maxY = isNaN(to)?null:to;
-    if (minY!=null && maxY!=null && minY>maxY) minY=null;
-    query["basic_info.affiliations.years"] = { $elemMatch: {
-      ...(minY!=null?{$gte:minY}:{}),
-      ...(maxY!=null?{$lte:maxY}:{}),
-    }};
-  }
 
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
