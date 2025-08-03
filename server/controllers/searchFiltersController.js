@@ -22,223 +22,10 @@ const simplifyAuthors = docs =>
     basic_info: { name: a.basic_info?.name || "(no name)" }
   }));
 
-//==================================================================
-// [GET] /api/search-filters/country
-// Filter by country using institution.country_code
-//==================================================================
-exports.searchByCountry = async (req, res) => {
-  const { country, page = 1, limit = 20 } = req.query;
-  if (!country) return res.status(400).json({ error: "Country code is required" });
 
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:country=${country}:page=${page}:limit=${limit}`);
-    const code = country.toUpperCase();
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "basic_info.affiliations.institution.country_code": code };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByCountry:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
 
 //==================================================================
-// [GET] /api/search-filters/topic
-// Filter by topic or field match (case-insensitive partial match)
-//==================================================================
-exports.searchByTopic = async (req, res) => {
-  const { topic, page = 1, limit = 20 } = req.query;
-  if (!topic) return res.status(400).json({ error: "Topic is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:topic=${topic}:page=${page}:limit=${limit}`);
-    const regex = new RegExp(topic, "i");
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { $or: [
-      { "research_areas.topics.display_name": regex },
-      { "research_areas.fields.display_name": regex }
-    ]};
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByTopic:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/hindex
-// Filter by h-index with operator: eq | gte | lte
-//==================================================================
-exports.searchByHIndex = async (req, res) => {
-  const { hindex, op = "eq", page = 1, limit = 20 } = req.query;
-  if (!hindex) return res.status(400).json({ error: "h-index value is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:hindex=${hindex}:op=${op}:page=${page}:limit=${limit}`);
-    const mongoOp = opsMap[op] || "$eq";
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "research_metrics.h_index": { [mongoOp]: parseInt(hindex) } };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByHIndex:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/i10index
-// Filter by i10-index with operator: eq | gte | lte
-//==================================================================
-exports.searchByI10Index = async (req, res) => {
-  const { i10index, op = "eq", page = 1, limit = 20 } = req.query;
-  if (!i10index) return res.status(400).json({ error: "i10-index value is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:i10index=${i10index}:op=${op}:page=${page}:limit=${limit}`);
-    const mongoOp = opsMap[op] || "$eq";
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "research_metrics.i10_index": { [mongoOp]: parseInt(i10index) } };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByI10Index:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/identifier
-// Filter by presence of a specific identifier (e.g. ORCID, Scopus)
-//==================================================================
-exports.searchByIdentifier = async (req, res) => {
-  const { identifier, page = 1, limit = 20 } = req.query;
-  const allowed = ["openalex"];
-  if (!identifier || !allowed.includes(identifier)) {
-    return res.status(400).json({ error: `identifier must be: ${allowed.join(", ")}` });
-  }
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:identifier=${identifier}:page=${page}:limit=${limit}`);
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const field = `identifiers.${identifier}`;
-    const query = { [field]: { $exists: true, $ne: "" } };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByIdentifier:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/affiliation
-// Filter by past affiliation (institution.display_name)
-//==================================================================
-exports.searchByAffiliation = async (req, res) => {
-  const { affiliation, page = 1, limit = 20 } = req.query;
-  if (!affiliation) return res.status(400).json({ error: "Affiliation is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:affiliation=${affiliation}:page=${page}:limit=${limit}`);
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "basic_info.affiliations.institution.display_name": new RegExp(affiliation, "i") };
-    const total = await ResearcherProfile.countDocuments(query);
-    
-    const raw = await ResearcherProfile.find(query)
-      .sort({"basic_info.affiliations.years": -1 }) // Sắp xếp theo tên và năm mới nhất  "basic_info.name": 1, 
-      .skip(skip)
-      .limit(+limit);
-    
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByAffiliation:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/year-range
-// Filter by affiliation years between year_from and year_to
-//==================================================================
-exports.searchByYearRange = async (req, res) => {
-  const { year_from, year_to, page = 1, limit = 20 } = req.query;
-  if (!year_from && !year_to)
-    return res.status(400).json({ error: "At least one of year_from or year_to is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:year_from=${year_from || ''}:year_to=${year_to || ''}:page=${page}:limit=${limit}`);
-    
-    const from = parseInt(year_from);
-    const to = parseInt(year_to);
-    const currentYear = new Date().getFullYear();
-
-    let minYear = isNaN(from) ? null : from;
-    let maxYear = isNaN(to) ? null : to;
-
-    // If minYear larger than maxYear, return error
-    if (minYear !== null && maxYear !== null && minYear > maxYear) {
-      return res.status(400).json({ error: "Invalid year range: year_from cannot be greater than year_to." });
-    }
-
-    const rangeFilter = {};
-    if (minYear !== null) rangeFilter.$gte = minYear;
-    if (maxYear !== null) rangeFilter.$lte = maxYear;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "basic_info.affiliations.years": { $elemMatch: rangeFilter } };
-
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({"basic_info.affiliations.years": -1 }) // Sort by name and latest affiliation year  "basic_info.name": 1, 
-      .skip(skip)
-      .limit(+limit);
-    
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByYearRange:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/multi
+// [GET] /api/search-filters/search
 // Apply combined filters: country, topic, metrics, identifiers,
 // affiliation, current affiliation, year range
 //==================================================================
@@ -246,7 +33,7 @@ exports.searchFilters = async (req, res) => {
   const {
     country, topic, hindex, i10index, identifier,
     affiliation, current_affiliation, year_from, year_to,
-    op = "eq", page = 1, limit = 25
+    op = "eq", page = 1, limit = 20
   } = req.query;
 
   // Build Redis key & log
@@ -328,7 +115,7 @@ exports.searchOpenalexFilters = async (req, res) => {
   const {
     country, topic, hindex, i10index, identifier,
     affiliation, current_affiliation, year_from, year_to,
-    op = "eq", page = 1, limit = 25
+    op = "eq", page = 1, limit = 20
   } = req.query;
   try {
     const redisKey = buildFilterKey("openalexFilters", {

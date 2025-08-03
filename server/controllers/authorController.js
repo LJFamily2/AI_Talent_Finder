@@ -15,7 +15,7 @@ const OPENALEX_BASE = "https://api.openalex.org";
 //==================================================================
 async function searchByCandidates(req, res, next) {
   try {
-    const { id, name, page = 1, limit = 25 } = req.query;
+    const { id, name, page = 1, limit = 20 } = req.query;
 
     if (id) {
       const profileDoc = await ResearcherProfile.findById(id);
@@ -66,7 +66,7 @@ async function searchByCandidates(req, res, next) {
 //==================================================================
 async function searchByFetch(req, res, next) {
   try {
-    const { id, name, page = 1, limit = 25 } = req.query;
+    const { id, name, page = 1, limit = 20 } = req.query;
 
     if (id) {
       console.log(`📂 [OPENALEX INFO] researcherProfiles:${id}`);

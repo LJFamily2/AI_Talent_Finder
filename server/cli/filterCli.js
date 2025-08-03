@@ -10,7 +10,7 @@ const axios    = require('axios');
 const { showProfile, renderFilterHeader } = require('./renderCli');
 
 const API_BASE = 'http://localhost:5000/api';
-const LIMIT    = 25;
+const LIMIT    = 20;
 
 //-------------------------------
 // API Helpers

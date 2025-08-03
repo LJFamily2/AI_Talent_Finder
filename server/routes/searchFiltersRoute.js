@@ -14,108 +14,6 @@ const MEDIUM = 3600;
 const LONG = 3600; // 1 hour TTL for cached search results
 
 //==================================================================
-// 1) Search by Topic
-//==================================================================
-router.get(
-  '/by-topic',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `topic=${(req.query.topic || '').toLowerCase()}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByTopic
-);
-
-//==================================================================
-// 2) Search by Country Code (e.g., US, VN, GB)
-//==================================================================
-router.get(
-  '/by-country',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `country=${(req.query.country || '').toUpperCase()}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByCountry
-);
-
-//==================================================================
-// 3) Search by h-index (with operator: eq, gte, lte)
-//==================================================================
-router.get(
-  '/by-hindex',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `hindex_op=${req.query.op || 'eq'}`,
-    `hindex_val=${req.query.hindex || ''}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByHIndex
-);
-
-//==================================================================
-// 4) Search by i10-index (with operator: eq, gte, lte)
-//==================================================================
-router.get(
-  '/by-i10index',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `i10_op=${req.query.op || 'eq'}`,
-    `i10_val=${req.query.i10index || ''}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByI10Index
-);
-
-//==================================================================
-// 5) Search by External Identifier (OpenAlex)
-//==================================================================
-router.get(
-  '/with-identifier',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `identifier=${req.query.identifier || ''}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByIdentifier
-);
-
-//==================================================================
-// 6) Search by Affiliation
-//==================================================================
-router.get(
-  '/by-affiliation',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    `affiliation=${(req.query.affiliation || '').toLowerCase()}`,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ]),
-  ctrl.searchByAffiliation
-);
-
-
-//==================================================================
-// 7) Search by Year Range
-//==================================================================
-router.get(
-  '/by-year-range',
-  cacheRedisInsight(SHORT, req => [
-    'searchFilters',
-    req.query.year_from ? `year_from=${req.query.year_from}` : null,
-    req.query.year_to ? `year_to=${req.query.year_to}` : null,
-    `page=${req.query.page || 1}`,
-    `limit=${req.query.limit || 25}`
-  ].filter(Boolean)),
-  ctrl.searchByYearRange
-);
-
-//==================================================================
 // 8) Multi-filter search in MongoDB
 // Combines all filters: topic, country, hindex, i10index, identifier,
 // affiliation, year_from, year_to
@@ -141,7 +39,7 @@ router.get(
         key.push(`${k}=${val}`);
       }
     });
-    key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`);
+    key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
     return key;
   }),
   ctrl.searchFilters
@@ -172,7 +70,7 @@ router.get(
         key.push(`${k}=${val}`);
       }
     });
-    key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`);
+    key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
     return key;
   }),
   ctrl.searchOpenalexFilters
