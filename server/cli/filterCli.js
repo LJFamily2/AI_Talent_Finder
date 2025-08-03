@@ -50,7 +50,7 @@ async function fetchOpenProfile(id) {
 //==================================================================
 async function runFilterFlow(done) {
   // Initialize filter state
-  let filters = { country:'', topic:'', hindex:'', hOp:'eq', i10index:'', i10Op:'eq', identifier:'', affiliation:'', current_affiliation:'', year_from:'', year_to:'', page:1 };
+  let filters = { country:'', topic:'', hindex:'', hOp:'eq', i10index:'', i10Op:'eq', identifier:'', affiliation:'', year_from:'', year_to:'', page:1 };
   let candidates = [];
   let total = 0;
 
@@ -64,9 +64,8 @@ async function runFilterFlow(done) {
       { type:'list',  name:'hOp',    message:'H-index op:', choices:['eq','gte','lte'], default:filters.hOp },
       { type:'input', name:'i10index', message:'i10-index:', default:filters.i10index },
       { type:'list',  name:'i10Op', message:'i10-index op:', choices:['eq','gte','lte'], default:filters.i10Op },
-      { type:'list',  name:'identifier', message:'Identifier type:', choices:['','orcid','scopus','openalex','google_scholar_id'], default:filters.identifier },
-      { type:'input', name:'affiliation', message:'Affiliation (past):', default:filters.affiliation },
-      { type:'input', name:'current_affiliation', message:'Current affiliation:', default:filters.current_affiliation },
+      { type:'list',  name:'identifier', message:'Identifier type:', choices:['','openalex'], default:filters.identifier },
+      { type:'input', name:'affiliation', message:'Affiliation:', default:filters.affiliation },
       { type:'input', name:'year_from', message:'Year from:', default:filters.year_from },
       { type:'input', name:'year_to', message:'Year to:', default:filters.year_to }
     ]);

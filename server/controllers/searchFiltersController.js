@@ -23,101 +23,6 @@ const simplifyAuthors = docs =>
   }));
 
 //==================================================================
-// [GET] /api/search-filters/affiliation
-// Filter by past affiliation (institution.display_name)
-//==================================================================
-exports.searchByAffiliation = async (req, res) => {
-  const { affiliation, page = 1, limit = 20 } = req.query;
-  if (!affiliation) return res.status(400).json({ error: "Affiliation is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:affiliation=${affiliation}:page=${page}:limit=${limit}`);
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "basic_info.affiliations.institution.display_name": new RegExp(affiliation, "i") };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByAffiliation:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/current-affiliation
-// Filter by current affiliation (current_affiliation.display_name)
-//==================================================================
-exports.searchByCurrentAffiliation = async (req, res) => {
-  const { current_affiliation, page = 1, limit = 20 } = req.query;
-  if (!current_affiliation)
-    return res.status(400).json({ error: "Current affiliation is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:current_affiliation=${current_affiliation}:page=${page}:limit=${limit}`);
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "current_affiliation.display_name": new RegExp(current_affiliation, "i") };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByCurrentAffiliation:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
-// [GET] /api/search-filters/year-range
-// Filter by affiliation years between year_from and year_to
-//==================================================================
-exports.searchByYearRange = async (req, res) => {
-  const { year_from, year_to, page = 1, limit = 20 } = req.query;
-  if (!year_from && !year_to)
-    return res.status(400).json({ error: "At least one of year_from or year_to is required" });
-
-  try {
-    console.log(`🔎 [FILTERS DB] searchFilters:year_from=${year_from || ''}:year_to=${year_to || ''}:page=${page}:limit=${limit}`);
-    const from = parseInt(year_from);
-    const to = parseInt(year_to);
-    const currentYear = new Date().getFullYear();
-
-    let minYear = isNaN(from) ? null : from;
-    let maxYear = isNaN(to) ? null : to;
-    if (minYear !== null && maxYear !== null && minYear > maxYear) {
-      console.warn(`⚠️ Invalid year range: year_from (${minYear}) > year_to (${maxYear})`);
-      minYear = null;
-    }
-
-    const rangeFilter = {};
-    if (minYear !== null) rangeFilter.$gte = minYear;
-    if (maxYear !== null) rangeFilter.$lte = maxYear;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const query = { "basic_info.affiliations.years": { $elemMatch: rangeFilter } };
-    const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
-
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
-  } catch (err) {
-    console.error("Error in searchByYearRange:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-//==================================================================
 // [GET] /api/search-filters/country
 // Filter by country using institution.country_code
 //==================================================================
@@ -234,9 +139,9 @@ exports.searchByI10Index = async (req, res) => {
 //==================================================================
 exports.searchByIdentifier = async (req, res) => {
   const { identifier, page = 1, limit = 20 } = req.query;
-  const allowed = ["orcid", "scopus", "openalex", "google_scholar_id"];
+  const allowed = ["openalex"];
   if (!identifier || !allowed.includes(identifier)) {
-    return res.status(400).json({ error: `identifier must be one of: ${allowed.join(", ")}` });
+    return res.status(400).json({ error: `identifier must be: ${allowed.join(", ")}` });
   }
 
   try {
@@ -254,6 +159,80 @@ exports.searchByIdentifier = async (req, res) => {
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
   } catch (err) {
     console.error("Error in searchByIdentifier:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+//==================================================================
+// [GET] /api/search-filters/affiliation
+// Filter by past affiliation (institution.display_name)
+//==================================================================
+exports.searchByAffiliation = async (req, res) => {
+  const { affiliation, page = 1, limit = 20 } = req.query;
+  if (!affiliation) return res.status(400).json({ error: "Affiliation is required" });
+
+  try {
+    console.log(`🔎 [FILTERS DB] searchFilters:affiliation=${affiliation}:page=${page}:limit=${limit}`);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = { "basic_info.affiliations.institution.display_name": new RegExp(affiliation, "i") };
+    const total = await ResearcherProfile.countDocuments(query);
+    
+    const raw = await ResearcherProfile.find(query)
+      .sort({"basic_info.affiliations.years": -1 }) // Sắp xếp theo tên và năm mới nhất  "basic_info.name": 1, 
+      .skip(skip)
+      .limit(+limit);
+    
+    const authors = simplifyAuthors(raw);
+
+    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+  } catch (err) {
+    console.error("Error in searchByAffiliation:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+//==================================================================
+// [GET] /api/search-filters/year-range
+// Filter by affiliation years between year_from and year_to
+//==================================================================
+exports.searchByYearRange = async (req, res) => {
+  const { year_from, year_to, page = 1, limit = 20 } = req.query;
+  if (!year_from && !year_to)
+    return res.status(400).json({ error: "At least one of year_from or year_to is required" });
+
+  try {
+    console.log(`🔎 [FILTERS DB] searchFilters:year_from=${year_from || ''}:year_to=${year_to || ''}:page=${page}:limit=${limit}`);
+    
+    const from = parseInt(year_from);
+    const to = parseInt(year_to);
+    const currentYear = new Date().getFullYear();
+
+    let minYear = isNaN(from) ? null : from;
+    let maxYear = isNaN(to) ? null : to;
+
+    // If minYear larger than maxYear, return error
+    if (minYear !== null && maxYear !== null && minYear > maxYear) {
+      return res.status(400).json({ error: "Invalid year range: year_from cannot be greater than year_to." });
+    }
+
+    const rangeFilter = {};
+    if (minYear !== null) rangeFilter.$gte = minYear;
+    if (maxYear !== null) rangeFilter.$lte = maxYear;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = { "basic_info.affiliations.years": { $elemMatch: rangeFilter } };
+
+    const total = await ResearcherProfile.countDocuments(query);
+    const raw = await ResearcherProfile.find(query)
+      .sort({"basic_info.affiliations.years": -1 }) // Sort by name and latest affiliation year  "basic_info.name": 1, 
+      .skip(skip)
+      .limit(+limit);
+    
+    const authors = simplifyAuthors(raw);
+
+    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+  } catch (err) {
+    console.error("Error in searchByYearRange:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
