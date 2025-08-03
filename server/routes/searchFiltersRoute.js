@@ -121,7 +121,7 @@ router.get(
 // affiliation, year_from, year_to
 //==================================================================
 router.get(
-  '/multi',
+  '/search',
   cacheRedisInsight(SHORT, req => {
     const key = ['searchFilters'];
     const filterParams = [
@@ -144,7 +144,7 @@ router.get(
     key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`);
     return key;
   }),
-  ctrl.searchByMultipleFilters
+  ctrl.searchFilters
 );
 
 //==================================================================

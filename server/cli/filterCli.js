@@ -1,6 +1,6 @@
 //==================================================================
 // Filter CLI Handler
-// Provides interactive CLI for multi-filter searching,
+// Provides interactive CLI for search-filters searching,
 // viewing, deleting, Redis-flushing profiles, and OpenAlex fallback
 // using Inquirer with grouped actions for view and delete
 //==================================================================
@@ -16,7 +16,7 @@ const LIMIT    = 25;
 // API Helpers
 //-------------------------------
 async function fetchDbCandidates(filters) {
-  const res = await axios.get(`${API_BASE}/search-filters/multi`, { params: filters });
+  const res = await axios.get(`${API_BASE}/search-filters/search`, { params: filters });
   return res.data; // { total, authors: [] }
 }
 

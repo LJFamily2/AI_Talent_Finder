@@ -1,6 +1,6 @@
 //==================================================================
 // CLI Main Entry Point
-// Provides a simple terminal interface to run author search or multi-filter search
+// Provides a simple terminal interface to run author search or search-filters search
 //==================================================================
 
 const inquirer = require('inquirer');
@@ -30,7 +30,7 @@ async function mainMenu() {
         await runAuthorFlow(mainMenu);
         break;
       case 'filter':
-        // Run multi-filter search flow, then return here
+        // Run search-filter search flow, then return here
         await runFilterFlow(mainMenu);
         break;
       case 'quit':

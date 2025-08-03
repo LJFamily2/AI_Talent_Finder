@@ -242,7 +242,7 @@ exports.searchByYearRange = async (req, res) => {
 // Apply combined filters: country, topic, metrics, identifiers,
 // affiliation, current affiliation, year range
 //==================================================================
-exports.searchByMultipleFilters = async (req, res) => {
+exports.searchFilters = async (req, res) => {
   const {
     country, topic, hindex, i10index, identifier,
     affiliation, current_affiliation, year_from, year_to,
@@ -315,7 +315,7 @@ exports.searchByMultipleFilters = async (req, res) => {
 
     return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
   } catch (err) {
-    console.error("Error in searchByMultipleFilters:", err);
+    console.error("Error in searchFilters:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
