@@ -17,7 +17,8 @@ const AffiliationSchema = new mongoose.Schema({
 
 // External Identifier Schema (OpenAlex)
 const IdentifierSchema = new mongoose.Schema({
-  openalex:          { type: String, default: "" }
+  openalex:          { type: String, default: "" },
+  orcid:            { type: String, default: "" }
 }, { _id: false });
 
 // Research Metric Schema (H-index, total citations...)
