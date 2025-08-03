@@ -25,7 +25,7 @@ const {
 //==================================================================
 router.get(
   "/search-author",
-  cacheRedisInsight(3600, (req) => {
+  cacheRedisInsight(900, (req) => {
     const { id, name, page, limit } = req.query;
     if (id) return ["researcherProfiles", id];
     const nameKey = (name || "all").toLowerCase();
@@ -40,7 +40,7 @@ router.get(
 //==================================================================
 router.get(
   "/fetch-author",
-  cacheRedisInsight(3600, (req) => {
+  cacheRedisInsight(900, (req) => {
     if (req.query.id) return ["researcherProfiles", req.query.id];
     const nameKey = (req.query.name || "unknown").toLowerCase();
     return ["openalexLists", nameKey, `page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`];

@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Import route files
 const authRoutes = require("./auth");
-const authorRoutes = require("./authorRoutes");
+const authorRoutes = require("./authorRoute");
 const cvVerificationRoutes = require("./cvVerificationRoute");
 const exportRoutes = require("./exportRoute");
 const researcherRoutes = require("./researcherRoute");

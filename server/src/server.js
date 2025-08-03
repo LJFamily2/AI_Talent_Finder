@@ -15,8 +15,8 @@ const { createClient } = require("redis");
 //==================================================================
 const routes                = require("../routes");
 const cvVerificationRoutes = require("../routes/cvVerificationRoute");
-const authorRoutes         = require("../routes/authorRoutes");
-const searchFiltersRoutes  = require("../routes/searchFilters");
+const authorRoutes         = require("../routes/authorRoute");
+const searchFiltersRoutes  = require("../routes/searchFiltersRoute");
 
 //==================================================================
 // Load environment variables from .env
