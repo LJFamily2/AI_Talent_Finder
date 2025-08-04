@@ -403,8 +403,6 @@ function extractHeadersFromText(cvText) {
     lines
   );
 
-  console.log(filteredHeaders);
-
   return filteredHeaders;
 }
 
