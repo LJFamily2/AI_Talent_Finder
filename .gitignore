@@ -31,15 +31,8 @@
 .DS_Store
 Thumbs.db
 
+**/ml/header_training_data.json
 
-# ML training data
-# Ignore everything in the ml folder...
-**/ml/*
-
-# ...except these files
-!**/ml/simpleHeaderClassifier.js
-!**/ml/detected_headers.json
-!**/ml/header_classifier.json
 
 **data/
 
