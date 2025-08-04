@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { FaBookmark, FaRegBookmark, FaDownload, FaUserSlash } from 'react-icons/fa';
+import { FaThLarge, FaBars, FaBookmark, FaDownload, FaUserSlash, FaRegBookmark } from 'react-icons/fa';
+import { FaSortUp, FaSortDown } from 'react-icons/fa'; // Add these icons for sorting
 import letterH from '../assets/letter-h.png';
 import scholarHat from '../assets/scholar-hat.png';
-import infoIcon from '../assets/info.png';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Snackbar, Alert } from '@mui/material';
 
 export default function SavedResearchers() {
     const initialSavedList = [
-        { id: '1', name: 'Jason Carroll', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '2', name: 'James Kim', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '3', name: 'Medison Pham', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '4', name: 'Linh Cao', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '5', name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '6', name: 'Kim Cheoul', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '7', name: 'Minh Tran', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { id: '8', name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 }];
+        { id: '1', name: 'Jason Carroll', institution: 'RMIT University', hIndex: 10, i10Index: 8, field: 'Aviation' },
+        { id: '2', name: 'James Kim', institution: 'RMIT University', hIndex: 12, i10Index: 9, field: 'Marketing' },
+        { id: '3', name: 'Medison Pham', institution: 'RMIT University', hIndex: 25, i10Index: 10, field: 'Aviation' },
+        { id: '4', name: 'Linh Cao', institution: 'RMIT University', hIndex: 6, i10Index: 5, field: 'Aviation' },
+        { id: '5', name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 30, i10Index: 34, field: 'Aviation' },
+        { id: '6', name: 'Kim Cheoul', institution: 'RMIT University', hIndex: 19, i10Index: 66, field: 'Aviation' },
+        { id: '7', name: 'Minh Tran', institution: 'RMIT University', hIndex: 12, i10Index: 42, field: 'Aviation' },
+        { id: '8', name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 17, field: 'Aviation' }];
 
     const [savedResearchers, setSavedResearchers] = useState(initialSavedList);
     const [showModal, setShowModal] = useState(false);
@@ -25,11 +25,15 @@ export default function SavedResearchers() {
     const [selectMode, setSelectMode] = useState(false);
     const [selectedResearchers, setSelectedResearchers] = useState([]);
 
+    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+
     const [toast, setToast] = useState({
         open: false,
         message: '',
         severity: 'success',
     });
+
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     function showToast(message, severity = 'success') {
         setToast({ open: true, message, severity });
@@ -61,13 +65,64 @@ export default function SavedResearchers() {
         );
     };
 
+    // Sorting logic
+    const sortedResearchers = React.useMemo(() => {
+        let sortable = [...savedResearchers];
+        if (sortConfig.key) {
+            sortable.sort((a, b) => {
+                if (sortConfig.key === 'name' || sortConfig.key === 'institution' || sortConfig.key === 'field') {
+                    if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+                    if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+                    return 0;
+                } else {
+                    // hIndex or i10Index
+                    return sortConfig.direction === 'asc'
+                        ? a[sortConfig.key] - b[sortConfig.key]
+                        : b[sortConfig.key] - a[sortConfig.key];
+                }
+            });
+        }
+        return sortable;
+    }, [savedResearchers, sortConfig]);
+
+    // Handler for sorting
+    const handleSort = (key) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
     return (
         <div className="min-h-screen flex flex-col">
             <Header />
             <div className='w-full flex-grow mx-auto py-10 bg-gray-100'>
                 <div className='w-4/5 mx-auto'>
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold">Saved Researchers</h2>
+                        <h2 className="text-2xl font-bold flex items-center gap-3">
+                            Saved Researchers
+                            <div className="flex rounded-lg overflow-hidden border border-blue-200 ml-2">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`px-3 py-2 flex items-center justify-center transition
+                                        ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}
+                                        border-r border-blue-200`}
+                                    style={{ borderTopLeftRadius: '0.5rem', borderBottomLeftRadius: '0.5rem' }}
+                                    title="Grid view"
+                                >
+                                    <FaThLarge className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-3 py-2 flex items-center justify-center transition
+                                        ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                                    style={{ borderTopRightRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}
+                                    title="List view"
+                                >
+                                    <FaBars className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </h2>
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={toggleSelectMode}
@@ -96,34 +151,38 @@ export default function SavedResearchers() {
                             <FaUserSlash className="text-5xl text-gray-300" />
                             <p className="text-lg">No Saved Researchers</p>
                         </div>
-                    ) : (
+                    ) : viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {savedResearchers.map((person, index) => (
                                 <div
                                     key={index}
-                                    className='relative flex flex-col justify-between border border-[#D9D9D9] bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all'
+                                    className={`relative flex flex-col justify-between border ${selectedResearchers.includes(person.id) ? 'border-blue-500' : 'border-[#D9D9D9]'} bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+                                    onClick={() => selectMode && toggleSelectResearcher(person.id)}
                                 >
 
+
                                     <button
-                                        onClick={() => confirmUnsave(person)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            confirmUnsave(person);
+                                        }}
                                         className='absolute top-0 right-5'
                                     >
                                         <FaBookmark className='text-yellow-400 text-2xl' />
                                     </button>
 
+
                                     <div>
                                         <div className="mb-2">
                                             <div className="flex items-center gap-2">
                                                 {selectMode && (
-                                                    <div
-                                                        className="w-5 h-5 rounded-full border-2 border-gray-400 bg-white flex items-center justify-center cursor-pointer"
-                                                        onClick={() => toggleSelectResearcher(person.id)}
-                                                    >
+                                                    <div className="w-5 h-5 rounded-full border-2 border-gray-400 bg-white flex items-center justify-center pointer-events-none">
                                                         {selectedResearchers.includes(person.id) && (
                                                             <div className="w-3 h-3 bg-blue-500 rounded-full" />
                                                         )}
                                                     </div>
                                                 )}
+
                                                 <p className="font-bold text-md">{person.name}</p>
                                             </div>
                                             <p className="text-[#6A6A6A] text-sm">{person.institution}</p>
@@ -132,10 +191,10 @@ export default function SavedResearchers() {
 
 
                                         <div className='mb-2'>
-                                            <div className='text-xs text-[#6A6A6A] flex items-center gap-1'>
+                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-1'>
                                                 <img src={letterH} alt='H' className='w-3 h-3' /> h-index: {person.hIndex}
                                             </div>
-                                            <div className='text-xs text-[#6A6A6A] flex items-center gap-1'>
+                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-1'>
                                                 <img src={scholarHat} alt='Scholar' className='w-3 h-3' /> i10-index: {person.i10Index}
                                             </div>
                                         </div>
@@ -145,14 +204,82 @@ export default function SavedResearchers() {
                                         </div>
                                     </div>
 
-                                    <div className='mt-4 flex flex-col items-center border-t pt-2'>
-                                        <div className='flex items-center gap-1 text-xs text-gray-500 relative group'>
-                                            Score <img src={infoIcon} alt='Info' className='w-3 h-3 cursor-pointer' />
-                                            <div className='absolute left-6 bottom-full mb-1 z-10 bg-white border border-gray-300 p-2 rounded shadow-md text-xs text-gray-700 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200'>
-                                                Score = h-index + i10-index weight
+
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {/* Header row */}
+                            <div className="flex items-center bg-blue-50 border border-blue-200 rounded-md px-4 py-2 font-semibold text-gray-700 text-sm">
+                                <button className="w-1/4 flex items-center gap-1 focus:outline-none" onClick={() => handleSort('name')}>
+                                    Name
+                                    {sortConfig.key === 'name' && (
+                                        sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />
+                                    )}
+                                </button>
+                                <button className="w-1/4 flex items-center gap-1 focus:outline-none" onClick={() => handleSort('institution')}>
+                                    Institution
+                                    {sortConfig.key === 'institution' && (
+                                        sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />
+                                    )}
+                                </button>
+                                <button className="w-1/6 flex items-center gap-1 focus:outline-none" onClick={() => handleSort('field')}>
+                                    Field
+                                    {sortConfig.key === 'field' && (
+                                        sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />
+                                    )}
+                                </button>
+                                <button className="w-1/6 flex items-center gap-1 focus:outline-none" onClick={() => handleSort('hIndex')}>
+                                    h-index
+                                    {sortConfig.key === 'hIndex' && (
+                                        sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />
+                                    )}
+                                </button>
+                                <button className="w-1/6 flex items-center gap-1 focus:outline-none" onClick={() => handleSort('i10Index')}>
+                                    i10-index
+                                    {sortConfig.key === 'i10Index' && (
+                                        sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />
+                                    )}
+                                </button>
+                                <div className="w-12 text-center"></div>
+                            </div>
+                            {/* Data rows */}
+                            {sortedResearchers.map((person, index) => (
+                                <div
+                                    key={index}
+                                    className={`flex items-center border ${selectedResearchers.includes(person.id) ? 'border-blue-500' : 'border-[#D9D9D9]'} bg-white rounded-md px-4 py-2 shadow-sm hover:shadow-md transition-all cursor-pointer text-md`}
+                                    onClick={() => selectMode && toggleSelectResearcher(person.id)}
+                                >
+                                    <div className="w-1/4 flex items-center">
+                                        {selectMode && (
+                                            <div className="w-6 h-6 rounded-full border-2 border-gray-400 bg-white flex items-center justify-center mr-3 pointer-events-none">
+                                                {selectedResearchers.includes(person.id) && (
+                                                    <div className="w-4 h-4 bg-blue-500 rounded-full" />
+                                                )}
                                             </div>
-                                        </div>
-                                        <p className='text-xl font-semibold'>{person.score}</p>
+                                        )}
+                                        <span className="font-bold">{person.name}</span>
+                                    </div>
+                                    <div className="w-1/4 text-[#6A6A6A] text-sm">{person.institution}</div>
+                                    <div className="w-1/6">
+                                        <span className="text-sm bg-[#4D8BC5] text-white px-3 py-1 rounded-md">{person.field}</span>
+                                    </div>
+                                    <div className="w-1/6 flex items-center gap-2 text-[#6A6A6A]">
+                                        {person.hIndex}
+                                    </div>
+                                    <div className="w-1/6 flex items-center gap-2 text-[#6A6A6A]">
+                                        {person.i10Index}
+                                    </div>
+                                    <div className="w-12 flex justify-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                confirmUnsave(person);
+                                            }}
+                                        >
+                                            <FaBookmark className="text-yellow-400 text-xl" />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -167,7 +294,7 @@ export default function SavedResearchers() {
                 open={toast.open}
                 autoHideDuration={3000}
                 onClose={() => setToast({ ...toast, open: false })}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
                 <Alert onClose={() => setToast({ ...toast, open: false })} severity={toast.severity} sx={{ width: '100%' }}>
                     {toast.message}
