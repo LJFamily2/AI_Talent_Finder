@@ -15,13 +15,8 @@ const { createClient } = require("redis");
 //==================================================================
 const routes                = require("../routes");
 const cvVerificationRoutes = require("../routes/cvVerificationRoute");
-<<<<<<< Updated upstream
 const authorRoutes         = require("../routes/authorRoute");
 const searchFiltersRoutes  = require("../routes/searchFiltersRoute");
-=======
-const authorRoutes         = require("../routes/authorRoutes");
-const searchFiltersRoutes  = require("../routes/searchFilters");
->>>>>>> Stashed changes
 
 //==================================================================
 // Load environment variables from .env
