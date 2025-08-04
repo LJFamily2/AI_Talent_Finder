@@ -12,10 +12,12 @@ const bookmarkRoutes = require("./bookmarkRoute");
 // Mount routes
 router.use("/api/cv", cvVerificationRoutes);
 router.use("/api/auth", authRoutes);
+
 router.use("/api/export", exportRoutes);
 router.use("/api/researcher", researcherRoutes);
 router.use("/api/bookmarks", bookmarkRoutes);
 router.use("/api/author", authorRoutes);
+
 
 // Export router
 module.exports = router;

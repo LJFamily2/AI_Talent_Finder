@@ -22,8 +22,6 @@ const simplifyAuthors = docs =>
     basic_info: { name: a.basic_info?.name || "(no name)" }
   }));
 
-
-
 //==================================================================
 // [GET] /api/search-filters/search
 // Apply combined filters: country, topic, metrics, identifiers,
@@ -98,7 +96,7 @@ if (affiliation || year_from || year_to) {
 
   if (!isNaN(from) && !isNaN(to)) {
     if (from === to) {
-      // Only one year specified
+      // Only one year specified 
       affMatch["years"] = [from];
     } else {
       const yearRange = Array.from({ length: to - from + 1 }, (_, i) => from + i);
