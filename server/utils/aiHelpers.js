@@ -69,7 +69,7 @@ function getHeaderClassifier() {
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 6000;
+const MAX_CHUNK_SIZE = 8000;
 
 /**
  * Similarity threshold for duplicate publication detection

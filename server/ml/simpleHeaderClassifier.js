@@ -12,7 +12,7 @@ class SimpleHeaderClassifier {
     this.rules = {
       isAllUpperCase: { weight: 0 },
       containsYear: { weight: 0 },
-      lengthRange: { weight: 0, minLength: 3, maxLength: 30 },
+      lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
       positionRatio: { weight: 0 },
       wordCount: { weight: 0, maxWords: 10 },
       hasColon: { weight: 0 },
@@ -21,7 +21,6 @@ class SimpleHeaderClassifier {
     };
     this.trained = false;
     this.knownHeaders = [];
-    this.loadKnownHeaders();
   }
 
   /**
@@ -31,7 +30,6 @@ class SimpleHeaderClassifier {
     try {
       const headersPath = path.join(__dirname, "../ml/detected_headers.json");
       this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
-
     } catch (error) {
       console.warn("Could not load detected headers:", error);
       this.knownHeaders = [];
@@ -42,7 +40,6 @@ class SimpleHeaderClassifier {
    * Train the classifier using labeled data
    */
   train(trainingData) {
-
     const headerExamples = trainingData.filter((item) => item.isHeader);
     const nonHeaderExamples = trainingData.filter((item) => !item.isHeader);
 
@@ -66,7 +63,6 @@ class SimpleHeaderClassifier {
       let weight = headerRatio - nonHeaderRatio;
 
       this.rules[feature].weight = weight;
-
     });
 
     this.trained = true;
@@ -84,8 +80,7 @@ class SimpleHeaderClassifier {
       case "lengthRange":
         return (
           features.length >= this.rules.lengthRange.minLength &&
-          features.length <= this.rules.lengthRange.maxLength &&
-          features.length <= 50
+          features.length <= this.rules.lengthRange.maxLength 
         );
       case "positionRatio":
         return features.positionRatio > 0.2 && features.positionRatio < 0.8;
@@ -135,9 +130,12 @@ class SimpleHeaderClassifier {
     });
 
     const matchesPublicationPattern = exactMatch || partialMatch;
-    
+
     return {
-      isAllUpperCase: line === line.toUpperCase(),
+      isAllUpperCase:
+        line.replace(/[^A-Za-z]/g, "").length > 0 &&
+        line.replace(/[^A-Za-z]/g, "") ===
+          line.replace(/[^A-Za-z]/g, "").toUpperCase(),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
       length: line.length,
       positionRatio: lineIndex / totalLines,
@@ -165,7 +163,7 @@ class SimpleHeaderClassifier {
       }
     });
 
-    return score > 1.2;
+    return score > 1.1;
   }
 
   /**
