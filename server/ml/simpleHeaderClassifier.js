@@ -31,9 +31,7 @@ class SimpleHeaderClassifier {
     try {
       const headersPath = path.join(__dirname, "../ml/detected_headers.json");
       this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
-      console.log(
-        `Loaded ${this.knownHeaders.length} known publication headers`
-      );
+
     } catch (error) {
       console.warn("Could not load detected headers:", error);
       this.knownHeaders = [];
@@ -44,14 +42,9 @@ class SimpleHeaderClassifier {
    * Train the classifier using labeled data
    */
   train(trainingData) {
-    console.log(`Training with ${trainingData.length} examples...`);
 
     const headerExamples = trainingData.filter((item) => item.isHeader);
     const nonHeaderExamples = trainingData.filter((item) => !item.isHeader);
-
-    console.log(
-      `Headers: ${headerExamples.length}, Non-headers: ${nonHeaderExamples.length}`
-    );
 
     // Calculate weights based on feature prevalence in headers vs non-headers
     Object.keys(this.rules).forEach((feature) => {
@@ -74,17 +67,9 @@ class SimpleHeaderClassifier {
 
       this.rules[feature].weight = weight;
 
-      console.log(
-        `${feature}: header=${headerRatio.toFixed(
-          3
-        )}, non-header=${nonHeaderRatio.toFixed(3)}, weight=${this.rules[
-          feature
-        ].weight.toFixed(3)}`
-      );
     });
 
     this.trained = true;
-    console.log("Training completed!");
   }
 
   /**
@@ -180,7 +165,7 @@ class SimpleHeaderClassifier {
       }
     });
 
-    return score > 2;
+    return score > 1.2;
   }
 
   /**

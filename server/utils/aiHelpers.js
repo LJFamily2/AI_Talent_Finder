@@ -23,6 +23,7 @@ const { getTitleSimilarity } = require("./textUtils");
 const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
 const fs = require("fs");
 const path = require("path");
+const { getFilteredHeaders } = require("./headerFilterUtils");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
@@ -68,7 +69,7 @@ function getHeaderClassifier() {
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 8000;
+const MAX_CHUNK_SIZE = 6000;
 
 /**
  * Similarity threshold for duplicate publication detection
@@ -395,7 +396,16 @@ function extractHeadersFromText(cvText) {
     }
   }
 
-  return headers;
+  // Filter headers using publication pattern logic
+  const filteredHeaders = getFilteredHeaders(
+    headers,
+    getHeaderClassifier(),
+    lines
+  );
+
+  console.log(filteredHeaders);
+
+  return filteredHeaders;
 }
 
 //=============================================================================
