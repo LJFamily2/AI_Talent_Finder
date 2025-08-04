@@ -25,14 +25,20 @@ const {
 //==================================================================
 router.get(
   "/search-author",
-  cacheRedisInsight(900, (req) => {
-    const { id, name, page, limit } = req.query;
-    if (id) return ["researcherProfiles", id];
+  cacheRedisInsight(3600, (req) => {
+    const { id, name, page = 1, limit = 20 } = req.query;
+
+    if (id) {
+      const idOnly = id.split("/").pop(); // query by ID only
+      return ["researcherProfiles", `${idOnly}`];
+    }
+
     const nameKey = (name || "all").toLowerCase();
-    return ["authorLists",  nameKey, `page=${req.query.page || 1}`, `limit=${req.query.limit || 25}`];
+    return ["authorLists", `name=${nameKey}`, `page=${page}`, `limit=${limit}`];
   }),
   searchByCandidates
 );
+
 
 //==================================================================
 // 2. Fetch author profile from OpenAlex API

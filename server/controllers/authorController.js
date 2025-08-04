@@ -21,7 +21,7 @@ async function searchByCandidates(req, res, next) {
       const profileDoc = await ResearcherProfile.findById(id);
       console.log(`📂 [DB INFO] researcherProfiles:${id}`);
       if (!profileDoc) return res.status(404).json({ error: "Author not found" });
-      return res.json({ profile: profileDoc });
+      return res.json( profileDoc );
     }
 
     if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });

@@ -31,7 +31,7 @@ async function fetchDbProfile(id) {
   const res = await axios.get(`${API_BASE}/author/search-author`, {
     params: { id }
   });
-  return res.data.profile;
+  return res.data;
 }
 
 /**

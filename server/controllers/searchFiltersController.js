@@ -79,18 +79,40 @@ exports.searchFilters = async (req, res) => {
   if (identifier)
     query[`identifiers.${identifier}`] = { $exists:true, $ne:"" };
 
-  if (affiliation || year_from || year_to) {const affMatch = {};
-  if (affiliation) {affMatch["institution.display_name"] = new RegExp(affiliation, "i");}
+if (affiliation || year_from || year_to) {
+  const affMatch = {};
+
+  if (affiliation) {
+    affMatch["institution.display_name"] = new RegExp(affiliation, "i");
+  }
+
   const from = parseInt(year_from);
   const to = parseInt(year_to);
-  if (!isNaN(from) || !isNaN(to)) {
-    const yearsMatch = {};
-    if (!isNaN(from)) yearsMatch.$gte = from;
-    if (!isNaN(to))   yearsMatch.$lte = to;
-    affMatch["years"] = { $elemMatch: yearsMatch };
+
+  // Cảnh báo nếu nhập sai khoảng
+  if (!isNaN(from) && !isNaN(to) && from > to) {
+    return res.status(400).json({
+      error: "Invalid year range: 'year_from' must be less than or equal to 'year_to'"
+    });
   }
+
+  if (!isNaN(from) && !isNaN(to)) {
+    if (from === to) {
+      // 🎯 Trường hợp chỉ 1 năm, exact match [2011]
+      affMatch["years"] = [from];
+    } else {
+      const yearRange = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+      affMatch["years"] = { $in: yearRange };
+    }
+  } else if (!isNaN(from)) {
+    affMatch["years"] = { $gte: from };
+  } else if (!isNaN(to)) {
+    affMatch["years"] = { $lte: to };
+  }
+
   query["basic_info.affiliations"] = { $elemMatch: affMatch };
 }
+
 
   if (current_affiliation)
     query["current_affiliation.display_name"] = new RegExp(current_affiliation, "i");
