@@ -14,6 +14,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Snackbar, Alert } from "@mui/material";
 import { getBookmarks, removeBookmark } from "../services/bookmarkService";
+import { exportResearchersToExcel } from "../services/exportService";
 
 export default function SavedResearchers() {
   const [savedResearchers, setSavedResearchers] = useState([]);
@@ -72,6 +73,44 @@ export default function SavedResearchers() {
   useEffect(() => {
     fetchBookmarks();
   }, [fetchBookmarks]);
+
+  const handleExport = async () => {
+    try {
+      const data = selectMode
+        ? savedResearchers.filter((r) => selectedResearchers.includes(r.id))
+        : savedResearchers;
+
+      if (data.length === 0) {
+        showToast("No researchers to export", "warning");
+        return;
+      }
+
+      // Show loading state
+      setLoading(true);
+
+      const result = await exportResearchersToExcel(data);
+
+      const message = selectMode
+        ? `Successfully exported ${result.count} selected researcher${
+            result.count > 1 ? "s" : ""
+          } to ${result.filename}`
+        : `Successfully exported all ${result.count} researcher${
+            result.count > 1 ? "s" : ""
+          } to ${result.filename}`;
+
+      showToast(message, "success");
+
+      // Clear selection after export if in select mode
+      if (selectMode) {
+        setSelectedResearchers([]);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      showToast(error.message || "Export failed. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const confirmUnsave = (researcher) => {
     setTargetResearcher(researcher);
@@ -192,19 +231,22 @@ export default function SavedResearchers() {
               </button>
 
               <button
-                onClick={() => {
-                  const data = selectMode
-                    ? savedResearchers.filter((r) =>
-                        selectedResearchers.includes(r.id)
-                      )
-                    : savedResearchers;
-                  console.log("Exporting:", data);
-                  showToast("Export Successfully!");
-                }}
-                className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 shadow transition-all"
+                onClick={handleExport}
+                disabled={
+                  loading || (selectMode && selectedResearchers.length === 0)
+                }
+                className={`flex items-center gap-2 rounded-xl font-medium px-4 py-2 shadow transition-all ${
+                  loading || (selectMode && selectedResearchers.length === 0)
+                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
               >
-                <FaDownload className="text-white" />
-                {selectMode ? "Export Selected" : "Export All"}
+                <FaDownload className="text-current" />
+                {loading
+                  ? "Exporting..."
+                  : selectMode
+                  ? `Export Selected (${selectedResearchers.length})`
+                  : "Export All"}
               </button>
             </div>
           </div>
