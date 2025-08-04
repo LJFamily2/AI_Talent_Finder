@@ -89,7 +89,7 @@ if (affiliation || year_from || year_to) {
   const from = parseInt(year_from);
   const to = parseInt(year_to);
 
-  // Cảnh báo nếu nhập sai khoảng
+  // Warning for invalid year range
   if (!isNaN(from) && !isNaN(to) && from > to) {
     return res.status(400).json({
       error: "Invalid year range: 'year_from' must be less than or equal to 'year_to'"
@@ -98,7 +98,7 @@ if (affiliation || year_from || year_to) {
 
   if (!isNaN(from) && !isNaN(to)) {
     if (from === to) {
-      // 🎯 Trường hợp chỉ 1 năm, exact match [2011]
+      // Only one year specified
       affMatch["years"] = [from];
     } else {
       const yearRange = Array.from({ length: to - from + 1 }, (_, i) => from + i);

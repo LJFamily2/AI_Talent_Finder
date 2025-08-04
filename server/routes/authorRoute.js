@@ -39,7 +39,6 @@ router.get(
   searchByCandidates
 );
 
-
 //==================================================================
 // 2. Fetch author profile from OpenAlex API
 // - Also cached by ID or name-based listing
