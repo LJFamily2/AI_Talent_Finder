@@ -77,41 +77,31 @@ exports.searchFilters = async (req, res) => {
   if (identifier)
     query[`identifiers.${identifier}`] = { $exists:true, $ne:"" };
 
-if (affiliation || year_from || year_to) {
-  const affMatch = {};
-
   if (affiliation) {
-    affMatch["institution.display_name"] = new RegExp(affiliation, "i");
-  }
+  const affQuery = {
+    "institution.display_name": new RegExp(affiliation, "i")
+  };
 
   const from = parseInt(year_from);
-  const to = parseInt(year_to);
-
-  // Warning for invalid year range
-  if (!isNaN(from) && !isNaN(to) && from > to) {
-    return res.status(400).json({
-      error: "Invalid year range: 'year_from' must be less than or equal to 'year_to'"
-    });
-  }
+  const to   = parseInt(year_to);
 
   if (!isNaN(from) && !isNaN(to)) {
-    if (from === to) {
-      // Only one year specified 
-      affMatch["years"] = [from];
-    } else {
-      const yearRange = Array.from({ length: to - from + 1 }, (_, i) => from + i);
-      affMatch["years"] = { $in: yearRange };
-    }
+    // CASE 1: year range from-to
+    affQuery["years"] = {
+      $elemMatch: { $gte: from, $lte: to }
+    };
   } else if (!isNaN(from)) {
-    affMatch["years"] = { $gte: from };
+    // CASE 2: year >= from
+    affQuery["years"] = { $elemMatch: { $gte: from } };
   } else if (!isNaN(to)) {
-    affMatch["years"] = { $lte: to };
+    // CASE 3: year <= to
+    affQuery["years"] = { $elemMatch: { $lte: to } };
   }
 
-  query["basic_info.affiliations"] = { $elemMatch: affMatch };
+  // CASE 4: no year range, filter by affiliation only
+  query["basic_info.affiliations"] = { $elemMatch: affQuery };
 }
-
-
+  
   if (current_affiliation)
     query["current_affiliation.display_name"] = new RegExp(current_affiliation, "i");
 
