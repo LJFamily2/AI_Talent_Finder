@@ -1,6 +1,6 @@
 //==================================================================
 // Filter CLI Handler
-// Provides interactive CLI for multi-filter searching,
+// Provides interactive CLI for search-filters searching,
 // viewing, deleting, Redis-flushing profiles, and OpenAlex fallback
 // using Inquirer with grouped actions for view and delete
 //==================================================================
@@ -10,13 +10,13 @@ const axios    = require('axios');
 const { showProfile, renderFilterHeader } = require('./renderCli');
 
 const API_BASE = 'http://localhost:5000/api';
-const LIMIT    = 25;
+const LIMIT    = 20;
 
 //-------------------------------
 // API Helpers
 //-------------------------------
 async function fetchDbCandidates(filters) {
-  const res = await axios.get(`${API_BASE}/search-filters/multi`, { params: filters });
+  const res = await axios.get(`${API_BASE}/search-filters/search`, { params: filters });
   return res.data; // { total, authors: [] }
 }
 
@@ -50,7 +50,7 @@ async function fetchOpenProfile(id) {
 //==================================================================
 async function runFilterFlow(done) {
   // Initialize filter state
-  let filters = { country:'', topic:'', hindex:'', hOp:'eq', i10index:'', i10Op:'eq', identifier:'', affiliation:'', current_affiliation:'', year_from:'', year_to:'', page:1 };
+  let filters = { country:'', topic:'', hindex:'', hOp:'eq', i10index:'', i10Op:'eq', identifier:'', affiliation:'', year_from:'', year_to:'', page:1 };
   let candidates = [];
   let total = 0;
 
@@ -64,9 +64,8 @@ async function runFilterFlow(done) {
       { type:'list',  name:'hOp',    message:'H-index op:', choices:['eq','gte','lte'], default:filters.hOp },
       { type:'input', name:'i10index', message:'i10-index:', default:filters.i10index },
       { type:'list',  name:'i10Op', message:'i10-index op:', choices:['eq','gte','lte'], default:filters.i10Op },
-      { type:'list',  name:'identifier', message:'Identifier type:', choices:['','orcid','scopus','openalex','google_scholar_id'], default:filters.identifier },
-      { type:'input', name:'affiliation', message:'Affiliation (past):', default:filters.affiliation },
-      { type:'input', name:'current_affiliation', message:'Current affiliation:', default:filters.current_affiliation },
+      { type:'list',  name:'identifier', message:'Identifier type:', choices:['','openalex'], default:filters.identifier },
+      { type:'input', name:'affiliation', message:'Affiliation:', default:filters.affiliation },
       { type:'input', name:'year_from', message:'Year from:', default:filters.year_from },
       { type:'input', name:'year_to', message:'Year to:', default:filters.year_to }
     ]);
@@ -122,9 +121,17 @@ async function runFilterFlow(done) {
     }
     if (action==='next'&&filters.page<pages){filters.page++;return runSearch();}
     if (action==='prev'&&filters.page>1){filters.page--;return runSearch();}
-    if (action==='openalex')return runOpenAlex();
-    if (action==='back')    return askFilters();
-    if (action==='menu')    return done();
+    if (action==='openalex') return runOpenAlex();
+    if (action==='back') { 
+      filters = {
+        country:'', topic:'', hindex:'', hOp:'eq',
+        i10index:'', i10Op:'eq', identifier:'',
+        affiliation:'', year_from:'', year_to:'',
+        page: 1
+      };
+      return askFilters();
+    }
+    if (action==='menu') return done();
     return runSearch();
   }
 

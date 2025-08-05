@@ -121,7 +121,7 @@ async function showProfile(profile, src = 'DB') {
  * @param {string} src - Source label (e.g., "DB" or "OpenAlex")
  */
 function renderList(list, page, total, src = 'DB') {
-  const pages = Math.max(1, Math.ceil(total / 25));
+  const pages = Math.max(1, Math.ceil(total / 20));
   console.log(`Search Candidates from ${src} (Page ${page}/${pages}, Total ${total})`);
   console.table(
     list.map((p, i) => ({
