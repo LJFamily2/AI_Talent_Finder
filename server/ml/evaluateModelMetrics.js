@@ -19,20 +19,75 @@ const MODEL_DIR = path.join(__dirname, "../models");
 const MODEL_PATH = path.join(MODEL_DIR, "header_classifier.json");
 
 /**
- * Split data into train/test sets
+ * Split data into train/test sets with stratification
  * @param {Array} data - Full dataset
  * @param {number} testRatio - Ratio of data to use for testing (default: 0.2)
  * @returns {Object} Object with train and test arrays
  */
 function trainTestSplit(data, testRatio = 0.2) {
-  // Shuffle data randomly
-  const shuffled = [...data].sort(() => Math.random() - 0.5);
+  // Stratified sampling to maintain class distribution
+  const headers = data.filter((item) => item.isHeader);
+  const nonHeaders = data.filter((item) => !item.isHeader);
 
-  const testSize = Math.floor(data.length * testRatio);
-  const testData = shuffled.slice(0, testSize);
-  const trainData = shuffled.slice(testSize);
+  const headerTestSize = Math.floor(headers.length * testRatio);
+  const nonHeaderTestSize = Math.floor(nonHeaders.length * testRatio);
+
+  // Shuffle both classes
+  const shuffledHeaders = [...headers].sort(() => Math.random() - 0.5);
+  const shuffledNonHeaders = [...nonHeaders].sort(() => Math.random() - 0.5);
+
+  const testData = [
+    ...shuffledHeaders.slice(0, headerTestSize),
+    ...shuffledNonHeaders.slice(0, nonHeaderTestSize),
+  ];
+
+  const trainData = [
+    ...shuffledHeaders.slice(headerTestSize),
+    ...shuffledNonHeaders.slice(nonHeaderTestSize),
+  ];
+
+  // Shuffle final datasets
+  testData.sort(() => Math.random() - 0.5);
+  trainData.sort(() => Math.random() - 0.5);
 
   return { trainData, testData };
+}
+
+/**
+ * Find optimal threshold for different objectives
+ * @param {Array} thresholds - Array of threshold values
+ * @param {Array} precisions - Array of precision values
+ * @param {Array} recalls - Array of recall values
+ * @returns {Object} Optimal thresholds for different metrics
+ */
+function findOptimalThresholds(thresholds, precisions, recalls) {
+  let bestF1Threshold = 0;
+  let bestF1 = 0;
+  let precisionThreshold95 = null;
+
+  for (let i = 0; i < thresholds.length; i++) {
+    const precision = precisions[i];
+    const recall = recalls[i];
+    const f1 =
+      precision + recall > 0
+        ? (2 * precision * recall) / (precision + recall)
+        : 0;
+
+    if (f1 > bestF1) {
+      bestF1 = f1;
+      bestF1Threshold = thresholds[i];
+    }
+
+    if (precision >= 95 && precisionThreshold95 === null) {
+      precisionThreshold95 = thresholds[i];
+    }
+  }
+
+  return {
+    optimalF1Threshold: bestF1Threshold,
+    optimalF1Score: bestF1,
+    precisionThreshold95: precisionThreshold95,
+  };
 }
 
 /**
@@ -97,6 +152,42 @@ async function evaluateModelMetrics() {
     // Evaluate on test set
     console.log("📊 Evaluating on test set...");
     const testMetrics = classifier.evaluateMetrics(testData);
+
+    // Threshold analysis
+    console.log("\n🎯 THRESHOLD ANALYSIS:");
+    console.log("=".repeat(50));
+    const thresholds = [];
+    const precisions = [];
+    const recalls = [];
+
+    for (let t = -3; t <= 3; t += 0.2) {
+      const originalThreshold = classifier.threshold;
+      classifier.threshold = t;
+      const metrics = classifier.evaluateMetrics(testData);
+      thresholds.push(t);
+      precisions.push(metrics.precision);
+      recalls.push(metrics.recall);
+      classifier.threshold = originalThreshold; // Restore original threshold
+    }
+
+    const optimalThresholds = findOptimalThresholds(
+      thresholds,
+      precisions,
+      recalls
+    );
+    console.log(`Current threshold: ${classifier.threshold.toFixed(3)}`);
+    console.log(
+      `Optimal F1 threshold: ${optimalThresholds.optimalF1Threshold.toFixed(
+        3
+      )} (F1: ${optimalThresholds.optimalF1Score.toFixed(3)})`
+    );
+    if (optimalThresholds.precisionThreshold95) {
+      console.log(
+        `Threshold for 95% precision: ${optimalThresholds.precisionThreshold95.toFixed(
+          3
+        )}`
+      );
+    }
 
     // Display main metrics
     console.log("\n🎯 MODEL PERFORMANCE METRICS:");
@@ -280,4 +371,5 @@ module.exports = {
   evaluateModelMetrics,
   quickMetricsCheck,
   trainTestSplit,
+  findOptimalThresholds,
 };

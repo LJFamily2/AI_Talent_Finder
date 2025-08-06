@@ -226,7 +226,6 @@ function generateLineFeatures(line, lineIndex, totalLines, knownHeaders) {
       matchesPublicationPattern: knownHeaders.some((header) =>
         line.trim().toLowerCase().includes(header.toLowerCase())
       ),
-      containNumbers: /\d/.test(line),
     },
   };
 }

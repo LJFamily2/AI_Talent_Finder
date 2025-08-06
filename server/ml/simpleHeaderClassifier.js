@@ -12,15 +12,16 @@ class SimpleHeaderClassifier {
     this.rules = {
       isAllUpperCase: { weight: 0 },
       containsYear: { weight: 0 },
-      lengthRange: { weight: 0, minLength: 3, maxLength: 50 },
+      lengthRange: { weight: 0, minLength: 5, maxLength: 80 },
       positionRatio: { weight: 0 },
-      wordCount: { weight: 0, maxWords: 10 },
+      wordCount: { weight: 0, maxWords: 15 },
       hasColon: { weight: 0 },
       matchesPublicationPattern: { weight: 0 },
-      containNumbers: { weight: 0 },
     };
     this.trained = false;
+    this.threshold = 0; // Dynamic threshold learned during training
     this.knownHeaders = [];
+    this.loadKnownHeaders();
   }
 
   /**
@@ -30,6 +31,9 @@ class SimpleHeaderClassifier {
     try {
       const headersPath = path.join(__dirname, "../ml/detected_headers.json");
       this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
+      console.log(
+        `Loaded ${this.knownHeaders.length} known publication headers`
+      );
     } catch (error) {
       console.warn("Could not load detected headers:", error);
       this.knownHeaders = [];
@@ -40,8 +44,20 @@ class SimpleHeaderClassifier {
    * Train the classifier using labeled data
    */
   train(trainingData) {
-    const headerExamples = trainingData.filter((item) => item.isHeader);
-    const nonHeaderExamples = trainingData.filter((item) => !item.isHeader);
+    // Balance the dataset to address class imbalance
+    const balancedData = this.balanceDataset(trainingData);
+    // Stratified split for threshold learning
+    const { trainData, validationData } = this.stratifiedSplit(
+      balancedData,
+      0.2
+    );
+
+    const headerExamples = trainData.filter((item) => item.isHeader);
+    const nonHeaderExamples = trainData.filter((item) => !item.isHeader);
+
+    console.log(
+      `Headers: ${headerExamples.length}, Non-headers: ${nonHeaderExamples.length}`
+    );
 
     // Calculate weights based on feature prevalence in headers vs non-headers
     Object.keys(this.rules).forEach((feature) => {
@@ -56,16 +72,134 @@ class SimpleHeaderClassifier {
         if (this.evaluateFeature(feature, item.features)) nonHeaderCount++;
       });
 
-      const headerRatio = headerCount / headerExamples.length;
-      const nonHeaderRatio = nonHeaderCount / nonHeaderExamples.length;
+      const headerRatio =
+        headerExamples.length > 0 ? headerCount / headerExamples.length : 0;
+      const nonHeaderRatio =
+        nonHeaderExamples.length > 0
+          ? nonHeaderCount / nonHeaderExamples.length
+          : 0;
 
       // Weight is positive if feature is more common in headers
       let weight = headerRatio - nonHeaderRatio;
 
       this.rules[feature].weight = weight;
+
+      console.log(
+        `${feature}: header=${headerRatio.toFixed(
+          3
+        )}, non-header=${nonHeaderRatio.toFixed(3)}, weight=${this.rules[
+          feature
+        ].weight.toFixed(3)}`
+      );
     });
 
+    // Learn optimal threshold using validation set
+    this.threshold = this.findOptimalThreshold(validationData);
+
     this.trained = true;
+    console.log(
+      `Training completed! Optimal threshold: ${this.threshold.toFixed(3)}`
+    );
+  }
+
+  /**
+   * Balance the dataset by undersampling non-headers
+   */
+  balanceDataset(data) {
+    const headers = data.filter((item) => item.isHeader);
+    const nonHeaders = data.filter((item) => !item.isHeader);
+    // Undersample non-headers to 3x headers (or all if less)
+    const targetSize = Math.min(headers.length * 3, nonHeaders.length);
+    const shuffledNonHeaders = nonHeaders.sort(() => Math.random() - 0.5);
+    const balancedNonHeaders = shuffledNonHeaders.slice(0, targetSize);
+    return [...headers, ...balancedNonHeaders].sort(() => Math.random() - 0.5);
+  }
+
+  /**
+   * Stratified split for train/validation
+   */
+  stratifiedSplit(data, valRatio = 0.2) {
+    const headers = data.filter((item) => item.isHeader);
+    const nonHeaders = data.filter((item) => !item.isHeader);
+    const valHeadersCount = Math.floor(headers.length * valRatio);
+    const valNonHeadersCount = Math.floor(nonHeaders.length * valRatio);
+    const shuffledHeaders = headers.sort(() => Math.random() - 0.5);
+    const shuffledNonHeaders = nonHeaders.sort(() => Math.random() - 0.5);
+    const validationData = [
+      ...shuffledHeaders.slice(0, valHeadersCount),
+      ...shuffledNonHeaders.slice(0, valNonHeadersCount),
+    ];
+    const trainData = [
+      ...shuffledHeaders.slice(valHeadersCount),
+      ...shuffledNonHeaders.slice(valNonHeadersCount),
+    ];
+    return { trainData, validationData };
+  }
+
+  /**
+   * Find optimal threshold using validation data
+   */
+  findOptimalThreshold(validationData) {
+    let bestThreshold = 0;
+    let bestF1 = 0;
+
+    // Test different thresholds
+    for (let threshold = -3; threshold <= 3; threshold += 0.1) {
+      let truePositives = 0;
+      let falsePositives = 0;
+      let falseNegatives = 0;
+
+      validationData.forEach((example, index) => {
+        const features = this.extractFeatures(
+          example.text,
+          index,
+          validationData.length
+        );
+        let score = 0;
+
+        Object.keys(this.rules).forEach((feature) => {
+          if (this.evaluateFeature(feature, features)) {
+            score += this.rules[feature].weight;
+          }
+        });
+
+        const predicted = score > threshold;
+        const actual = example.isHeader;
+
+        if (predicted && actual) {
+          truePositives++;
+        } else if (predicted && !actual) {
+          falsePositives++;
+        } else if (!predicted && actual) {
+          falseNegatives++;
+        }
+      });
+
+      const precision =
+        truePositives > 0
+          ? truePositives / (truePositives + falsePositives)
+          : 0;
+      const recall =
+        truePositives > 0
+          ? truePositives / (truePositives + falseNegatives)
+          : 0;
+      const f1Score =
+        precision + recall > 0
+          ? (2 * precision * recall) / (precision + recall)
+          : 0;
+
+      if (f1Score > bestF1) {
+        bestF1 = f1Score;
+        bestThreshold = threshold;
+      }
+    }
+
+    console.log(
+      `Best threshold: ${bestThreshold.toFixed(3)} with F1: ${bestF1.toFixed(
+        3
+      )}`
+    );
+    return bestThreshold;
   }
 
   /**
@@ -78,22 +212,20 @@ class SimpleHeaderClassifier {
       case "containsYear":
         return features.containsYear;
       case "lengthRange":
-        return (
-          features.length >= this.rules.lengthRange.minLength &&
-          features.length <= this.rules.lengthRange.maxLength 
-        );
+        // More nuanced length scoring
+        return features.length >= 5 && features.length <= 80;
       case "positionRatio":
-        return features.positionRatio > 0.2 && features.positionRatio < 0.8;
+        // More flexible position logic - headers can appear almost anywhere
+        return features.positionRatio > 0.05 && features.positionRatio < 0.95;
       case "wordCount":
-        return features.wordCount <= this.rules.wordCount.maxWords;
+        // Allow longer headers for complex publication titles
+        return features.wordCount >= 1 && features.wordCount <= 20;
       case "hasColon":
         return features.hasColon;
       case "matchesPublicationPattern":
         return features.matchesPublicationPattern;
-      case "containNumbers":
-        return features.containNumbers;
-
-      default:
+      
+        default:
         return false;
     }
   }
@@ -102,47 +234,64 @@ class SimpleHeaderClassifier {
    * Extract features from a line
    */
   extractFeatures(line, lineIndex, totalLines) {
-    const trimmedLine = line.trim().toLowerCase();
-
-    // Exact match
-    const exactMatch = this.knownHeaders.some(
-      (header) => trimmedLine === header.trim().toLowerCase()
-    );
-
-    // Partial match: line starts with or ends with a known header, and the rest is only punctuation
-    const partialMatch = this.knownHeaders.some((header) => {
-      const headerNorm = header.trim().toLowerCase();
-      if (trimmedLine === headerNorm) return false; // already handled by exactMatch
-
-      // Check if line starts with header and only has punctuation after
-      if (trimmedLine.startsWith(headerNorm)) {
-        const after = trimmedLine.slice(headerNorm.length).trim();
-        return after === "" || /^[\s:.,;()-]+$/.test(after);
-      }
-      // Check if line ends with header and only has punctuation before
-      if (trimmedLine.endsWith(headerNorm)) {
-        const before = trimmedLine
-          .slice(0, trimmedLine.length - headerNorm.length)
-          .trim();
-        return before === "" || /^[\s:.,;()-]+$/.test(before);
-      }
-      return false;
-    });
-
-    const matchesPublicationPattern = exactMatch || partialMatch;
-
+    // Add text to features for use in evaluateFeature
+    const keywords = [
+      "publication",
+      "paper",
+      "article",
+      "journal",
+      "conference",
+      "book",
+      "chapter",
+      "research",
+      "scholarly",
+      "academic",
+      "peer",
+      "reviewed",
+      "proceedings",
+      "manuscript",
+      "thesis",
+      "patent",
+      "report",
+      "working paper",
+      "magazine",
+      "editorial",
+      "commentary",
+      "talk",
+      "panel",
+      "seminar",
+      "presentation",
+      "poster",
+      "abstract",
+      "dissertation",
+      "monograph",
+      "volume",
+      "issue",
+      "newsletter",
+      "review",
+      "case study",
+      "white paper",
+      "policy",
+      "book chapter",
+      "newspaper",
+      "non-academic",
+      "selected",
+      "invited",
+    ];
     return {
+      text: line,
       isAllUpperCase:
         line.replace(/[^A-Za-z]/g, "").length > 0 &&
         line.replace(/[^A-Za-z]/g, "") ===
           line.replace(/[^A-Za-z]/g, "").toUpperCase(),
       containsYear: /\b(19|20)\d{2}\b/.test(line),
       length: line.length,
-      positionRatio: lineIndex / totalLines,
+      positionRatio: totalLines > 1 ? lineIndex / (totalLines - 1) : 0,
       wordCount: line.split(/\s+/).filter(Boolean).length,
       hasColon: line.includes(":"),
-      matchesPublicationPattern,
-      containNumbers: /\d/.test(line),
+      matchesPublicationPattern: this.knownHeaders.some(
+        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
+      ),
     };
   }
 
@@ -163,7 +312,8 @@ class SimpleHeaderClassifier {
       }
     });
 
-    return score > 1.1;
+    // Use learned threshold instead of hard-coded logic
+    return score > this.threshold;
   }
 
   /**
@@ -176,6 +326,7 @@ class SimpleHeaderClassifier {
 
     const modelData = {
       rules: this.rules,
+      threshold: this.threshold,
       trained: true,
     };
 
@@ -188,6 +339,7 @@ class SimpleHeaderClassifier {
   load(modelPath) {
     const modelData = JSON.parse(fs.readFileSync(modelPath));
     this.rules = modelData.rules;
+    this.threshold = modelData.threshold || 0;
     this.trained = modelData.trained;
   }
 

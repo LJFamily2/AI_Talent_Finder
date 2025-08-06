@@ -1,44 +1,44 @@
 {
-  "timestamp": "2025-08-02T18:21:05.765Z",
+  "timestamp": "2025-08-06T17:17:39.833Z",
   "datasetSize": {
     "total": 36177,
     "train": 21707,
     "test": 14470
   },
   "testMetrics": {
-    "accuracy": 99.86,
-    "precision": 99.73,
-    "recall": 95.18,
-    "f1Score": 97.4,
+    "accuracy": 99.92,
+    "precision": 97.52,
+    "recall": 99.75,
+    "f1Score": 98.62,
     "confusionMatrix": {
-      "truePositives": 375,
-      "falsePositives": 1,
-      "trueNegatives": 14075,
-      "falseNegatives": 19
+      "truePositives": 394,
+      "falsePositives": 10,
+      "trueNegatives": 14065,
+      "falseNegatives": 1
     },
     "support": {
-      "positive": 394,
-      "negative": 14076,
+      "positive": 395,
+      "negative": 14075,
       "total": 14470
     }
   },
   "crossValidation": {
     "folds": 5,
     "accuracy": {
-      "mean": 99.6,
-      "stdDev": 0.8
+      "mean": 100,
+      "stdDev": 0
     },
     "precision": {
       "mean": 80,
       "stdDev": 40
     },
     "recall": {
-      "mean": 73.85,
-      "stdDev": 38.8
+      "mean": 80,
+      "stdDev": 40
     },
     "f1Score": {
-      "mean": 76.36,
-      "stdDev": 38.83
+      "mean": 80,
+      "stdDev": 40
     },
     "individualFolds": [
       {
@@ -59,15 +59,15 @@
         }
       },
       {
-        "accuracy": 98,
+        "accuracy": 100,
         "precision": 100,
-        "recall": 69.23,
-        "f1Score": 81.82,
+        "recall": 100,
+        "f1Score": 100,
         "confusionMatrix": {
-          "truePositives": 9,
+          "truePositives": 13,
           "falsePositives": 0,
           "trueNegatives": 187,
-          "falseNegatives": 4
+          "falseNegatives": 0
         },
         "support": {
           "positive": 13,
@@ -131,315 +131,178 @@
   "classificationReport": {
     "summary": {
       "totalSamples": 14470,
-      "headerSamples": 394,
-      "nonHeaderSamples": 14076
+      "headerSamples": 395,
+      "nonHeaderSamples": 14075
     },
     "metrics": {
-      "accuracy": 99.86,
-      "precision": 99.73,
-      "recall": 95.18,
-      "f1Score": 97.4,
+      "accuracy": 99.92,
+      "precision": 97.52,
+      "recall": 99.75,
+      "f1Score": 98.62,
       "confusionMatrix": {
-        "truePositives": 375,
-        "falsePositives": 1,
-        "trueNegatives": 14075,
-        "falseNegatives": 19
+        "truePositives": 394,
+        "falsePositives": 10,
+        "trueNegatives": 14065,
+        "falseNegatives": 1
       },
       "support": {
-        "positive": 394,
-        "negative": 14076,
+        "positive": 395,
+        "negative": 14075,
         "total": 14470
       }
     },
     "misclassified": {
       "falsePositives": [
         {
-          "text": "-  Work in progress",
+          "text": "articles",
           "features": {
             "isAllUpperCase": false,
             "containsYear": false,
-            "length": 19,
-            "positionRatio": 0.45151515151515154,
-            "wordCount": 4,
+            "length": 8,
+            "positionRatio": 0.6766917293233082,
+            "wordCount": 1,
             "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
+            "matchesPublicationPattern": false
           },
-          "index": 12822
+          "index": 482
+        },
+        {
+          "text": "articles",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 8,
+            "positionRatio": 0.7114661654135338,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 1042
+        },
+        {
+          "text": "PUBLICATIONS",
+          "features": {
+            "isAllUpperCase": true,
+            "containsYear": false,
+            "length": 12,
+            "positionRatio": 0.17391304347826086,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": true
+          },
+          "index": 2130
+        },
+        {
+          "text": "reports",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 7,
+            "positionRatio": 0.518796992481203,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 4011
+        },
+        {
+          "text": "articles",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 8,
+            "positionRatio": 0.19642857142857142,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 4793
+        },
+        {
+          "text": "articles",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 8,
+            "positionRatio": 0.23684210526315788,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 4900
+        },
+        {
+          "text": "WORKING PAPERS",
+          "features": {
+            "isAllUpperCase": true,
+            "containsYear": false,
+            "length": 14,
+            "positionRatio": 0.21568627450980393,
+            "wordCount": 2,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 7690
+        },
+        {
+          "text": "Research Reports",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 16,
+            "positionRatio": 0.9210526315789473,
+            "wordCount": 2,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 10988
+        },
+        {
+          "text": "articles",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 8,
+            "positionRatio": 0.599624060150376,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 13114
+        },
+        {
+          "text": "articles",
+          "features": {
+            "isAllUpperCase": false,
+            "containsYear": false,
+            "length": 8,
+            "positionRatio": 0.12969924812030076,
+            "wordCount": 1,
+            "hasColon": false,
+            "matchesPublicationPattern": false
+          },
+          "index": 13947
         }
       ],
       "falseNegatives": [
         {
-          "text": "PUBLICATIONS IN REFEREED JOURNALS",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.5714285714285714,
-            "wordCount": 4,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 349
-        },
-        {
-          "text": "INVITED SEMINARS AND CONFERENCES",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 32,
-            "positionRatio": 0.7908496732026143,
-            "wordCount": 4,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 728
-        },
-        {
-          "text": "PUBLICATIONS IN ADDITION TO TEACHING MATERIALS",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 46,
-            "positionRatio": 0.8724637681159421,
-            "wordCount": 6,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 2264
-        },
-        {
-          "text": "Policy-related Publications and Reports",
+          "text": "Paper Presentations",
           "features": {
             "isAllUpperCase": false,
             "containsYear": false,
-            "length": 39,
-            "positionRatio": 0.2803970223325062,
-            "wordCount": 4,
+            "length": 19,
+            "positionRatio": 0.7423442449841605,
+            "wordCount": 2,
             "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
+            "matchesPublicationPattern": true
           },
-          "index": 3184
-        },
-        {
-          "text": "Editorials and Short Commentaries",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.6117216117216118,
-            "wordCount": 4,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 3508
-        },
-        {
-          "text": "Additional Publication Categories",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.904,
-            "wordCount": 3,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 4754
-        },
-        {
-          "text": "Working Papers No Longer Under Active Preparation",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 49,
-            "positionRatio": 0.20071319409067753,
-            "wordCount": 7,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 4884
-        },
-        {
-          "text": "Additional Publication Categories",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.9640718562874252,
-            "wordCount": 3,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 5282
-        },
-        {
-          "text": "Program on Negotiation at Harvard Law School Case",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 49,
-            "positionRatio": 0.3923705722070845,
-            "wordCount": 8,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 6107
-        },
-        {
-          "text": "Invited Seminar and Conference Presentations",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 44,
-            "positionRatio": 0.7412882787750792,
-            "wordCount": 5,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 6472
-        },
-        {
-          "text": "Policy Talks and Panel Discussions",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 34,
-            "positionRatio": 0.7644444444444445,
-            "wordCount": 5,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 6783
-        },
-        {
-          "text": "Articles in Refereed Conference Proceedings",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 43,
-            "positionRatio": 0.4382259767687434,
-            "wordCount": 5,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 6997
-        },
-        {
-          "text": "Additional Publication Categories",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.9722863741339491,
-            "wordCount": 3,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 8593
-        },
-        {
-          "text": "Additional Publication Categories",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.9704797047970479,
-            "wordCount": 3,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 8771
-        },
-        {
-          "text": "SELECTED COMMENTARY, BRIEF ARTICLES, and REVIEW ESSAYS",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 54,
-            "positionRatio": 0.5104311543810849,
-            "wordCount": 7,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 9056
-        },
-        {
-          "text": "Additional Publication Categories",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 33,
-            "positionRatio": 0.8805970149253731,
-            "wordCount": 3,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 9887
-        },
-        {
-          "text": "Selected Peer-Reviewed Journal Articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 39,
-            "positionRatio": 0.5833333333333334,
-            "wordCount": 4,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 10983
-        },
-        {
-          "text": "Harvard Kennedy School Teaching Cases",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 37,
-            "positionRatio": 0.9681528662420382,
-            "wordCount": 5,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 11279
-        },
-        {
-          "text": "OTHER PUBLICATIONS AND LEGISLATIVE TESTIMONY",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 44,
-            "positionRatio": 0.5930735930735931,
-            "wordCount": 5,
-            "hasColon": false,
-            "matchesPublicationPattern": true,
-            "containNumbers": false
-          },
-          "index": 13168
+          "index": 13760
         }
       ]
     },
     "classDistribution": {
-      "headers": 2.72,
-      "nonHeaders": 97.28
+      "headers": 2.73,
+      "nonHeaders": 97.27
     }
   }
 }
