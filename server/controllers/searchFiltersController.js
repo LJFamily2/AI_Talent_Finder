@@ -99,30 +99,24 @@ exports.searchFilters = async (req, res) => {
   };
 
   if (!isNaN(from) && !isNaN(to)) {
-    // ✅ Use Case 4: ALL years must ∈ [from, to]
-    affQuery["years"] = {
-      $not: {
-        $elemMatch: {
-          $or: [
-            { $lt: from },
-            { $gt: to }
-          ]
-        }
-      }
-    };
-  } else if (!isNaN(from)) {
-    // ✅ Use Case 2: ALL years must ≥ from
+  // At least one year must be in range [from, to]
+  affQuery["years"] = {
+    $elemMatch: { $gte: from, $lte: to }
+  };
+}
+ else if (!isNaN(from)) {
+    // All years must be ≥ from
     affQuery["years"] = {
       $not: { $elemMatch: { $lt: from } }
     };
   } else if (!isNaN(to)) {
-    // ✅ Use Case 3: ALL years must ≤ to
+    //All years must be ≤ to
     affQuery["years"] = {
       $not: { $elemMatch: { $gt: to } }
     };
   }
   
-  // ✅ Use Case 1: chỉ cần match affiliation
+  // Only match profiles with at least one affiliation matching the query
   query["basic_info.affiliations"] = { $elemMatch: affQuery };
 }
 
