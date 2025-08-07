@@ -9,9 +9,9 @@ const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 const ctrl = require('../controllers/searchFiltersController');
 
 const router = express.Router();
-const SHORT = 900;
-const MEDIUM = 3600;
-const LONG = 3600; // 1 hour TTL for cached search results
+const SHORT = 900;   // 15 minutes TTL for cached search results
+const MEDIUM = 1800; // 30 minutes TTL for cached search results
+const LONG = 3600;   // 1 hour TTL for cached search results
 
 //==================================================================
 // 8) Multi-filter search in MongoDB
@@ -20,7 +20,7 @@ const LONG = 3600; // 1 hour TTL for cached search results
 //==================================================================
 router.get(
   '/search',
-  cacheRedisInsight(SHORT, req => {
+  cacheRedisInsight(MEDIUM, req => {
     const key = ['searchFilters'];
     const filterParams = [
       'country',

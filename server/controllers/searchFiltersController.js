@@ -29,9 +29,17 @@ const simplifyAuthors = docs =>
 //==================================================================
 exports.searchFilters = async (req, res) => {
   const {
-    country, topic, hindex, i10index, identifier,
-    affiliation, current_affiliation, year_from, year_to,
-    op = "eq", page = 1, limit = 20
+    country,
+    topic,
+    hindex,
+    i10index,
+    identifier,
+    affiliation,
+    year_from,
+    year_to,
+    op = "eq",
+    page = 1,
+    limit = 20
   } = req.query;
 
   // Build Redis key & log
@@ -42,9 +50,8 @@ exports.searchFilters = async (req, res) => {
     hindex && `hindex=${hindex}`,
     i10index && `i10index=${i10index}`,
     identifier && `identifier=${identifier}`,
-    op && (hindex||i10index) && `op=${op}`,
+    op && (hindex || i10index) && `op=${op}`,
     affiliation && `affiliation=${affiliation}`,
-    current_affiliation && `current_affiliation=${current_affiliation}`,
     year_from && `year_from=${year_from}`,
     year_to && `year_to=${year_to}`,
     `page=${page}`,
@@ -56,10 +63,11 @@ exports.searchFilters = async (req, res) => {
 
   // Construct Mongo query
   const query = {};
-  
-  if (country)
+  // === COUNTRY ===
+  if (country) {
     query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
-
+  }
+  // === TOPIC ===
   if (topic) {
     const re = new RegExp(topic, "i");
     query["$or"] = [
@@ -67,54 +75,75 @@ exports.searchFilters = async (req, res) => {
       { "research_areas.fields.display_name": re }
     ];
   }
-
-  if (hindex)
-    query["research_metrics.h_index"] = { [opsMap[op]||"$eq"]: parseInt(hindex) };
-
-  if (i10index)
-    query["research_metrics.i10_index"] = { [opsMap[op]||"$eq"]: parseInt(i10index) };
-
-  if (identifier)
-    query[`identifiers.${identifier}`] = { $exists:true, $ne:"" };
-
-  if (affiliation) {
-  const affQuery = {
-    "institution.display_name": new RegExp(affiliation, "i")
-  };
-
-  const from = parseInt(year_from);
-  const to   = parseInt(year_to);
-
-  if (!isNaN(from) && !isNaN(to)) {
-    // CASE 1: year range from-to
-    affQuery["years"] = {
-      $elemMatch: { $gte: from, $lte: to }
-    };
-  } else if (!isNaN(from)) {
-    // CASE 2: year >= from
-    affQuery["years"] = { $elemMatch: { $gte: from } };
-  } else if (!isNaN(to)) {
-    // CASE 3: year <= to
-    affQuery["years"] = { $elemMatch: { $lte: to } };
+  // === H-INDEX ===
+  if (hindex) {
+    query["research_metrics.h_index"] = { [opsMap[op] || "$eq"]: parseInt(hindex, 10) };
+  }
+  // === I10 INDEX ===
+  if (i10index) {
+    query["research_metrics.i10_index"] = { [opsMap[op] || "$eq"]: parseInt(i10index, 10) };
+  }
+  // === IDENTIFIER (OPENALEX)===
+  if (identifier) {
+    query[`identifiers.${identifier}`] = { $exists: true, $ne: "" };
   }
 
-  // CASE 4: no year range, filter by affiliation only
+  // === AFFILIATION + YEAR RANGE ===
+  if (affiliation) {
+  const nameRegex = new RegExp(affiliation, "i");
+  const from = parseInt(year_from);
+  const to = parseInt(year_to);
+
+  const affQuery = {
+    "institution.display_name": nameRegex
+  };
+
+  if (!isNaN(from) && !isNaN(to)) {
+    // ✅ Use Case 4: ALL years must ∈ [from, to]
+    affQuery["years"] = {
+      $not: {
+        $elemMatch: {
+          $or: [
+            { $lt: from },
+            { $gt: to }
+          ]
+        }
+      }
+    };
+  } else if (!isNaN(from)) {
+    // ✅ Use Case 2: ALL years must ≥ from
+    affQuery["years"] = {
+      $not: { $elemMatch: { $lt: from } }
+    };
+  } else if (!isNaN(to)) {
+    // ✅ Use Case 3: ALL years must ≤ to
+    affQuery["years"] = {
+      $not: { $elemMatch: { $gt: to } }
+    };
+  }
+  
+  // ✅ Use Case 1: chỉ cần match affiliation
   query["basic_info.affiliations"] = { $elemMatch: affQuery };
 }
-  
-  if (current_affiliation)
-    query["current_affiliation.display_name"] = new RegExp(current_affiliation, "i");
+
 
   try {
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const total = await ResearcherProfile.countDocuments(query);
-    const raw = await ResearcherProfile.find(query)
+    const docs = await ResearcherProfile.find(query)
       .sort({ "basic_info.name": 1 })
       .skip(skip)
-      .limit(+limit);
-    const authors = simplifyAuthors(raw);
+      .limit(parseInt(limit, 10));
 
-    return res.json({ total, count: authors.length, page: +page, limit: +limit, authors });
+    const authors = simplifyAuthors(docs);
+
+    return res.json({
+      total,
+      count: authors.length,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      authors
+    });
   } catch (err) {
     console.error("Error in searchFilters:", err);
     return res.status(500).json({ error: "Internal Server Error" });
@@ -125,34 +154,63 @@ exports.searchFilters = async (req, res) => {
 // [GET] /api/search-filters/openalex
 // Perform external filter search via OpenAlex public API
 //==================================================================
+//==================================================================
+// [GET] /api/search-filters/openalex
+// Perform external filter search via OpenAlex public API
+//==================================================================
 exports.searchOpenalexFilters = async (req, res) => {
   const {
-    country, topic, hindex, i10index, identifier,
-    affiliation, current_affiliation, year_from, year_to,
-    op = "eq", page = 1, limit = 20
+    country,
+    topic,
+    hindex,
+    i10index,
+    identifier,
+    affiliation,
+    current_affiliation,
+    year_from,
+    year_to,
+    op = "eq",
+    page = 1,
+    limit = 20
   } = req.query;
+
+  const redisKey = buildFilterKey("openalexFilters", {
+    country,
+    topic,
+    hindex,
+    i10index,
+    identifier,
+    affiliation,
+    current_affiliation,
+    year_from,
+    year_to,
+    op,
+    page,
+    limit
+  });
+  console.log(`🌐 [FILTERS OPENALEX] ${redisKey}`);
+
+  // Build OpenAlex filters
+  const filters = [];
+  if (country)
+    filters.push(`last_known_institution.country_code:${country.toLowerCase()}`);
+  if (hindex)
+    filters.push(`summary_stats.h_index:${externalOpsMap[op]||""}${hindex}`);
+  if (i10index)
+    filters.push(`summary_stats.i10_index:${externalOpsMap[op]||""}${i10index}`);
+  if (identifier)
+    filters.push(`ids.${identifier}!=null`);
+
+  const params = new URLSearchParams();
+  if (filters.length) params.append("filter", filters.join(","));
+  if (topic) params.append("search", topic);
+  params.append("page", page);
+  params.append("per_page", limit);
+
+  const url = `${OPENALEX_BASE}/authors?${params}`;
+  console.log(`🔗 OpenAlex URL: ${url}`);
+
   try {
-    const redisKey = buildFilterKey("openalexFilters", {
-      country, topic, hindex, i10index, identifier,
-      affiliation, current_affiliation, year_from, year_to,
-      op, page, limit
-    });
-    console.log(`🌐 [FILTERS OPENALEX] ${redisKey}`);
-
-    const filters = [];
-    if (country) filters.push(`last_known_institutions.country_code:${country.toUpperCase()}`);
-    if (topic) {/* search param handled below */}
-    if (hindex) filters.push(`summary_stats.h_index:${externalOpsMap[op]||""}${hindex}`);
-    if (i10index) filters.push(`summary_stats.i10_index:${externalOpsMap[op]||""}${i10index}`);
-    if (identifier) filters.push(`${identifier}!=null`);
-
-    const params = new URLSearchParams();
-    if (filters.length) params.append("filter", filters.join(","));
-    if (topic) params.append("search", topic);
-    params.append("page", page);
-    params.append("per_page", limit);
-
-    const url = `${OPENALEX_BASE}/authors?${params}`;
     const { data } = await axios.get(url, {
       headers: {
         "User-Agent": "AcademicTalentFinder/1.0",
@@ -161,12 +219,22 @@ exports.searchOpenalexFilters = async (req, res) => {
     });
 
     const results = Array.isArray(data.results) ? data.results : [];
-    const authors = results.map(a => ({ _id: a.id, basic_info: { name: a.display_name } }))
+    const authors = results
+      .map(a => ({ _id: a.id, basic_info: { name: a.display_name } }))
       .sort((a, b) => a.basic_info.name.localeCompare(b.basic_info.name));
 
-    return res.json({ total: data.meta?.count||authors.length, count: authors.length, page: +page, limit: +limit, authors });
+    return res.json({
+      total: data.meta?.count || authors.length,
+      count: authors.length,
+      page: +page,
+      limit: +limit,
+      authors
+    });
   } catch (err) {
-    console.error("Error in searchOpenalexFilters:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error in searchOpenalexFilters:", err.stack || err);
+    if (err.response) {
+      console.error(`OpenAlex response status: ${err.response.status}`, err.response.data);
+    }
+    return res.status(500).json({ error: "OpenAlex fetch error", details: err.response?.data || err.message });
   }
 };
