@@ -83,7 +83,7 @@ exports.searchFilters = async (req, res) => {
   if (i10index) {
     query["research_metrics.i10_index"] = { [opsMap[op] || "$eq"]: parseInt(i10index, 10) };
   }
-  // === IDENTIFIER (OPENALEX)===
+  // === IDENTIFIER (OPENALEX) ===
   if (identifier) {
     query[`identifiers.${identifier}`] = { $exists: true, $ne: "" };
   }
