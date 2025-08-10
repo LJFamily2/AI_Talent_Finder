@@ -19,7 +19,7 @@ const LONG = 3600;   // 1 hour TTL for cached search results
 // affiliation, year_from, year_to
 //==================================================================
 router.get(
-  '/search',
+  '/',
   cacheRedisInsight(MEDIUM, req => {
     const key = ['searchFilters'];
     const filterParams = [
