@@ -15,10 +15,12 @@ const AffiliationSchema = new mongoose.Schema({
   years: [Number]
 }, { _id: false });
 
-// External Identifier Schema (OpenAlex)
+// External Identifier Schema (OpenAlex, ORCID, etc.)
 const IdentifierSchema = new mongoose.Schema({
+  scopus:            { type: String, default: "" },
   openalex:          { type: String, default: "" },
-  orcid:            { type: String, default: "" }
+  orcid:             { type: String, default: "" },
+  google_scholar_id: { type: String, default: "" }
 }, { _id: false });
 
 // Research Metric Schema (H-index, total citations...)
@@ -82,4 +84,4 @@ const ResearcherProfileSchema = new mongoose.Schema({
 // Export Mongo Model
 //==================================================================
 
-module.exports = mongoose.model("researcherprofiles", ResearcherProfileSchema);
+module.exports = mongoose.model("ResearcherProfile", ResearcherProfileSchema);

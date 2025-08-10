@@ -31,7 +31,9 @@
 .DS_Store
 Thumbs.db
 
-**/data/training/cvs/
+**/data/training/
+
+**/cli/
 
 eng.traineddata
 # Seeding samples
