@@ -1,8 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import logo from '../assets/rmit-logo-white.svg';
 
 function Header() {
   const path = window.location.pathname;
+
+  useEffect(() => {
+    let title = "Talent Finder";
+    if (path === "/verify-cv") title = "CV Verification";
+    else if (path === "/search-tool") title = "Search Tool";
+    else if (path === "/saved-researchers") title = "Saved Profiles";
+    else if (path === "/landing-page") title = "Talent Finder";
+    document.title = title;
+  }, [path]);
+
   return (
     <header className="bg-[#000054] h-18">
         <nav className="mx-auto flex max-w-7xl" aria-label="Global">
