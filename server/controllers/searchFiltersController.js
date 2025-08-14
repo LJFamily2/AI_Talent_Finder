@@ -1,142 +1,168 @@
 //==================================================================
-// Search Filters Controller
-// Provides multiple API endpoints to search researchers by country,
-// topic, metrics (h-index, i10-index), identifier, affiliation, current affiliation,
-// year range, or composite filters
+// Search Filters Controller (Unified)
+// Combines candidate search (id, name) and multi-filter search
 //==================================================================
 
-const axios = require("axios");
 const ResearcherProfile = require("../models/researcherProfileModel");
+const {
+  parseMultiOr,
+  toSafeRegex,
+  buildMetricCond,
+  chooseOp,
+  clampPageLimit
+} = require("../utils/queryHelpers");
 
-const OPENALEX_BASE = "https://api.openalex.org";
-
-const opsMap = { eq: "$eq", gt: "$gt", gte: "$gte", lt: "$lt", lte: "$lte" };
-const externalOpsMap = { eq: "", gt: ">", gte: ">=", lt: "<", lte: "<=" };
-
-//==================================================================
-// Helper: Simplify author object for responses
-//==================================================================
-const simplifyAuthors = docs =>
-  docs.map(a => ({
-    _id: a._id,
-    basic_info: { name: a.basic_info?.name || "(no name)" }
-  }));
+// Dùng để fallback sang OpenAlex khi DB rỗng
+const authorController = require("./authorController");
 
 //==================================================================
 // [GET] /api/search-filters/search
-// Apply combined filters: country, topic, metrics, identifiers,
-// affiliation, current affiliation, year range
+// - exact by id
+// - regex by name
+// - filters: country (OR), topic (OR across topics|fields), metrics, identifier,
+//            affiliation + year range
 //==================================================================
 exports.searchFilters = async (req, res) => {
   const {
-    country,
-    topic,
+    id,
+    name,
+    country,            // OR across affiliation countries
+    topic,              // OR across topics or fields
     hindex,
     i10index,
-    identifier,
-    affiliation,
-    year_from,
-    year_to,
-    op = "eq",
+    op,                 // global fallback operator (eq|gt|gte|lt|lte)
+    op_hindex,          // optional override for hindex
+    op_i10,             // optional override for i10index
+    identifier,         // identifiers.<key> must exist and non-empty (supports multi)
+    affiliation,        // affiliation name (regex, supports multi)
+    year_from,          // inclusive
+    year_to,            // inclusive
     page = 1,
     limit = 20
   } = req.query;
 
-  // Build Redis key & log
-  const rawKey = [
-    "searchFilters",
-    country && `country=${country}`,
-    topic && `topic=${topic}`,
-    hindex && `hindex=${hindex}`,
-    i10index && `i10index=${i10index}`,
-    identifier && `identifier=${identifier}`,
-    op && (hindex || i10index) && `op=${op}`,
-    affiliation && `affiliation=${affiliation}`,
-    year_from && `year_from=${year_from}`,
-    year_to && `year_to=${year_to}`,
-    `page=${page}`,
-    `limit=${limit}`
-  ]
-    .filter(Boolean)
-    .join(":");
-  console.log(`🔎 [FILTERS DB] ${rawKey}`);
-
-  // Construct Mongo query
-  const query = {};
-  // === COUNTRY ===
-  if (country) {
-    query["basic_info.affiliations.institution.country_code"] = country.toUpperCase();
-  }
-  // === TOPIC ===
-  if (topic) {
-    const re = new RegExp(topic, "i");
-    query["$or"] = [
-      { "research_areas.topics.display_name": re },
-      { "research_areas.fields.display_name": re }
-    ];
-  }
-  // === H-INDEX ===
-  if (hindex) {
-    query["research_metrics.h_index"] = { [opsMap[op] || "$eq"]: parseInt(hindex, 10) };
-  }
-  // === I10 INDEX ===
-  if (i10index) {
-    query["research_metrics.i10_index"] = { [opsMap[op] || "$eq"]: parseInt(i10index, 10) };
-  }
-  // === IDENTIFIER (OPENALEX) ===
-  if (identifier) {
-    query[`identifiers.${identifier}`] = { $exists: true, $ne: "" };
-  }
-
-  // === AFFILIATION + YEAR RANGE ===
-  if (affiliation) {
-  const nameRegex = new RegExp(affiliation, "i");
-  const from = parseInt(year_from);
-  const to = parseInt(year_to);
-
-  const affQuery = {
-    "institution.display_name": nameRegex
-  };
-
-  if (!isNaN(from) && !isNaN(to)) {
-  // At least one year must be in range [from, to]
-  affQuery["years"] = {
-    $elemMatch: { $gte: from, $lte: to }
-  };
-}
- else if (!isNaN(from)) {
-    // All years must be ≥ from
-    affQuery["years"] = {
-      $not: { $elemMatch: { $lt: from } }
-    };
-  } else if (!isNaN(to)) {
-    //All years must be ≤ to
-    affQuery["years"] = {
-      $not: { $elemMatch: { $gt: to } }
-    };
-  }
-  
-  // Only match profiles with at least one affiliation matching the query
-  query["basic_info.affiliations"] = { $elemMatch: affQuery };
-}
-
-
   try {
-    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    // 1) Detail by ID
+    if (id) {
+      const profileDoc = await ResearcherProfile.findById(id);
+      if (!profileDoc) return res.status(404).json({ error: "Author not found" });
+      return res.json({ profile: profileDoc });
+    }
+
+    // 2) Pagination (safe bounds) - DB tối đa 100/Trang
+    const { page: pageNum, limit: limNum } = clampPageLimit(page, limit, 100, 20);
+    const skip = (pageNum - 1) * limNum;
+
+    // 3) Build query
+    const query = {};
+    const andParts = [];
+
+    // NAME (case-insensitive substring)
+    if (name) {
+      andParts.push({ "basic_info.name": toSafeRegex(name) });
+    }
+
+    // COUNTRY (include_any / OR across entire affiliation history)
+    const countries = parseMultiOr(country).map(c => c.toUpperCase());
+    if (countries.length === 1) {
+      andParts.push({ "basic_info.affiliations.institution.country_code": countries[0] });
+    } else if (countries.length > 1) {
+      andParts.push({
+        "basic_info.affiliations.institution.country_code": { $in: countries }
+      });
+    }
+
+    // TOPIC & FIELDS (include_any / OR)
+    const topics = parseMultiOr(topic);
+    if (topics.length > 0) {
+      const topicOrs = [];
+      for (const t of topics) {
+        const rx = toSafeRegex(t);
+        topicOrs.push({ "research_areas.topics.display_name": rx });
+        topicOrs.push({ "research_areas.fields.display_name": rx });
+      }
+      andParts.push({ $or: topicOrs });
+    }
+
+    // METRICS (each metric can have its own op, fallback to global op, default eq)
+    const opH = chooseOp(op_hindex, op, "eq");
+    const opI = chooseOp(op_i10,    op, "eq");
+
+    const hCond = buildMetricCond("research_metrics.h_index", opH, hindex);
+    if (hCond) andParts.push(hCond);
+
+    const iCond = buildMetricCond("research_metrics.i10_index", opI, i10index);
+    if (iCond) andParts.push(iCond);
+
+    // IDENTIFIER exists and non-empty (supports multi OR)
+    const idents = parseMultiOr(identifier).map(x => x.toLowerCase());
+    if (idents.length === 1) {
+      andParts.push({ [`identifiers.${idents[0]}`]: { $exists: true, $ne: "" } });
+    } else if (idents.length > 1) {
+      andParts.push({
+        $or: idents.map(k => ({ [`identifiers.${k}`]: { $exists: true, $ne: "" } }))
+      });
+    }
+
+    // AFFILIATION + YEAR RANGE (inclusive checks on history) — supports multi names
+    const affNames = parseMultiOr(affiliation);
+    const from = Number.isFinite(+year_from) ? +year_from : null;
+    const to   = Number.isFinite(+year_to)   ? +year_to   : null;
+
+    if (affNames.length > 0) {
+      const affElemQueries = affNames.map(affName => {
+        const affRx = toSafeRegex(affName);
+        const affQuery = { "institution.display_name": affRx };
+        if (from != null && to != null) {
+          affQuery["years"] = { $elemMatch: { $gte: from, $lte: to } };
+        } else if (from != null) {
+          affQuery["years"] = { $elemMatch: { $gte: from } };
+        } else if (to != null) {
+          affQuery["years"] = { $elemMatch: { $lte: to } };
+        }
+        return { "basic_info.affiliations": { $elemMatch: affQuery } };
+      });
+
+      // Nhiều affiliation name → OR
+      if (affElemQueries.length === 1) andParts.push(affElemQueries[0]);
+      else andParts.push({ $or: affElemQueries });
+    } else if (from != null || to != null) {
+      // Nếu chỉ lọc theo năm (không chỉ định affiliation name),
+      // thì xét bất kỳ affiliation nào có years thỏa điều kiện
+      const yearCond =
+        from != null && to != null
+          ? { years: { $elemMatch: { $gte: from, $lte: to } } }
+          : from != null
+            ? { years: { $elemMatch: { $gte: from } } }
+            : { years: { $elemMatch: { $lte: to } } };
+
+      andParts.push({ "basic_info.affiliations": { $elemMatch: yearCond } });
+    }
+
+    // 4) Combine
+    if (andParts.length === 1) Object.assign(query, andParts[0]);
+    else if (andParts.length > 1) query.$and = andParts;
+
+    console.log(`🔎 [FILTERS DB] ${JSON.stringify(query)}`);
+
+    // 5) Execute
     const total = await ResearcherProfile.countDocuments(query);
-    const docs = await ResearcherProfile.find(query)
+    const docs  = await ResearcherProfile.find(query)
       .sort({ "basic_info.name": 1 })
       .skip(skip)
-      .limit(parseInt(limit, 10));
+      .limit(limNum);
 
-    const authors = simplifyAuthors(docs);
+    // 6) Auto fallback: nếu DB rỗng thì gọi OpenAlex với cùng query (users không phải gọi fetch)
+    if (total === 0) {
+      return authorController.searchOpenalexFilters(req, res);
+    }
 
     return res.json({
       total,
-      count: authors.length,
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      authors
+      count: docs.length,
+      page: pageNum,
+      limit: limNum,
+      authors: docs
     });
   } catch (err) {
     console.error("Error in searchFilters:", err);
@@ -144,91 +170,6 @@ exports.searchFilters = async (req, res) => {
   }
 };
 
-//==================================================================
-// [GET] /api/search-filters/openalex
-// Perform external filter search via OpenAlex public API
-//==================================================================
-//==================================================================
-// [GET] /api/search-filters/openalex
-// Perform external filter search via OpenAlex public API
-//==================================================================
-exports.searchOpenalexFilters = async (req, res) => {
-  const {
-    country,
-    topic,
-    hindex,
-    i10index,
-    identifier,
-    affiliation,
-    current_affiliation,
-    year_from,
-    year_to,
-    op = "eq",
-    page = 1,
-    limit = 20
-  } = req.query;
-
-  const redisKey = buildFilterKey("openalexFilters", {
-    country,
-    topic,
-    hindex,
-    i10index,
-    identifier,
-    affiliation,
-    current_affiliation,
-    year_from,
-    year_to,
-    op,
-    page,
-    limit
-  });
-  console.log(`🌐 [FILTERS OPENALEX] ${redisKey}`);
-
-  // Build OpenAlex filters
-  const filters = [];
-  if (country)
-    filters.push(`last_known_institution.country_code:${country.toLowerCase()}`);
-  if (hindex)
-    filters.push(`summary_stats.h_index:${externalOpsMap[op]||""}${hindex}`);
-  if (i10index)
-    filters.push(`summary_stats.i10_index:${externalOpsMap[op]||""}${i10index}`);
-  if (identifier)
-    filters.push(`ids.${identifier}!=null`);
-
-  const params = new URLSearchParams();
-  if (filters.length) params.append("filter", filters.join(","));
-  if (topic) params.append("search", topic);
-  params.append("page", page);
-  params.append("per_page", limit);
-
-  const url = `${OPENALEX_BASE}/authors?${params}`;
-  console.log(`🔗 OpenAlex URL: ${url}`);
-
-  try {
-    const { data } = await axios.get(url, {
-      headers: {
-        "User-Agent": "AcademicTalentFinder/1.0",
-        Accept: "application/json"
-      }
-    });
-
-    const results = Array.isArray(data.results) ? data.results : [];
-    const authors = results
-      .map(a => ({ _id: a.id, basic_info: { name: a.display_name } }))
-      .sort((a, b) => a.basic_info.name.localeCompare(b.basic_info.name));
-
-    return res.json({
-      total: data.meta?.count || authors.length,
-      count: authors.length,
-      page: +page,
-      limit: +limit,
-      authors
-    });
-  } catch (err) {
-    console.error("Error in searchOpenalexFilters:", err.stack || err);
-    if (err.response) {
-      console.error(`OpenAlex response status: ${err.response.status}`, err.response.data);
-    }
-    return res.status(500).json({ error: "OpenAlex fetch error", details: err.response?.data || err.message });
-  }
+module.exports = {
+  searchFilters: exports.searchFilters
 };
