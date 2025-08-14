@@ -8,7 +8,7 @@ const router  = express.Router();
 const {
   cache: cacheRedisInsight,
   flushAllCache,
-  initRedisClient, // cần nếu bạn dùng inject client trong flush-redis
+  initRedisClient, 
 } = require("../middleware/cacheRedisInsight");
 
 const {

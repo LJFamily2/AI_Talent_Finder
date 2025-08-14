@@ -7,7 +7,7 @@ const axios = require("axios");
 const ResearcherProfile = require("../models/researcherProfileModel");
 const { deleteCacheKey } = require("../middleware/cacheRedisInsight");
 
-// Helpers (đã thống nhất trong utils/queryHelpers.js)
+// Helpers for OpenAlex API, query parsing, and year range checks
 const {
   parseMultiOr,
   buildSearchStringFromPhrases,
@@ -32,8 +32,8 @@ exports.searchOpenalexFilters = async (req, res) => {
     hindex,
     i10index,
     op,           // global op (fallback)
-    op_hindex,    // ưu tiên cho hindex
-    op_i10,       // ưu tiên cho i10index
+    op_hindex,    // priority for hindex
+    op_i10,       // priority i10index
     identifier,
     affiliation,
     year_from,
@@ -176,7 +176,7 @@ exports.searchOpenalexFilters = async (req, res) => {
       [name, ...topics].filter(Boolean)
     );
 
-    // Pagination: cố định max 20 theo yêu cầu
+    // Pagination: defult 20, max 100
     const { page: pageNum, limit: limNum } = clampPageLimit(page, limit, 20, 20);
 
     const params = new URLSearchParams();
@@ -254,34 +254,34 @@ exports.searchOpenalexFilters = async (req, res) => {
         citation_trends: { cited_by_table: [], counts_by_year: a.counts_by_year || [] },
         current_affiliation: currentAff,
 
-        // raw affiliations để lọc năm client-side
+        //raw data for affiliations to filter by year later
         __affiliations_raw: a.affiliations || []
       };
     });
 
-    // 3) Lọc theo khoảng năm (nếu có) — chỉ ảnh hưởng authors/count
+    // 3) filter by year range
     const { from, to } = parseYearBounds(year_from, year_to);
     if (from != null || to != null) {
       authors = authors.filter(a => {
         if (!Array.isArray(a.__affiliations_raw)) return false;
         if (affIds.length) {
-          // Chỉ xét các affiliation thuộc những institution đã chọn
+          // only check affiliations with specified IDs
           return a.__affiliations_raw.some(aff =>
             affIds.includes(aff.institution?.id) &&
             inYearRange(aff.years, from, to)
           );
         }
-        // Nếu không chỉ định institution cụ thể → xét bất kỳ affiliation nào
+        // if not filtering by specific IDs, check any affiliation
         return a.__affiliations_raw.some(aff => inYearRange(aff.years, from, to));
       });
     }
 
-    // 4) total = meta.count (tổng kết quả của OpenAlex), count = số item thực tế trong trang sau lọc năm
+    // 4) total count of OpenAlex results
     const totalAll = data?.meta?.count ?? 0;
 
     return res.json({
-      total: totalAll,          // ✅ tổng (meta.count)
-      count: authors.length,    // ✅ số profile trong trang sau lọc năm (nếu có)
+      total: totalAll,          // total of OpenAlex results
+      count: authors.length,    // total after year filter per page
       page: pageNum,
       limit: limNum,
       authors

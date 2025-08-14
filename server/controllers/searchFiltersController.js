@@ -4,6 +4,8 @@
 //==================================================================
 
 const ResearcherProfile = require("../models/researcherProfileModel");
+
+// helpers query parsing and metric conditions
 const {
   parseMultiOr,
   toSafeRegex,
@@ -12,7 +14,7 @@ const {
   clampPageLimit
 } = require("../utils/queryHelpers");
 
-// Dùng để fallback sang OpenAlex khi DB rỗng
+// fall back to OpenAlex if no results found
 const authorController = require("./authorController");
 
 //==================================================================
@@ -49,7 +51,7 @@ exports.searchFilters = async (req, res) => {
       return res.json({ profile: profileDoc });
     }
 
-    // 2) Pagination (safe bounds) - DB tối đa 100/Trang
+    // 2) Pagination (safe bounds) - DB max 100, default 20
     const { page: pageNum, limit: limNum } = clampPageLimit(page, limit, 100, 20);
     const skip = (pageNum - 1) * limNum;
 
@@ -123,12 +125,11 @@ exports.searchFilters = async (req, res) => {
         return { "basic_info.affiliations": { $elemMatch: affQuery } };
       });
 
-      // Nhiều affiliation name → OR
+      // if search multi affiliations, use $or
       if (affElemQueries.length === 1) andParts.push(affElemQueries[0]);
       else andParts.push({ $or: affElemQueries });
     } else if (from != null || to != null) {
-      // Nếu chỉ lọc theo năm (không chỉ định affiliation name),
-      // thì xét bất kỳ affiliation nào có years thỏa điều kiện
+      // if no affiliation names, still check year range
       const yearCond =
         from != null && to != null
           ? { years: { $elemMatch: { $gte: from, $lte: to } } }
@@ -152,7 +153,7 @@ exports.searchFilters = async (req, res) => {
       .skip(skip)
       .limit(limNum);
 
-    // 6) Auto fallback: nếu DB rỗng thì gọi OpenAlex với cùng query (users không phải gọi fetch)
+    // 6) Auto fallback to OpenAlex if no results
     if (total === 0) {
       return authorController.searchOpenalexFilters(req, res);
     }

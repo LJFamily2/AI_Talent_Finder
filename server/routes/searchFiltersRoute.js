@@ -1,8 +1,8 @@
 // routes/searchFiltersRoute.js
 const express = require('express');
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
-const filtersCtrl = require('../controllers/searchFiltersController'); // chỉ còn DB search
-const authorCtrl  = require('../controllers/authorController');       // chứa searchOpenalexFilters
+const filtersCtrl = require('../controllers/searchFiltersController'); 
+const authorCtrl  = require('../controllers/authorController');      
 
 const router = express.Router();
 const SHORT = 900;
@@ -22,7 +22,7 @@ router.get(
 
     if (id) {
       const idOnly = String(id).split('/').pop();
-      return ['researcherProfiles', idOnly];  // ✅ giữ bucket researcherProfiles
+      return ['researcherProfiles', idOnly];
     }
 
     const key = ['searchLists'];
@@ -54,7 +54,7 @@ router.get(
       'name','country','topic','hindex','i10index',
       'op','op_hindex','op_i10',
       'identifier','affiliation','year_from','year_to'
-      // (id không cần đưa vào đây nữa vì đã special-case ở trên)
+      // id will not be included here, as it is only for DB search
     ];
     filterParams.forEach(k => {
       if (req.query[k]) {
@@ -66,7 +66,7 @@ router.get(
     key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
     return key;
   }),
-  authorCtrl.searchOpenalexFilters   // ✅ dùng handler mới trong authorController
+  authorCtrl.searchOpenalexFilters   
 );
 
 module.exports = router;
