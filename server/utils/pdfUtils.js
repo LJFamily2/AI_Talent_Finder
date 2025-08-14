@@ -34,7 +34,7 @@ async function extractTextFromPDF(filePath) {
       cvText += text + "\n";
     }
     // Optionally clean up images
-    // fs.rmSync(outputDir, { recursive: true, force: true });
+    fs.rmSync(outputDir, { recursive: true, force: true });
     if (!cvText.trim()) {
       throw new Error("Unable to extract text from PDF (OCR also failed)");
     }
