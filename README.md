@@ -49,7 +49,7 @@
 | `id`          | `id=https://openalex.org/A123456789` | Search a specific author by OpenAlex ID                                              |                                                                   |
 | `name`        | `name=John Doe`                      | Case-insensitive search for author name                                              |                                                                   |
 | `country`     | `country=US` or `country=US,GB`      | Filter by country code(s) in affiliations (supports multiple, OR logic)              |                                                                   |
-| `topic`       | `topic=Physics` or \`topic=Physics, Mathematics\`                                                                        | Filter by research topics or fields (supports multiple, OR logic) |
+| `topic`       | `topic=Physics` or `topic=Physics, Mathematics`                                                                             | Filter by research topics or fields (supports multiple, OR logic) |
 | `hindex`      | `hindex=10`                          | Filter by H-index value                                                              |                                                                   |
 | `i10index`    | `i10index=5`                         | Filter by i10-index value                                                            |                                                                   |
 | `op`          | `op=gte`                             | Global comparison operator for metrics (eq, gt, gte, lt, lte)                        |                                                                   |
