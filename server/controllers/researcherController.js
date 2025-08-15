@@ -1,8 +1,13 @@
 const axios = require("axios");
 const researcherProfile = require("../models/researcherProfileModel");
 
+module.exports = {
+  getResearcherProfile,
+  getResearcherWorks,
+};
+
 // Get a single researcher profile by ID
-const getResearcherProfile = async (req, res) => {
+async function getResearcherProfile(req, res) {
   try {
     const { id } = req.params;
 
@@ -36,12 +41,13 @@ const getResearcherProfile = async (req, res) => {
       error: error.message,
     });
   }
-};
+}
 
-// Get researcher works from OpenAlex
-const getResearcherWorks = async (req, res) => {
+// Get researcher works from OpenAlex with pagination
+async function getResearcherWorks(req, res) {
   try {
     const { id } = req.params;
+    const { page = 1, per_page = 20 } = req.query;
 
     // Validate ID
     if (!id) {
@@ -51,15 +57,22 @@ const getResearcherWorks = async (req, res) => {
       });
     }
 
-    // Build OpenAlex API URL for works
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const perPage = Math.min(200, Math.max(1, parseInt(per_page))); // Max 200 per OpenAlex limits
+
+    console.log(
+      `🔗 Fetching works for researcher ${id}, page ${pageNum}, ${perPage} per page...`
+    );
+
+    // Build OpenAlex API URL for works with pagination
     const apiKey = process.env.OPENALEX_API_KEY;
     const baseUrl = "https://api.openalex.org/works";
     const selectFields =
       "id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,best_oa_location,topics,counts_by_year";
     const filter = `authorships.author.id:${id}`;
-    const perPage = 200;
 
-    let url = `${baseUrl}?select=${selectFields}&filter=${filter}&per_page=${perPage}`;
+    const url = `${baseUrl}?select=${selectFields}&filter=${filter}&per_page=${perPage}&page=${pageNum}`;
 
     // Prepare headers
     const headers = {
@@ -77,10 +90,21 @@ const getResearcherWorks = async (req, res) => {
       headers,
     });
 
-    // Return the works data
+    const data = response.data;
+
+    // Return the paginated works data
     res.status(200).json({
       success: true,
-      data: response.data,
+      data: {
+        meta: {
+          count: data.meta?.count || 0,
+          page: pageNum,
+          per_page: perPage,
+          total_pages: Math.ceil((data.meta?.count || 0) / perPage),
+          db_response_time_ms: data.meta?.db_response_time_ms,
+        },
+        results: data.results || [],
+      },
     });
   } catch (error) {
     console.error("Error fetching researcher works:", error);
@@ -100,9 +124,4 @@ const getResearcherWorks = async (req, res) => {
       error: error.message,
     });
   }
-};
-
-module.exports = {
-  getResearcherProfile,
-  getResearcherWorks,
-};
+}

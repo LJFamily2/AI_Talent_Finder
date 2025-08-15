@@ -1,10 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { Chip, Button, CircularProgress } from "@mui/material";
-import { getResearcherProfile, getResearcherWorks } from "../services/api";
+import {
+  getResearcherProfile,
+  getResearcherWorks,
+  exportResearcherProfile,
+} from "../services/api";
 
 export default function ResearcherProfile() {
   const { id } = useParams();
@@ -13,6 +17,48 @@ export default function ResearcherProfile() {
   const [loading, setLoading] = useState(true);
   const [worksLoading, setWorksLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [worksPerPage] = useState(20);
+  const [totalWorks, setTotalWorks] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Function to fetch works for a specific page
+  const fetchWorksPage = useCallback(
+    async (page) => {
+      if (!id) return;
+
+      setWorksLoading(true);
+      try {
+        const worksData = await getResearcherWorks(id, page, worksPerPage);
+        setWorks(worksData.results || []);
+        setTotalWorks(worksData.meta?.count || 0);
+        setTotalPages(worksData.meta?.total_pages || 0);
+      } catch (worksError) {
+        console.error("Error fetching works:", worksError);
+        setWorks([]);
+      } finally {
+        setWorksLoading(false);
+      }
+    },
+    [id, worksPerPage]
+  );
+
+  const handleExport = async () => {
+    try {
+      const blob = await exportResearcherProfile(id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `researcher_profile_${id}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export profile. Please try again.");
+    }
+  };
 
   useEffect(() => {
     const fetchResearcherData = async () => {
@@ -25,16 +71,8 @@ export default function ResearcherProfile() {
 
         // Fetch works data if we have an OpenAlex ID
         if (id) {
-            console.log(id)
-          setWorksLoading(true);
-          try {
-            const worksData = await getResearcherWorks(id);
-            setWorks(worksData.results || []);
-          } catch (worksError) {
-            console.error("Error fetching works:", worksError);
-          } finally {
-            setWorksLoading(false);
-          }
+          // Fetch first page of works
+          await fetchWorksPage(1);
         }
       } catch (error) {
         console.error("Error fetching researcher:", error);
@@ -45,7 +83,14 @@ export default function ResearcherProfile() {
     };
 
     fetchResearcherData();
-  }, [id]);
+  }, [id, fetchWorksPage]);
+
+  // Effect to fetch works when page changes
+  useEffect(() => {
+    if (researcher && id) {
+      fetchWorksPage(currentPage);
+    }
+  }, [currentPage, researcher, id, fetchWorksPage]);
 
   if (loading) {
     return (
@@ -111,9 +156,9 @@ export default function ResearcherProfile() {
   const workYears = counts_by_year.map((d) => d.year).reverse();
   const workCounts = counts_by_year.map((d) => d.works_count).reverse();
 
-  // Format works data from OpenAlex API
+  // Format works data from OpenAlex API (removed slice to show all works)
   const formatWorksData = (works) => {
-    return works.slice(0, 10).map((work) => ({
+    return works.map((work) => ({
       id: work.id,
       title: work.title || work.display_name,
       authors:
@@ -132,6 +177,17 @@ export default function ResearcherProfile() {
 
   const formattedWorks = formatWorksData(works);
 
+  // Use current works directly (no client-side pagination since we're doing server-side pagination)
+  const currentWorks = formattedWorks;
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to works section when page changes
+    document
+      .getElementById("works-section")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen">
       <Header />
@@ -143,7 +199,12 @@ export default function ResearcherProfile() {
           ← Back
         </button>
 
-        <Button variant="contained" color="primary" size="small">
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          onClick={handleExport}
+        >
           Export Profile
         </Button>
       </div>
@@ -245,60 +306,136 @@ export default function ResearcherProfile() {
           </div>
 
           {/* Works List */}
-          <div className="bg-white p-4 rounded-md shadow">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xl font-semibold">Research Works</h2>
+          <div id="works-section" className="bg-white p-4 rounded-md shadow">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xl font-semibold">Research Works</h2>
+                <p className="text-sm text-gray-600">
+                  {worksLoading
+                    ? "Loading..."
+                    : `Showing ${currentWorks.length} of ${totalWorks} works`}
+                </p>
+              </div>
               {worksLoading && <CircularProgress size={20} />}
             </div>
 
-            {formattedWorks.length > 0 ? (
-              <ul className="space-y-4">
-                {formattedWorks.map((work, idx) => {
-                  const authorsList = work.authors.map((a) => a.name);
-                  const displayAuthors =
-                    authorsList.length > 2
-                      ? `${authorsList[0]}, ${authorsList[1]}, et al.`
-                      : authorsList.join(", ");
+            {currentWorks.length > 0 ? (
+              <>
+                <ul className="space-y-4">
+                  {currentWorks.map((work, idx) => {
+                    const authorsList = work.authors.map((a) => a.name);
+                    const displayAuthors =
+                      authorsList.length > 2
+                        ? `${authorsList[0]}, ${authorsList[1]}, et al.`
+                        : authorsList.join(", ");
 
-                  return (
-                    <li key={work.id || idx} className="border-b pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <a
-                            href={work.link}
-                            className="text-blue-600 font-medium hover:underline"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {work.title}
-                          </a>
+                    return (
+                      <li key={work.id || idx} className="border-b pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <a
+                              href={work.link}
+                              className="text-blue-600 font-medium hover:underline"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {work.title}
+                            </a>
 
-                          <div className="text-sm text-gray-600 mt-1">
-                            {displayAuthors} &middot; {work.journal_name}
-                          </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {displayAuthors} &middot; {work.journal_name}
+                            </div>
 
-                          <div className="text-sm text-gray-700 flex space-x-8 mt-1">
-                            {work.publication_year && (
-                              <span className="italic text-gray-500">
-                                {work.publication_year}
+                            <div className="text-sm text-gray-700 flex space-x-8 mt-1">
+                              {work.publication_year && (
+                                <span className="italic text-gray-500">
+                                  {work.publication_year}
+                                </span>
+                              )}
+                              <span>
+                                <span className="font-semibold">Cited by:</span>{" "}
+                                {work.cited_by}
                               </span>
-                            )}
-                            <span>
-                              <span className="font-semibold">Cited by:</span>{" "}
-                              {work.cited_by}
-                            </span>
+                            </div>
                           </div>
+                          {work.open_access && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded ml-2">
+                              Open Access
+                            </span>
+                          )}
                         </div>
-                        {work.open_access && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded ml-2">
-                            Open Access
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center space-x-2 mt-6">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                    >
+                      First
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <div className="flex space-x-1">
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          const pageNumber =
+                            Math.max(
+                              1,
+                              Math.min(totalPages - 4, currentPage - 2)
+                            ) + i;
+                          return pageNumber <= totalPages ? (
+                            <Button
+                              key={pageNumber}
+                              variant={
+                                currentPage === pageNumber
+                                  ? "contained"
+                                  : "outlined"
+                              }
+                              size="small"
+                              onClick={() => handlePageChange(pageNumber)}
+                              className="min-w-0 w-10"
+                            >
+                              {pageNumber}
+                            </Button>
+                          ) : null;
+                        }
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Last
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center text-gray-500 py-8">
                 {worksLoading ? "Loading works..." : "No works found"}
