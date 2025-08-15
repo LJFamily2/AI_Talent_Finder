@@ -61,10 +61,6 @@ async function getResearcherWorks(req, res) {
     const pageNum = Math.max(1, parseInt(page));
     const perPage = Math.min(200, Math.max(1, parseInt(per_page))); // Max 200 per OpenAlex limits
 
-    console.log(
-      `🔗 Fetching works for researcher ${id}, page ${pageNum}, ${perPage} per page...`
-    );
-
     // Build OpenAlex API URL for works with pagination
     const apiKey = process.env.OPENALEX_API_KEY;
     const baseUrl = "https://api.openalex.org/works";
