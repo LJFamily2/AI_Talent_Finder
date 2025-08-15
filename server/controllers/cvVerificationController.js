@@ -127,7 +127,11 @@ const verifyCV = async (file, prioritySource) => {
 
         // Get best available link
         const scholarLink = scholarResult.details?.link;
-        const openAlexLink =  openAlexResult.details?.doi || openAlexResult.details?.id; 
+        let scopusLink = scopusResult.details?.["prism:doi"]
+          ? `https://doi.org/${scopusResult.details["prism:doi"]}`
+          : undefined;
+        const openAlexLink =
+          openAlexResult.details?.doi || openAlexResult.details?.id;
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
         // Return detailed verification result for this publication
@@ -245,8 +249,9 @@ const verifyCV = async (file, prioritySource) => {
               })(),
               link: (() => {
                 // Try to get any link in order of preference
-                if (scholarLink) return scholarLink;
+                if (scopusLink) return scopusLink;
                 if (openAlexLink) return openAlexLink;
+                if (scholarLink) return scholarLink;
                 return fallbackLink || "No link available";
               })(),
               status: (() => {
