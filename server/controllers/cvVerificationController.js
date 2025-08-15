@@ -125,17 +125,9 @@ const verifyCV = async (file, prioritySource) => {
           hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
         }
 
-        // Flag potential false claims
-        const isVerified =
-          scholarResult.status === "verified" ||
-          scopusResult.status === "verified" ||
-          openAlexResult.status === "verified" ||
-          scholarResult.status === "verified but not same author name" ||
-          scopusResult.status === "verified but not same author name" ||
-          openAlexResult.status === "verified but not same author name";
         // Get best available link
         const scholarLink = scholarResult.details?.link;
-        const openAlexLink = openAlexResult.details?.id; // OpenAlex ID as fallback link
+        const openAlexLink =  openAlexResult.details?.doi || openAlexResult.details?.id; 
         const fallbackLink = createGoogleScholarSearchUrl(pub.title);
 
         // Return detailed verification result for this publication
