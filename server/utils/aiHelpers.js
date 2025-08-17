@@ -53,7 +53,6 @@ let headerClassifier = null;
 function getHeaderClassifier() {
   if (!headerClassifier) {
     headerClassifier = new SimpleHeaderClassifier();
-    headerClassifier.loadKnownHeaders();
     try {
       headerClassifier.load(
         path.join(__dirname, "../ml/header_classifier.json")
