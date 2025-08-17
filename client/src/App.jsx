@@ -8,6 +8,8 @@ import { CssBaseline } from "@mui/material";
 import CVUpload from "./pages/CVUpload";
 import CVVerification from "./pages/CVVerification";
 import ResearcherProfile from "./pages/ResearcherProfile";
+import SearchAuthor from "./pages/SearchAuthor";
+
 import SearchInterface from "./pages/SearchInterface";
 import SearchStart from "./pages/SearchStart";
 import LandingPage from "./pages/LandingPage";
@@ -45,6 +47,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+              
+          <Route path="/search-author" element={<SearchAuthor />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

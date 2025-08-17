@@ -1,5 +1,3 @@
-
-
 /**
  * AI Helper Utilities
  *
@@ -22,30 +20,56 @@
  */
 
 const { getTitleSimilarity } = require("./textUtils");
-const { SimpleHeaderClassifier } = require("./simpleHeaderClassifier");
-const { PUBLICATION_PATTERNS } = require("./constants");
+const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
+const fs = require("fs");
 const path = require("path");
+const { getFilteredHeaders } = require("./headerFilterUtils");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
 //=============================================================================
 
-// Initialize header classifier
-let headerClassifier = null;
+// Load detected headers and convert to regex patterns
+let DETECTED_HEADER_PATTERNS = [];
 try {
-  headerClassifier = new SimpleHeaderClassifier();
-  headerClassifier.load(
-    path.join(__dirname, "../models/header_classifier.json")
+  const detectedHeaders = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../ml/detected_headers.json"), "utf8")
+  );
+  DETECTED_HEADER_PATTERNS = detectedHeaders.map(
+    (header) =>
+      new RegExp(`^${header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
   );
 } catch (error) {
-  console.warn("Could not load header classifier model:", error.message);
+  console.warn(
+    "Could not load detected headers for section detection:",
+    error.message
+  );
+  DETECTED_HEADER_PATTERNS = [];
+}
+
+// Initialize header classifier
+let headerClassifier = null;
+
+function getHeaderClassifier() {
+  if (!headerClassifier) {
+    headerClassifier = new SimpleHeaderClassifier();
+    headerClassifier.loadKnownHeaders();
+    try {
+      headerClassifier.load(
+        path.join(__dirname, "../ml/header_classifier.json")
+      );
+    } catch (error) {
+      console.warn("Could not load header classifier model:", error.message);
+    }
+  }
+  return headerClassifier;
 }
 
 /**
  * Maximum size for text chunks when processing with AI
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = 4000;
+const MAX_CHUNK_SIZE = 8000;
 
 /**
  * Similarity threshold for duplicate publication detection
@@ -120,7 +144,7 @@ function findPublicationsSectionEnd(lines, startIndex, publicationSubheadings) {
   // is a publication subheading
   const isPubSubheading = (line) =>
     publicationSubheadings.some((re) => re.test(line.trim()));
-  
+
   // is a blank or navigation line
   const isSkipLine = (line) => !line.trim() || /back to top/i.test(line);
 
@@ -194,7 +218,7 @@ const extractPublicationsFromCV = async (model, cvText) => {
         findPublicationsSectionEnd(
           lines,
           header.index + 1,
-          PUBLICATION_PATTERNS // Use only publication subheadings from PUBLICATION_PATTERNS
+          DETECTED_HEADER_PATTERNS
         ) + 1; // inclusive
     }
     const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
@@ -204,17 +228,14 @@ const extractPublicationsFromCV = async (model, cvText) => {
     });
   }
 
-  // console.log(`Found ${publicationSections.length} publication sections`);
-  // publicationSections.forEach((section, index) => {
-  //   console.log(
-  //     `Section ${index + 1}: ${section.header} (${
-  //       section.content.length
-  //     } chars)`
-  //   );
-  // });
-
-  // Process each section in chunks
+  // Step 2: Batch sections together to optimize AI requests
   const allPublications = [];
+  const batches = [];
+  let currentBatch = {
+    content: "",
+    sections: [],
+    size: 0,
+  };
 
   for (
     let sectionIndex = 0;
@@ -224,86 +245,49 @@ const extractPublicationsFromCV = async (model, cvText) => {
     const section = publicationSections[sectionIndex];
 
     if (section.content.length === 0) {
-      continue; // Skip to the next section
+      continue; // Skip empty sections
     }
 
-    // Analyze content for potential publication entries
-    const contentLines = section.content.split("\n");
+    // Add section header as context
+    const sectionWithHeader = `\n=== ${section.header} ===\n${section.content}`;
+    const sectionSize = sectionWithHeader.length;
 
-    // Split section into chunks if needed
-    if (section.content.length > MAX_CHUNK_SIZE) {
-      const chunks = [];
-      let currentChunk = "";
-      let currentSize = 0;
+    // If adding this section would exceed MAX_CHUNK_SIZE and we already have content
+    if (
+      currentBatch.size + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.content.length > 0
+    ) {
+      // Process the current batch
+      batches.push(currentBatch);
 
-      // Split at logical boundaries (lines)
-      for (const line of contentLines) {
-        if (
-          currentSize + line.length + 1 > MAX_CHUNK_SIZE &&
-          currentChunk.length > 0
-        ) {
-          chunks.push(currentChunk.trim());
-          currentChunk = "";
-          currentSize = 0;
-        }
-        currentChunk += line + "\n";
-        currentSize += line.length + 1;
-      }
-      if (currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-      }
-
-      const chunkResults = await Promise.all(
-        chunks.map(async (chunk, idx) => {
-          // console.log(
-          //   `\n[extractPublicationsFromChunk] Input chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}):\n`,
-          //   chunk
-          // );
-          const result = await extractPublicationsFromChunk(model, chunk);
-          // console.log(
-          //   `[extractPublicationsFromChunk] Output for chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}):\n`,
-          //   result
-          // );
-          // console.log(
-          //   `[extractPublicationsFromChunk] Total publications in chunk #${
-          //     idx + 1
-          //   } (section ${sectionIndex + 1}): ${result.length}`
-          // );
-          return result;
-        })
-      );
-
-      chunkResults.forEach((chunkPubs) => {
-        allPublications.push(...chunkPubs);
-      });
+      // Start a new batch with the current section
+      currentBatch = {
+        content: sectionWithHeader,
+        sections: [section.header],
+        size: sectionSize,
+      };
     } else {
-      // console.log(
-      //   `\n[extractPublicationsFromChunk] Input section (section ${
-      //     sectionIndex + 1
-      //   }):\n`,
-      //   section.content
-      // );
-      const sectionPubs = await extractPublicationsFromChunk(
-        model,
-        section.content
-      );
-      // console.log(
-      //   `[extractPublicationsFromChunk] Output for section (section ${
-      //     sectionIndex + 1
-      //   }):\n`,
-      //   sectionPubs
-      // );
-      // console.log(
-      //   `[extractPublicationsFromChunk] Total publications in section ${
-      //     sectionIndex + 1
-      //   }: ${sectionPubs.length}`
-      // );
-      allPublications.push(...sectionPubs);
+      // Add to current batch
+      currentBatch.content += sectionWithHeader;
+      currentBatch.sections.push(section.header);
+      currentBatch.size += sectionSize;
     }
+  }
+
+  // Don't forget the last batch
+  if (currentBatch.content.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  // Step 3: Process each batch
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+
+    const batchPublications = await extractPublicationsFromChunk(
+      model,
+      batch.content
+    );
+    allPublications.push(...batchPublications);
   }
 
   // Remove duplicates (based on title similarity) and validate publications
@@ -390,32 +374,16 @@ function extractHeadersFromText(cvText) {
       continue;
     }
 
-    // Skip standalone years when they appear in contact info section (near top)
-    if (
-      /^(19|20)[0-9]{2}$/i.test(line) &&
-      i < 30 &&
-      !PUBLICATION_PATTERNS.some((p) => p.test(line))
-    ) {
-      continue;
-    }
-
     // Try ML model first, fall back to regex rules
     let isHeader = false;
 
-    if (headerClassifier && headerClassifier.trained) {
+    const classifier = getHeaderClassifier();
+
+    if (classifier && classifier.trained) {
       try {
-        isHeader = headerClassifier.predict(line, i, lines.length);
+        isHeader = classifier.predict(line, i, lines.length);
       } catch (error) {
         console.warn("Error using ML header detection:", error.message);
-        // Fall back to regex rules
-        isHeader =
-          (line === line.toUpperCase() &&
-            line.length > 3 &&
-            !/^[A-Z]\.$/.test(line) &&
-            !/^\d+\.?$/.test(line) &&
-            !/^[A-Z\s\.\,]+\s+\d+$/.test(line) &&
-            !/^PG\.\s*\d+$/.test(line)) ||
-          PUBLICATION_PATTERNS.some((pattern) => pattern.test(line));
       }
     }
 
@@ -428,7 +396,14 @@ function extractHeadersFromText(cvText) {
     }
   }
 
-  return headers;
+  // Filter headers using publication pattern logic
+  const filteredHeaders = getFilteredHeaders(
+    headers,
+    getHeaderClassifier(),
+    lines
+  );
+
+  return filteredHeaders;
 }
 
 //=============================================================================
@@ -449,12 +424,7 @@ function extractHeadersFromText(cvText) {
  * @private
  */
 
-let extractPublicationsFromChunkCallCount = 0;
 async function extractPublicationsFromChunk(model, chunkText) {
-  extractPublicationsFromChunkCallCount++;
-  // console.log(
-  //   `[extractPublicationsFromChunk] Call count: ${extractPublicationsFromChunkCallCount}`
-  // );
   // Create a more specific prompt with strong anti-hallucination instructions
   let prompt = `${chunkText}
 
@@ -478,10 +448,9 @@ Guiding Principles for Parsing:
    - How to Spot Annotations: They are often indented, on a new line directly following a main entry, and crucially, they do not begin with a new, full list of authors.
 
 Rules:
-
 1. Combine all text belonging to a single publication into one "publication" field. This includes the main citation and all its annotations.
 2. Extract the "title" from the primary citation line, not from the annotation text.
-3. If no publications are found, return an empty array [].
+3. If NO publications are found, return an empty array [].
 4. Do not invent or infer any information. The "publication" field must be an exact copy of the source text for that entry.
 5. Output ONLY a valid JSON array. Do not include any commentary, markdown code blocks, or other text outside the JSON.
 
@@ -507,7 +476,6 @@ Begin your response with the JSON array only.
   try {
     // Check if chunkText is too short to process
     if (chunkText.length < 20) {
-      console.log("Chunk text is too short for processing.");
       return [];
     }
     const result = await model.generateContent(prompt);
@@ -619,5 +587,4 @@ Begin your response with the JSON array only.
 module.exports = {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
-  extractHeadersFromText,
 };
