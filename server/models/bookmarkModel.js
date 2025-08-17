@@ -11,12 +11,10 @@ const BookmarkSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    researcherProfileIds: [
-      {
-        type: String, // Reference to researcherprofiles collection _id
-        required: true,
-      },
-    ],
+    researcherProfileIds: {
+      type: [String],
+      required: true,
+    },
   },
   {
     timestamps: true,
