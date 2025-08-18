@@ -39,9 +39,6 @@ class SimpleHeaderClassifier {
   loadKnownHeaders() {
     try {
       this.knownHeaders = MLFileUtils.loadJsonFile(PATHS.DETECTED_HEADERS, []);
-      console.log(
-        `Loaded ${this.knownHeaders.length} known publication headers`
-      );
     } catch (error) {
       console.warn("Could not load detected headers:", error);
       this.knownHeaders = [];
