@@ -46,7 +46,7 @@
 
 | Parameter     | Example                                         | Purpose                                                                              |
 | ------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `id`          | `id=https://openalex.org/A123456789`            | Search a specific author by OpenAlex ID                                              |
+| `id`          | `id=A123456789`                                 | Search a specific author by OpenAlex ID                                              |
 | `name`        | `name=John Doe`                                 | Case-insensitive search for author name                                              |
 | `country`     | `country=US` or `country=US,GB`                 | Filter by country code(s) in affiliations (supports multiple, OR logic)              |
 | `topic`       | `topic=Physics` or `topic=Physics, Mathematics` | Filter by research topics or fields (supports multiple, OR logic)                    |

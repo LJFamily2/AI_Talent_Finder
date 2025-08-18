@@ -3,7 +3,7 @@ const express = require('express');
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 const filtersCtrl = require('../controllers/searchFiltersController'); 
 const authorCtrl  = require('../controllers/authorController');      
-
+const { normalizeAuthorId } = require('../utils/queryHelpers'); 
 const router = express.Router();
 const SHORT = 900;
 const MEDIUM = 1800;
@@ -21,7 +21,7 @@ router.get(
     ];
 
     if (id) {
-      const idOnly = String(id).split('/').pop();
+      const idOnly = normalizeAuthorId(id) || String(id).split('/').pop();
       return ['researcherProfiles', idOnly];
     }
 
@@ -45,7 +45,7 @@ router.get(
   cacheRedisInsight(SHORT, req => {
     // ✅ special-case id để cache theo researcherProfiles
     if (req.query.id) {
-      const idOnly = String(req.query.id).split('/').pop();
+      const idOnly = normalizeAuthorId(req.query.id) || String(req.query.id).split('/').pop();
       return ['researcherProfiles', idOnly];
     }
 

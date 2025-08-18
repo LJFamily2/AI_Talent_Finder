@@ -37,15 +37,14 @@ function parseBool(input, defaultVal = false) {
 //==============================
 // Multi-value normalize (OR)
 //==============================
-// Chấp nhận: ?a=1&a=2 | a=1|2 | a=1,2 | a=1 or 2 | a=1 và 2 | a=1 hoặc 2
+// Hỗ trợ: ?a=1&a=2 | a=1|2 | a=1,2 | a=1 or 2 | a=1 và 2 | a=1 hoặc 2
 function normalizeToComma(input = "") {
   if (!input || typeof input !== "string") return "";
   let s = input
     .replace(/\s+(or|and|hoặc|và)\s+/gi, ",")
     .replace(/[|/;&]/g, ",")
     .trim();
-  s = s.replace(/,+/g, ",");
-  s = s.replace(/\s*,\s*/g, ",");
+  s = s.replace(/,+/g, ",").replace(/\s*,\s*/g, ",");
   return s;
 }
 
@@ -63,7 +62,7 @@ function parseMultiOr(input) {
 //==============================
 // Text helpers
 //==============================
-/** Safe case-insensitive regex from user text (supports quoted phrase). */
+/** Safe, case-insensitive regex from user text (supports quoted phrase). */
 function toSafeRegex(s) {
   const raw = String(s ?? "").replace(/^"|"$/g, "");
   const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -144,6 +143,80 @@ function clampPageLimit(page, limit, maxLimit, defaultLimit = 20) {
 }
 
 //==============================
+// OpenAlex Author ID helpers (UNIFIED)
+//==============================
+/**
+ * Chuẩn hóa Author ID về dạng `A123...` (uppercase).
+ * - Chấp nhận: "A5035632164", "a5035632164",
+ *              "https://openalex.org/A5035632164",
+ *              "https://api.openalex.org/authors/A5035632164",
+ *              "openalex.org/A5035632164", có/không slash cuối, query string...
+ * - Nếu `strict: true` và không hợp lệ -> throw Error('INVALID_AUTHOR_ID')
+ * - Nếu `strict: false` (mặc định) -> trả ""
+ */
+function normalizeAuthorId(raw, opts = { strict: false }) {
+  if (raw == null) {
+    if (opts.strict) throw new Error("INVALID_AUTHOR_ID");
+    return "";
+  }
+
+  let s = String(raw).trim();
+  if (!s) {
+    if (opts.strict) throw new Error("INVALID_AUTHOR_ID");
+    return "";
+  }
+
+  // 1) Cắt các prefix URL phổ biến để lấy tail
+  //    Ví dụ: https://api.openalex.org/authors/A123?foo=1 -> "A123?foo=1"
+  s = s
+    .replace(/^https?:\/\//i, "")
+    .replace(/^api\./i, "")
+    .replace(/^openalex\.org\//i, "")
+    .replace(/^authors\//i, "");
+
+  // 2) Tách trước query/hash/fragment hoặc phần path tiếp theo
+  //    Ví dụ: "A123?x=1" -> "A123"
+  s = s.split(/[?#/]/)[0];
+
+  // 3) Nếu sau khi cắt mà đã là A\d+ -> lấy luôn
+  const direct = s.match(/^A\d+$/i);
+  if (direct) return direct[0].toUpperCase();
+
+  // 4) Fallback: Tìm token A\d+ nằm ở bất kỳ vị trí nào trong chuỗi ban đầu
+  //    Dùng bản gốc upper để tăng độ match, nhưng vẫn đảm bảo lấy đúng nhóm A\d+
+  const any = String(raw).toUpperCase().match(/A\d+/);
+  if (any) return any[0];
+
+  if (opts.strict) throw new Error("INVALID_AUTHOR_ID");
+  return "";
+}
+
+/**
+ * Đảm bảo document expose `_id` = A-id và không leak `id` dạng URL OpenAlex.
+ * - Ưu tiên lấy từ `_id` > `id` > `identifiers.openalex`
+ * - Nếu tìm được A-id hợp lệ -> set `_id` = A-id (uppercase)
+ * - Nếu `id` là URL OpenAlex -> xóa để tránh client nhầm với `_id`
+ */
+function ensureAIdField(doc) {
+  if (!doc || typeof doc !== "object") return doc;
+  const out = { ...doc };
+
+  const candidate =
+    out._id ||
+    out.id ||
+    (out.identifiers && (out.identifiers.openalex || out.identifiers.author || out.identifiers.id)) ||
+    "";
+
+  const norm = normalizeAuthorId(candidate);
+  if (norm) out._id = norm;
+
+  if (typeof out.id === "string" && /^https?:\/\/openalex\.org\/A/i.test(out.id)) {
+    delete out.id;
+  }
+  return out;
+}
+
+//==============================
 // Exports
 //==============================
 module.exports = {
@@ -173,5 +246,9 @@ module.exports = {
   clampPageLimit,
   clamp,
   toNumberSafe,
-  parseBool
+  parseBool,
+
+  // id helpers
+  normalizeAuthorId,
+  ensureAIdField,
 };

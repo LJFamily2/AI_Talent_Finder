@@ -66,8 +66,17 @@ app.locals.redisClient = redisClient;
 //==================================================================
 mongoose
   .connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+
+    // In ra thông tin DB đã connect
+    const conn = mongoose.connection;
+    console.log(`📌 Connected to: ${conn.host}:${conn.port}/${conn.name}`);
+    // hoặc in ra nguyên URI (ẩn mật khẩu cho an toàn)
+    console.log(`🔗 MONGODB_URI = ${process.env.MONGODB_URI}`);
+  })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
 
 //==================================================================
 // Global Error Handler Middleware

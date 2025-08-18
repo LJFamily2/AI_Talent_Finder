@@ -6,22 +6,22 @@ const express = require("express");
 const router  = express.Router();
 
 const {
-  cache: cacheRedisInsight,
+  cache:
   flushAllCache,
   initRedisClient, 
 } = require("../middleware/cacheRedisInsight");
 
-const {
-  saveToDatabase,
-  deleteFromDatabase,
-} = require("../controllers/authorController");
+// const {
+//   saveToDatabase,
+//   deleteFromDatabase,
+// } = require("../controllers/authorController");
 
 
-// 1) Save author profile to MongoDB
-router.post("/save-profile", saveToDatabase);
+// // 1) Save author profile to MongoDB
+// router.post("/save-profile", saveToDatabase);
 
-// 2) Delete author profile from MongoDB and Redis
-router.delete("/delete-profile", deleteFromDatabase);
+// // 2) Delete author profile from MongoDB and Redis
+// router.delete("/delete-profile", deleteFromDatabase);
 
 // 3) Flush all Redis cache manually
 router.post("/flush-redis", async (req, res) => {
