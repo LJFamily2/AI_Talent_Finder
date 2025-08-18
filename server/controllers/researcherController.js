@@ -89,19 +89,11 @@ async function getResearcherWorks(req, res) {
     const data = response.data;
 
     // Return the paginated works data
-    res.status(200).json({
-      success: true,
-      data: {
-        meta: {
-          count: data.meta?.count || 0,
-          page: pageNum,
-          per_page: perPage,
-          total_pages: Math.ceil((data.meta?.count || 0) / perPage),
-          db_response_time_ms: data.meta?.db_response_time_ms,
-        },
-        results: data.results || [],
-      },
-    });
+    const works = data.results || [];
+    const count = data.meta?.count || 0;
+    const total_pages = Math.ceil(count / perPage);
+
+    res.json({ results: works, meta: { count, total_pages } });
   } catch (error) {
     console.error("Error fetching researcher works:", error);
 

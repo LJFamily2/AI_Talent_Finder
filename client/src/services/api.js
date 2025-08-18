@@ -46,7 +46,10 @@ const apiRequest = async (endpoint, options = {}) => {
  * @returns {Promise<Object>} Researcher profile data
  */
 export const getResearcherProfile = async (researcherId) => {
-  return apiRequest(`/api/researcher/${researcherId}`);
+  const response = await fetch(`/api/researcher/${researcherId}`);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  const result = await response.json();
+  return result.data; // Only return the researcher document
 };
 
 /**
@@ -56,14 +59,12 @@ export const getResearcherProfile = async (researcherId) => {
  * @param {number} perPage - Number of works per page (default: 20)
  * @returns {Promise<Object>} Researcher works data from OpenAlex
  */
-export const getResearcherWorks = async (
-  researcherId,
-  page = 1,
-  perPage = 20
-) => {
-  return apiRequest(
-    `/api/researcher/${researcherId}/works?page=${page}&per_page=${perPage}`
+export const getResearcherWorks = async (researcherId, page, perPage) => {
+  const response = await fetch(
+    `/api/researcher/${researcherId}/works?page=${page}&perPage=${perPage}`
   );
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return await response.json();
 };
 
 /**

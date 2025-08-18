@@ -71,7 +71,8 @@ const ResearcherProfileSchema = new mongoose.Schema({
   },
 
   citation_trends:     CitationTrendSchema,
-  current_affiliation: CurrentAffSchema
+  current_affiliations: [CurrentAffSchema],
+  current_affiliation: CurrentAffSchema    
 
 }, {
   timestamps: true,

@@ -144,6 +144,7 @@ export default function ResearcherProfile() {
       institution: currentInst = "",
       display_name: currentInstDisplayName = "",
     } = {},
+    current_affiliations = [],
   } = researcher;
 
   const pastAffiliations = affiliations.filter(
@@ -245,11 +246,17 @@ export default function ResearcherProfile() {
 
                 <div>
                   <h3 className="font-semibold text-gray-700">
-                    Current Affiliation
+                    Current Affiliations
                   </h3>
-                  <p className="text-sm">
-                    {currentInstDisplayName || currentInst || "N/A"}
-                  </p>
+                  {current_affiliations.length > 0 ? (
+                    <ul className="list-disc list-inside text-sm text-gray-700">
+                      {current_affiliations.map((aff, i) => (
+                        <li key={i}>{aff.display_name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm">{currentInstDisplayName || currentInst || "N/A"}</p>
+                  )}
                 </div>
 
                 {pastAffiliations.length > 0 && (
