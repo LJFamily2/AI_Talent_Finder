@@ -36,9 +36,10 @@ function App() {
           <Route path="/search-tool" element={<SearchStart />} />
           <Route path="/search-interface" element={<SearchInterface />} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="/landing-page" element={<LandingPage />} />
+          <Route path="/landing-page" element={<LandingPage  />} />
 
-          <Route path="/researcher-profile" element={<ResearcherProfile />} />
+          <Route path="/researcher-profile/:id" element={<ResearcherProfile />} />
+
           <Route
             path="/saved-researchers"
             element={
@@ -47,8 +48,10 @@ function App() {
               </ProtectedRoute>
             }
           />
-              
+
           <Route path="/search-author" element={<SearchAuthor />} />
+
+
         </Routes>
       </AuthProvider>
     </BrowserRouter>
