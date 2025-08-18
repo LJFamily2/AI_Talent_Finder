@@ -1,27 +1,31 @@
 const Bookmark = require("../models/bookmarkModel");
 const researcherProfile = require("../models/researcherProfileModel");
 
+module.exports = {
+  getBookmarks,
+  addBookmarks,
+  removeBookmark,
+};
+
 // Get all bookmarks for the authenticated user
-const getBookmarks = async (req, res) => {
+async function getBookmarks(req, res) {
   try {
     const userId = req.user.id;
 
-    // Find all bookmarks for this user and populate researcher data
-    const bookmarks = await Bookmark.find({ userId }).populate({
-      path: "researcherProfileIds",
-      model: "researcherprofiles",
-    });
+    // Find all bookmarks for this user
+    const bookmarks = await Bookmark.find({ userId });
 
-    // Extract researcher profiles from bookmarks
-    const researcherProfiles = [];
+    // Extract all researcher profile IDs
+    const researcherIds = [];
     for (const bookmark of bookmarks) {
-      for (const researcherId of bookmark.researcherProfileIds) {
-        const researcher = await researcherProfile.findById(researcherId);
-        if (researcher) {
-          researcherProfiles.push(researcher);
-        }
-      }
+      researcherIds.push(...bookmark.researcherProfileIds);
     }
+
+    // Get unique researcher IDs and fetch their profiles
+    const uniqueResearcherIds = [...new Set(researcherIds)];
+    const researcherProfiles = await researcherProfile.find({
+      _id: { $in: uniqueResearcherIds },
+    });
 
     res.status(200).json({
       success: true,
@@ -36,10 +40,10 @@ const getBookmarks = async (req, res) => {
       error: error.message,
     });
   }
-};
+}
 
 // Add bookmark(s) for one or more researcher profiles
-const addBookmarks = async (req, res) => {
+async function addBookmarks(req, res) {
   try {
     const userId = req.user.id;
     const { researcherProfileIds } = req.body;
@@ -112,10 +116,10 @@ const addBookmarks = async (req, res) => {
       error: error.message,
     });
   }
-};
+}
 
 // Remove a bookmark for a specific researcher
-const removeBookmark = async (req, res) => {
+async function removeBookmark(req, res) {
   try {
     const userId = req.user.id;
     const { id } = req.params; // researcher profile ID
@@ -153,10 +157,4 @@ const removeBookmark = async (req, res) => {
       error: error.message,
     });
   }
-};
-
-module.exports = {
-  getBookmarks,
-  addBookmarks,
-  removeBookmark,
-};
+}
