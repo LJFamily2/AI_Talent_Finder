@@ -55,7 +55,7 @@ function getFilteredHeaders(headers, classifier, lines) {
   }
   const publicationHeaders = [];
   for (const header of headers) {
-    const features = classifier.extractFeatures(
+    const features = FeatureExtractor.extractFeatures(
       header.text,
       header.index,
       lines.length
