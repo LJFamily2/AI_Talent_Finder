@@ -1,5 +1,6 @@
 // Express Server Entry Point
 // Sets up API routes, connects MongoDB and Redis, and starts server
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -7,6 +8,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 const routes = require("../routes");
 const { createClient } = require("redis");
+const multer = require("multer"); // 🆕 Required for file uploads
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, "../.env") });
@@ -18,7 +20,10 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Mount routes
+// File upload middleware (optional: you can remove this if you're handling it in the route only)
+const upload = multer({ dest: "uploads/" });
+
+// Mount all routes
 app.use(routes);
 
 // Redis Client Setup
@@ -28,7 +33,6 @@ redisClient.on("error", (err) => console.error("Redis Client Error", err));
 (async () => {
   try {
     await redisClient.connect();
-    // Initialize Redis client for manual cache deletion
     const { initRedisClient } = require("../middleware/cacheRedisInsight");
     initRedisClient(redisClient);
   } catch (err) {

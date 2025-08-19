@@ -9,6 +9,7 @@ const exportRoutes = require("./exportRoute");
 const researcherRoutes = require("./researcherRoute");
 const bookmarkRoutes = require("./bookmarkRoute");
 const searchFiltersRoutes = require("./searchFiltersRoute");
+const aiDetectionRoutes = require("./aiDetectionRoute"); 
 
 // Mount routes
 router.use("/api/cv", cvVerificationRoutes);
@@ -19,6 +20,7 @@ router.use("/api/export", exportRoutes);
 router.use("/api/researcher", researcherRoutes);
 router.use("/api/bookmarks", bookmarkRoutes);
 router.use("/api/author", authorRoutes);
+router.use("/api/ai", aiDetectionRoutes); 
 
 
 // Export router

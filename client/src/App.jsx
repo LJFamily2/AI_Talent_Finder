@@ -14,6 +14,7 @@ import SearchInterface from "./pages/SearchInterface";
 import SearchStart from "./pages/SearchStart";
 import LandingPage from "./pages/LandingPage";
 import SavedResearchers from "./pages/SavedResearchers";
+import JobDetect from "./pages/JobDetect";
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
           />
 
           <Route path="/search-author" element={<SearchAuthor />} />
+          <Route path="/job-detect" element={<JobDetect />} />
 
 
         </Routes>
