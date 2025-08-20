@@ -48,10 +48,8 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+              
           <Route path="/search-author" element={<SearchAuthor />} />
-
-
         </Routes>
       </AuthProvider>
     </BrowserRouter>
