@@ -3,6 +3,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const dotenv = require("dotenv");
 const path = require("path");
 const routes = require("../routes");
@@ -16,7 +17,13 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: process.env.VITE_API_URL || "http://localhost:3000",
+    credentials: true, // Allow cookies to be sent
+  })
+);
 
 // Mount routes
 app.use(routes);

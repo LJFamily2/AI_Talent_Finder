@@ -3,7 +3,23 @@ const jwt = require("jsonwebtoken");
 
 const sendTokenResponse = (user, res) => {
   const { accessToken, refreshToken } = user.getSignedJwtToken();
-  res.json({ success: true, accessToken, refreshToken });
+
+  // Set httpOnly cookies for secure token storage
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // HTTPS only in production
+    sameSite: "strict",
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // HTTPS only in production
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  res.json({ success: true, message: "Authentication successful" });
 };
 
 // @desc    Register user
@@ -53,7 +69,7 @@ exports.login = async (req, res) => {
 // @access  Public
 exports.refresh = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ message: "Please provide refresh token" });
@@ -70,10 +86,25 @@ exports.refresh = async (req, res) => {
     // Generate new access token
     const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
       user.getSignedJwtToken();
+
+    // Set new httpOnly cookies
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     res.json({
       success: true,
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
+      message: "Token refreshed successfully",
     });
   } catch (err) {
     res.status(401).json({ success: false, message: "Invalid refresh token" });
@@ -87,6 +118,24 @@ exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     res.json({ success: true, data: user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc    Logout user
+// @route   POST /api/auth/logout
+// @access  Public
+exports.logout = async (req, res) => {
+  try {
+    // Clear httpOnly cookies
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }

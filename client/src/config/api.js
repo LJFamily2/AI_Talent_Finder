@@ -9,15 +9,13 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Include cookies in requests
 });
 
-// Add request interceptor to include auth token
+// Add request interceptor - no need to manually add auth token anymore
+// Cookies will be sent automatically
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => {
@@ -31,8 +29,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized access
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      // Cookies will be cleared by the server on logout
       window.location.href = "/login";
     }
     return Promise.reject(error);
