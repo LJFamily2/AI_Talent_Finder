@@ -3,17 +3,24 @@ import { useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { Chip, Button, ButtonGroup, Menu, MenuItem, CircularProgress, Skeleton, Stack } from "@mui/material";
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import {
+  Chip,
+  Button,
+  ButtonGroup,
+  Menu,
+  MenuItem,
+  CircularProgress,
+  Skeleton,
+  Stack,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import {
   getResearcherProfile,
   getResearcherWorks,
   exportResearcherProfile,
 } from "../services/api";
-import jsPDF from "jspdf";
-import { autoTable } from "jspdf-autotable";
-
+import { exportResearcherById } from "../services/pdfExportService";
 export default function ResearcherProfile() {
   const { id } = useParams();
   const [researcher, setResearcher] = useState(null);
@@ -85,88 +92,14 @@ export default function ResearcherProfile() {
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     handleExportMenuClose();
-
-    const doc = new jsPDF();
-
-    // Header
-    doc.setFontSize(18);
-    doc.text(researcher.basic_info?.name || "Researcher Profile", 14, 18);
-
-    doc.setFontSize(12);
-    if (researcher.identifiers?.orcid) {
-      doc.text(`ORCID: ${researcher.identifiers.orcid}`, 14, 28);
+    try {
+      await exportResearcherById(id);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("Failed to export PDF. Please try again.");
     }
-
-    // Metrics Table (first)
-    const metricsRows = [
-      ["Total Works", total_works.toLocaleString()],
-      ["Total Citations", total_citations.toLocaleString()],
-      ["h-index", h_index.toLocaleString()],
-      ["i10-index", i10_index.toLocaleString()],
-      ["2-Year Mean Citedness", two_year_mean_citedness?.toFixed(2) || "N/A"],
-    ];
-    autoTable(doc, {
-      head: [["Metric", "Value"]],
-      body: metricsRows,
-      startY: 36,
-      theme: "grid",
-      headStyles: { fillColor: [37, 99, 235] },
-      styles: { fontSize: 10 },
-      margin: { left: 14, right: 14 },
-    });
-
-    if (currentAffiliations.length > 0) {
-      autoTable(doc, {
-        head: [["Current Affiliations"]],
-        body: currentAffiliations.map((aff) => [aff.display_name || "N/A"]),
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
-        theme: "grid",
-        headStyles: { fillColor: [37, 99, 235] },
-        styles: { fontSize: 10 },
-        margin: { left: 14, right: 14 },
-      });
-    }
-    if (pastAffiliations.length > 0) {
-      autoTable(doc, {
-        head: [["Past Affiliations"]],
-        body: pastAffiliations.map((aff) => [aff.institution?.display_name || "N/A"]),
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 60,
-        theme: "grid",
-        headStyles: { fillColor: [156, 163, 175] }, // Tailwind gray-400
-        styles: { fontSize: 10, textColor: [107, 114, 128] }, // Tailwind gray-500
-        margin: { left: 14, right: 14 },
-      });
-    }
-
-    // Fields Table
-    if (fields.length > 0) {
-      autoTable(doc, {
-        head: [["Fields"]],
-        body: fields.map((field) => [field.display_name]),
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
-        theme: "grid",
-        headStyles: { fillColor: [37, 99, 235] },
-        styles: { fontSize: 10 },
-        margin: { left: 14, right: 14 },
-      });
-    }
-
-    // Topics Table
-    if (topics.length > 0) {
-      autoTable(doc, {
-        head: [["Topics"]],
-        body: topics.map((topic) => [topic.display_name]),
-        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
-        theme: "grid",
-        headStyles: { fillColor: [37, 99, 235] },
-        styles: { fontSize: 10 },
-        margin: { left: 14, right: 14 },
-      });
-    }
-
-    doc.save(`${getExportFileName()}.pdf`);
   };
 
   useEffect(() => {
@@ -286,7 +219,8 @@ export default function ResearcherProfile() {
   } = researcher;
 
   const currentAffiliations =
-    Array.isArray(researcher.current_affiliations) && researcher.current_affiliations.length > 0
+    Array.isArray(researcher.current_affiliations) &&
+    researcher.current_affiliations.length > 0
       ? researcher.current_affiliations
       : [];
 
@@ -295,9 +229,13 @@ export default function ResearcherProfile() {
       aff.institution?.display_name !== (currentInstDisplayName || currentInst)
   );
 
-  const citationYears = counts_by_year.map((d) => String(d.year).replace(/,/g, "")).reverse();
+  const citationYears = counts_by_year
+    .map((d) => String(d.year).replace(/,/g, ""))
+    .reverse();
   const citationCounts = counts_by_year.map((d) => d.cited_by_count).reverse();
-  const workYears = counts_by_year.map((d) => String(d.year).replace(/,/g, "")).reverse();
+  const workYears = counts_by_year
+    .map((d) => String(d.year).replace(/,/g, ""))
+    .reverse();
   const workCounts = counts_by_year.map((d) => d.works_count).reverse();
 
   // Format works data from OpenAlex API (removed slice to show all works)
@@ -407,27 +345,31 @@ export default function ResearcherProfile() {
 
             {/* Bottom: 2-column layout: Left = Affils, Right = Research Areas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
               {/* Left column: Affiliations */}
               <div className="space-y-10 pr-4">
                 <div>
                   <h3 className="font-semibold text-gray-700">
-                    {currentAffiliations.length == 1 ? 'Current Affiliation' : 'Current Affiliations'}
+                    {currentAffiliations.length == 1
+                      ? "Current Affiliation"
+                      : "Current Affiliations"}
                   </h3>
                   <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
-                    {currentAffiliations.length > 0
-                      ? currentAffiliations.map((aff, i) => (
+                    {currentAffiliations.length > 0 ? (
+                      currentAffiliations.map((aff, i) => (
                         <li key={i}>{aff.display_name || "N/A"}</li>
                       ))
-                      : <li>N/A</li>
-                    }
+                    ) : (
+                      <li>N/A</li>
+                    )}
                   </ul>
                 </div>
 
                 {pastAffiliations.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-gray-700">
-                      {pastAffiliations.length == 1 ? 'Past Affiliation' : 'Past Affiliations'}
+                      {pastAffiliations.length == 1
+                        ? "Past Affiliation"
+                        : "Past Affiliations"}
                     </h3>
                     <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
                       {pastAffiliations.map((aff, i) => (
