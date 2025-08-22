@@ -3,12 +3,16 @@ import { useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { Chip, Button, CircularProgress, Skeleton } from "@mui/material";
+import { Chip, Button, ButtonGroup, Menu, MenuItem, CircularProgress, Skeleton, Stack } from "@mui/material";
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import {
   getResearcherProfile,
   getResearcherWorks,
   exportResearcherProfile,
 } from "../services/api";
+import jsPDF from "jspdf";
+import { autoTable } from "jspdf-autotable";
 
 export default function ResearcherProfile() {
   const { id } = useParams();
@@ -21,6 +25,10 @@ export default function ResearcherProfile() {
   const [worksPerPage] = useState(20);
   const [totalWorks, setTotalWorks] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Dropdown state for export button
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
 
   // Function to fetch works for a specific page
   const fetchWorksPage = useCallback(
@@ -43,13 +51,30 @@ export default function ResearcherProfile() {
     [id, worksPerPage]
   );
 
-  const handleExport = async () => {
+  const handleExportMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const getExportFileName = () => {
+    const safeName = (researcher?.basic_info?.name || "researcher")
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_]/g, "");
+    const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    return `${safeName}_profile_${dateStr}`;
+  };
+
+  const handleExportXLSX = async () => {
+    handleExportMenuClose();
     try {
       const blob = await exportResearcherProfile(id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `researcher_profile_${id}.xlsx`;
+      a.download = `${getExportFileName()}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -58,6 +83,90 @@ export default function ResearcherProfile() {
       console.error("Export failed:", error);
       alert("Failed to export profile. Please try again.");
     }
+  };
+
+  const handleExportPDF = () => {
+    handleExportMenuClose();
+
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(18);
+    doc.text(researcher.basic_info?.name || "Researcher Profile", 14, 18);
+
+    doc.setFontSize(12);
+    if (researcher.identifiers?.orcid) {
+      doc.text(`ORCID: ${researcher.identifiers.orcid}`, 14, 28);
+    }
+
+    // Metrics Table (first)
+    const metricsRows = [
+      ["Total Works", total_works.toLocaleString()],
+      ["Total Citations", total_citations.toLocaleString()],
+      ["h-index", h_index.toLocaleString()],
+      ["i10-index", i10_index.toLocaleString()],
+      ["2-Year Mean Citedness", two_year_mean_citedness?.toFixed(2) || "N/A"],
+    ];
+    autoTable(doc, {
+      head: [["Metric", "Value"]],
+      body: metricsRows,
+      startY: 36,
+      theme: "grid",
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 10 },
+      margin: { left: 14, right: 14 },
+    });
+
+    if (currentAffiliations.length > 0) {
+      autoTable(doc, {
+        head: [["Current Affiliations"]],
+        body: currentAffiliations.map((aff) => [aff.display_name || "N/A"]),
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10 },
+        margin: { left: 14, right: 14 },
+      });
+    }
+    if (pastAffiliations.length > 0) {
+      autoTable(doc, {
+        head: [["Past Affiliations"]],
+        body: pastAffiliations.map((aff) => [aff.institution?.display_name || "N/A"]),
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 60,
+        theme: "grid",
+        headStyles: { fillColor: [156, 163, 175] }, // Tailwind gray-400
+        styles: { fontSize: 10, textColor: [107, 114, 128] }, // Tailwind gray-500
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    // Fields Table
+    if (fields.length > 0) {
+      autoTable(doc, {
+        head: [["Fields"]],
+        body: fields.map((field) => [field.display_name]),
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10 },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    // Topics Table
+    if (topics.length > 0) {
+      autoTable(doc, {
+        head: [["Topics"]],
+        body: topics.map((topic) => [topic.display_name]),
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 60,
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10 },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    doc.save(`${getExportFileName()}.pdf`);
   };
 
   useEffect(() => {
@@ -227,19 +336,46 @@ export default function ResearcherProfile() {
     <div className="bg-gray-100 min-h-screen">
       <Header />
       {/* Back Btn & Export Btn */}
-      <div className="mx-10 mt-4 px-4 flex justify-between items-center">
-        <Button variant="outline" size="sm" onClick={() => window.history.back()}>
-          ← Back
-        </Button>
+      <div className="mx-10 mt-5 px-4 flex justify-between items-center">
+        <Stack direction="row" spacing={2}>
+          <Button
+            size="sm"
+            variant="text"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => window.history.back()}
+          >
+            Back
+          </Button>
+        </Stack>
 
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={handleExport}
+        <ButtonGroup variant="contained" color="primary">
+          <Button
+            onClick={handleExportMenuClick}
+            endIcon={<ArrowDropDownIcon />}
+            aria-controls={open ? "export-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? "true" : undefined}
+          >
+            Export Profile
+          </Button>
+        </ButtonGroup>
+        <Menu
+          id="export-menu"
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleExportMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
         >
-          Export Profile
-        </Button>
+          <MenuItem onClick={handleExportXLSX}>Export as XLSX</MenuItem>
+          <MenuItem onClick={handleExportPDF}>Export as PDF</MenuItem>
+        </Menu>
       </div>
 
       {/* Profile Section */}
