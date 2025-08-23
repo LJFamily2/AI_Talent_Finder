@@ -6,15 +6,24 @@ import {
   FaDownload,
   FaUserSlash,
   FaRegBookmark,
+  FaFilePdf,
 } from "react-icons/fa";
 import { FaSortUp, FaSortDown } from "react-icons/fa"; // Add these icons for sorting
 import letterH from "../assets/letter-h.png";
 import scholarHat from "../assets/scholar-hat.png";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Snackbar, Alert } from "@mui/material";
+import {
+  Snackbar,
+  Alert,
+  Menu,
+  MenuItem,
+  ButtonGroup,
+  Button,
+} from "@mui/material";
 import { getBookmarks, removeBookmark } from "../services/bookmarkService";
 import { exportResearchersToExcel } from "../services/exportService";
+import { exportResearchersWithFullData } from "../services/pdfExportService";
 
 export default function SavedResearchers() {
   const [savedResearchers, setSavedResearchers] = useState([]);
@@ -26,6 +35,10 @@ export default function SavedResearchers() {
   const [selectedResearchers, setSelectedResearchers] = useState([]);
 
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
+
+  // Export dropdown state
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   const [toast, setToast] = useState({
     open: false,
@@ -107,6 +120,55 @@ export default function SavedResearchers() {
     } catch (error) {
       console.error("Export failed:", error);
       showToast(error.message || "Export failed. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportMenuClick = (event) => {
+    setExportAnchorEl(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setExportAnchorEl(null);
+  };
+
+  const handleExportPDF = async () => {
+    handleExportMenuClose();
+    try {
+      const data = selectMode
+        ? savedResearchers.filter((r) => selectedResearchers.includes(r.id))
+        : savedResearchers;
+
+      if (data.length === 0) {
+        showToast("No researchers to export", "warning");
+        return;
+      }
+
+      setLoading(true);
+
+      await exportResearchersWithFullData(data);
+
+      const message = selectMode
+        ? `Successfully exported ${data.length} selected researcher${
+            data.length > 1 ? "s" : ""
+          } to PDF`
+        : `Successfully exported all ${data.length} researcher${
+            data.length > 1 ? "s" : ""
+          } to PDF`;
+
+      showToast(message, "success");
+
+      // Clear selection after export if in select mode
+      if (selectMode) {
+        setSelectedResearchers([]);
+      }
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      showToast(
+        error.message || "PDF export failed. Please try again.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -230,24 +292,43 @@ export default function SavedResearchers() {
                 {selectMode ? "Cancel" : "Select"}
               </button>
 
-              <button
-                onClick={handleExport}
-                disabled={
-                  loading || (selectMode && selectedResearchers.length === 0)
-                }
-                className={`flex items-center gap-2 rounded-xl font-medium px-4 py-2 shadow transition-all ${
-                  loading || (selectMode && selectedResearchers.length === 0)
-                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+              <ButtonGroup variant="contained" color="primary">
+                <Button
+                  onClick={handleExportMenuClick}
+                  endIcon={<FaDownload />}
+                  disabled={
+                    loading || (selectMode && selectedResearchers.length === 0)
+                  }
+                >
+                  {loading
+                    ? "Exporting..."
+                    : selectMode
+                    ? `Export Selected (${selectedResearchers.length})`
+                    : "Export All"}
+                </Button>
+              </ButtonGroup>
+              <Menu
+                anchorEl={exportAnchorEl}
+                open={exportMenuOpen}
+                onClose={handleExportMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
               >
-                <FaDownload className="text-current" />
-                {loading
-                  ? "Exporting..."
-                  : selectMode
-                  ? `Export Selected (${selectedResearchers.length})`
-                  : "Export All"}
-              </button>
+                <MenuItem onClick={handleExport}>
+                  <FaDownload className="mr-2" />
+                  Export as Excel
+                </MenuItem>
+                <MenuItem onClick={handleExportPDF}>
+                  <FaFilePdf className="mr-2" />
+                  Export as PDF
+                </MenuItem>
+              </Menu>
             </div>
           </div>
 
