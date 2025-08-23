@@ -2,6 +2,12 @@ import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../config/api";
 
+// Create a separate axios instance for auth checks to avoid global interceptors
+const authAxios = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+});
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -13,18 +19,18 @@ export const AuthProvider = ({ children }) => {
   axios.defaults.withCredentials = true;
 
   const setupRefreshTimer = () => {
-    // Check auth status every 14 minutes to potentially refresh token
-    // This is safer since we can't decode httpOnly cookies on client
+    // Check auth status every 50 minutes to potentially refresh token
+    // Since access token is now 1 hour, refresh at 50 minutes to be safe
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
 
-    refreshTimerRef.current = setTimeout(refreshAccessToken, 14 * 60 * 1000); // 14 minutes
+    refreshTimerRef.current = setTimeout(refreshAccessToken, 50 * 60 * 1000); // 50 minutes
   };
 
   const refreshAccessToken = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`);
+      const response = await authAxios.post(`/api/auth/refresh`);
 
       if (response.data.success) {
         setupRefreshTimer();
@@ -52,22 +58,27 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
+      const response = await authAxios.get(`/api/auth/me`);
       setUser(response.data.data);
       setupRefreshTimer(); // Set up refresh timer after successful auth
     } catch (error) {
+      // Suppress console errors for 401 - this is expected when not logged in
       if (error.response?.status === 401) {
-        const refreshSuccess = await refreshAccessToken();
-        if (refreshSuccess) {
+        // Try to refresh token silently
+        try {
+          await refreshAccessToken();
           // Retry the original request
-          const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
+          const response = await authAxios.get(`/api/auth/me`);
           setUser(response.data.data);
           setupRefreshTimer();
-        } else {
-          logout();
+        } catch {
+          // Silently fail - user can still use non-authenticated features
+          setUser(null);
         }
       } else {
-        logout();
+        // Only log non-401 errors (network issues, etc.)
+        console.log("Auth check failed - allowing public access");
+        setUser(null);
       }
     } finally {
       setLoading(false);
@@ -76,7 +87,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const response = await authAxios.post(`/api/auth/login`, {
         email,
         password,
       });
@@ -98,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      const response = await authAxios.post(`/api/auth/register`, {
         name,
         email,
         password,
@@ -121,7 +132,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/api/auth/logout`);
+      await authAxios.post(`/api/auth/logout`);
     } catch (error) {
       console.error("Logout error:", error);
     } finally {

@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: process.env.VITE_API_URL || "http://localhost:3000",
+    origin: process.env.VITE_API_URL,
     credentials: true, // Allow cookies to be sent
   })
 );
