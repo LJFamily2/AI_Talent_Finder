@@ -5,7 +5,12 @@ const protect = async (req, res, next) => {
   try {
     let token;
 
-    if (
+    // Try to get token from cookies first (httpOnly)
+    if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    }
+    // Fallback to Authorization header for backwards compatibility
+    else if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer")
     ) {
