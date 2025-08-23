@@ -3,12 +3,12 @@
  * @param {string} trainingDataPath - Path to header_training_data.json
  * @param {string} detectedHeadersPath - Path to detected_headers.json
  */
-const fs = require("fs");
+const { MLFileUtils } = require("../utils/headerFilterUtils");
+
 function setExactHeaderLabels(trainingDataPath, detectedHeadersPath) {
-  const trainingData = JSON.parse(fs.readFileSync(trainingDataPath, "utf8"));
-  const detectedHeaders = JSON.parse(
-    fs.readFileSync(detectedHeadersPath, "utf8")
-  );
+  const trainingData = MLFileUtils.loadJsonFile(trainingDataPath, []);
+  const detectedHeaders = MLFileUtils.loadJsonFile(detectedHeadersPath, []);
+
   const detectedSet = new Set(
     detectedHeaders.map((h) => h.trim().toLowerCase())
   );
@@ -21,7 +21,7 @@ function setExactHeaderLabels(trainingDataPath, detectedHeadersPath) {
     }
   });
 
-  fs.writeFileSync(trainingDataPath, JSON.stringify(trainingData, null, 2));
+  MLFileUtils.saveJsonFile(trainingDataPath, trainingData);
   console.log(
     `Updated ${updatedCount} items as headers in ${trainingDataPath}`
   );
