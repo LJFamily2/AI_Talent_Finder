@@ -353,9 +353,9 @@ const determineVerificationStatus = (
  * @returns {Promise<Object>} Verification result for the publication
  */
 const processPublicationVerification = async (pub, candidateName) => {
-  const [/* scholarResult, */ scopusResult, openAlexResult] = await Promise.all(
+  const [scholarResult,scopusResult, openAlexResult] = await Promise.all(
     [
-      // verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
+      verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
       verifyWithScopus(pub.title, pub.doi, candidateName),
       verifyWithOpenAlex(pub.title, pub.doi, candidateName),
     ]
@@ -365,11 +365,11 @@ const processPublicationVerification = async (pub, candidateName) => {
   let allAuthors = [];
   let hasAuthorMatch = false;
 
-  // Create a mock scholarResult to maintain compatibility
-  const scholarResult = {
-    status: "not verified",
-    details: null,
-  };
+  // // Create a mock scholarResult to maintain compatibility
+  // const scholarResult = {
+  //   status: "not verified",
+  //   details: null,
+  // };
 
   // Get authors from Google Scholar
   // if (scholarResult.details?.extractedAuthors) {

@@ -26,7 +26,7 @@ const {
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 95;
+const TITLE_SIMILARITY_THRESHOLD = 90;
 
 /** Minimum title length ratio for valid matches */
 const MIN_TITLE_LENGTH_RATIO = 0.8;
