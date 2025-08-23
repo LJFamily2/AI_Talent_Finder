@@ -1,37 +1,31 @@
-//==================================================================
-// Express Router: Search Filters API
-// Connects filter-based routes to controller logic, with Redis caching
-// Each route uses cacheRedisInsight middleware to auto-cache responses
-//==================================================================
-
+// routes/searchFiltersRoute.js
 const express = require('express');
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
-const ctrl = require('../controllers/searchFiltersController');
+const filtersCtrl = require('../controllers/searchFiltersController'); 
+const authorCtrl  = require('../controllers/authorController');      
 
 const router = express.Router();
-const SHORT = 900;   // 15 minutes TTL for cached search results
-const MEDIUM = 1800; // 30 minutes TTL for cached search results
-const LONG = 3600;   // 1 hour TTL for cached search results
+const SHORT = 900;
+const MEDIUM = 1800;
+const LONG = 3600;
 
-//==================================================================
-// 8) Multi-filter search in MongoDB
-// Combines all filters: topic, country, hindex, i10index, identifier,
-// affiliation, year_from, year_to
-//==================================================================
+// =================== DB search ===================
 router.get(
-  '/',
+  '/search',
   cacheRedisInsight(MEDIUM, req => {
-    const key = ['searchFilters'];
+    const { id } = req.query;
     const filterParams = [
-      'country',
-      'topic',
-      'hindex',
-      'i10index',
-      'identifier',
-      'affiliation',
-      'year_from',
-      'year_to'
+      'name','country','topic','hindex','i10index',
+      'op','op_hindex','op_i10',
+      'identifier','affiliation','year_from','year_to'
     ];
+
+    if (id) {
+      const idOnly = String(id).split('/').pop();
+      return ['researcherProfiles', idOnly];
+    }
+
+    const key = ['searchLists'];
     filterParams.forEach(k => {
       if (req.query[k]) {
         const raw = req.query[k];
@@ -42,26 +36,25 @@ router.get(
     key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
     return key;
   }),
-  ctrl.searchFilters
+  filtersCtrl.searchFilters
 );
 
-//==================================================================
-// 9) Multi-filter search from OpenAlex API
-// Retrieves live data and applies same filter set
-//==================================================================
+// =================== OpenAlex search ===================
 router.get(
   '/openalex',
   cacheRedisInsight(SHORT, req => {
-    const key = ['openalexFilters'];
+    // ✅ special-case id để cache theo researcherProfiles
+    if (req.query.id) {
+      const idOnly = String(req.query.id).split('/').pop();
+      return ['researcherProfiles', idOnly];
+    }
+
+    const key = ['fetchLists'];
     const filterParams = [
-      'country',
-      'topic',
-      'hindex',
-      'i10index',
-      'identifier',
-      'affiliation',
-      'year_from',
-      'year_to'
+      'name','country','topic','hindex','i10index',
+      'op','op_hindex','op_i10',
+      'identifier','affiliation','year_from','year_to'
+      // id will not be included here, as it is only for DB search
     ];
     filterParams.forEach(k => {
       if (req.query[k]) {
@@ -73,10 +66,7 @@ router.get(
     key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
     return key;
   }),
-  ctrl.searchOpenalexFilters
+  authorCtrl.searchOpenalexFilters   
 );
 
-//==================================================================
-// Export the router
-//==================================================================
 module.exports = router;
