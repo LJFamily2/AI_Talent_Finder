@@ -177,7 +177,7 @@ async function verifyCV(file, prioritySource) {
     console.error("[CV Verification] Error:", error);
     throw error;
   }
-};
+}
 
 //=============================================================================
 // HELPER FUNCTIONS FOR DISPLAY DATA EXTRACTION
@@ -190,7 +190,7 @@ async function verifyCV(file, prioritySource) {
  * @param {Object} openAlexResult - OpenAlex verification result
  * @returns {string} Author information or fallback message
  */
-const extractAuthorInfo = (scholarResult, scopusResult, openAlexResult) => {
+const extractAuthorInfo = (scholarResult = {}, scopusResult = {}, openAlexResult = {}) => {
   // Try Google Scholar author info first
   if (scholarResult.details?.publication_info?.summary) {
     return scholarResult.details.publication_info.summary.split("-")[0].trim();
@@ -353,28 +353,26 @@ const determineVerificationStatus = (
  * @returns {Promise<Object>} Verification result for the publication
  */
 const processPublicationVerification = async (pub, candidateName) => {
-  const [scholarResult,scopusResult, openAlexResult] = await Promise.all(
-    [
-      verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
-      verifyWithScopus(pub.title, pub.doi, candidateName),
-      verifyWithOpenAlex(pub.title, pub.doi, candidateName),
-    ]
-  );
+  const [scholarResult, scopusResult, openAlexResult] = await Promise.all([
+    verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
+    verifyWithScopus(pub.title, pub.doi, candidateName),
+    verifyWithOpenAlex(pub.title, pub.doi, candidateName),
+  ]);
 
   // Combine authors from all three sources
   let allAuthors = [];
   let hasAuthorMatch = false;
 
-  // // Create a mock scholarResult to maintain compatibility
+  // Create a mock scholarResult to maintain compatibility
   // const scholarResult = {
   //   status: "not verified",
   //   details: null,
   // };
 
   // Get authors from Google Scholar
-  // if (scholarResult.details?.extractedAuthors) {
-  //   allAuthors.push(...scholarResult.details.extractedAuthors);
-  // }
+  if (scholarResult.details?.extractedAuthors) {
+    allAuthors.push(...scholarResult.details.extractedAuthors);
+  }
   // Get authors from Scopus
   if (scopusResult.details?.extractedAuthors) {
     allAuthors.push(...scopusResult.details.extractedAuthors);
