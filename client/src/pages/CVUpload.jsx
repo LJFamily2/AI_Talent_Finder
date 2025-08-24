@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import Header from "../components/Header";
 import fileUploadIcon from "../assets/document-upload.svg";
 import { useDropzone } from "react-dropzone";
@@ -9,44 +9,103 @@ import Footer from "../components/Footer";
 function CVUpload() {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const navigate = useNavigate()
+  const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
+  const navigate = useNavigate();
+  const progressIntervalRef = useRef(null);
+  const processingStartTimeRef = useRef(null);
 
-  const handleFileUpload = async (file) => {
-    setProcessing(true);
-    setProgress(0);
+  // Smooth progress simulation function
+  const simulateProgress = (startProgress, targetProgress, duration) => {
+    const startTime = Date.now();
+    const progressDiff = targetProgress - startProgress;
 
-    try {
-      const formData = new FormData();
-      formData.append("cv", file);
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      const progressRatio = Math.min(elapsed / duration, 1);
 
-      const response = await api.post("/api/cv/verify-cv", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (e) => {
-          const uploadPercent = Math.round((e.loaded * 100) / e.total);
-          setProgress(Math.min(uploadPercent, 80)); // cap at 80%
-        },
-      });
+      // Use easing function for smoother animation
+      const easedProgress =
+        progressRatio * progressRatio * (3 - 2 * progressRatio);
+      const currentProgress = startProgress + progressDiff * easedProgress;
 
-      let current = 80;
-      const timer = setInterval(() => {
-        current += 2;
-        setProgress(current);
+      setProgress(Math.round(currentProgress));
 
-        if (current >= 100) {
-          clearInterval(timer);
-          setProcessing(false); // End processing when progress hits 100
-          navigate("/cv-verification", {
-            state: { publications: response.data },
-          });
-        }
-      }, 50);
-    } catch (error) {
-      console.error("Error verifying CV:", error);
-      setProcessing(false);
-    }
+      if (progressRatio < 1) {
+        progressIntervalRef.current = requestAnimationFrame(updateProgress);
+      }
+    };
+
+    progressIntervalRef.current = requestAnimationFrame(updateProgress);
   };
+
+  const handleFileUpload = useCallback(
+    async (file) => {
+      setProcessing(true);
+      setProgress(0);
+      setProgressPhase("upload");
+
+      try {
+        const formData = new FormData();
+        formData.append("cv", file);
+
+        // Start with upload progress (0-20%)
+        const response = await api.post("/api/cv/verify-cv", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (e) => {
+            const uploadPercent = Math.round((e.loaded * 100) / e.total);
+            setProgress(Math.min(uploadPercent * 0.2, 20)); // Scale to 0-20%
+          },
+        });
+
+        // Start processing phase (20-95%)
+        setProgressPhase("processing");
+        processingStartTimeRef.current = Date.now();
+
+        // Simulate processing with dynamic timing
+        // First phase: Quick initial processing (20-40% in 2 seconds)
+        simulateProgress(20, 40, 2000);
+
+        setTimeout(() => {
+          // Second phase: Slower processing (40-75% in 8 seconds)
+          simulateProgress(40, 75, 8000);
+
+          setTimeout(() => {
+            // Third phase: Final processing (75-95% in remaining time, min 5 seconds)
+            simulateProgress(75, 95, 5000);
+
+            setTimeout(() => {
+              // Complete phase (95-100%)
+              setProgressPhase("complete");
+              simulateProgress(95, 100, 1000);
+
+              setTimeout(() => {
+                setProcessing(false);
+                navigate("/cv-verification", {
+                  state: { publications: response.data },
+                });
+              }, 1000);
+            }, 5000);
+          }, 8000);
+        }, 2000);
+      } catch (error) {
+        console.error("Error verifying CV:", error);
+        setProcessing(false);
+        setProgress(0);
+      }
+    },
+    [navigate]
+  );
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        cancelAnimationFrame(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   // const handleFileChange = (event) => {
   //   const file = event.target.files?.[0];
@@ -56,13 +115,16 @@ function CVUpload() {
   //   }
   // };
 
-  const onDrop = useCallback((acceptedFiles) => {
-    const file = acceptedFiles[0];
+  const onDrop = useCallback(
+    (acceptedFiles) => {
+      const file = acceptedFiles[0];
 
-    if (file) {
-      handleFileUpload(file);
-    }
-  }, []);
+      if (file) {
+        handleFileUpload(file);
+      }
+    },
+    [handleFileUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
@@ -90,9 +152,7 @@ function CVUpload() {
             </span>
           </span>
 
-          <p className="text-gray-400 mt-4">
-            Accepted file formats: .doc, .docx, .pdf
-          </p>
+          <p className="text-gray-400 mt-4">Accepted file formats: .pdf</p>
         </div>
       </div>
 
@@ -112,7 +172,7 @@ function CVUpload() {
                   cy="48"
                 />
                 <circle
-                  className="text-blue-500 transition-all duration-200 ease-linear"
+                  className="text-blue-500 transition-all duration-300 ease-out"
                   strokeWidth="8"
                   strokeDasharray={2 * Math.PI * 44}
                   strokeDashoffset={2 * Math.PI * 44 * (1 - progress / 100)}
@@ -130,8 +190,16 @@ function CVUpload() {
             </div>
 
             <span className="text-gray-500 mt-4 text-xl">
-              Processing your file...
+              {progressPhase === "upload" && "Uploading your file..."}
+              {progressPhase === "processing" && "Analyzing CV content..."}
+              {progressPhase === "complete" && "Finalizing results..."}
             </span>
+
+            {progressPhase === "processing" && (
+              <p className="text-gray-400 text-sm mt-2 text-center">
+                This may take up to 90 seconds for complex documents
+              </p>
+            )}
           </div>
         </div>
       )}
