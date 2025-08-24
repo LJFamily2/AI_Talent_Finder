@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import Header from "../components/Header";
 import fileUploadIcon from "../assets/document-upload.svg";
 import { useDropzone } from "react-dropzone";
-import axios from "axios";
+import api from "../config/api";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 
@@ -19,7 +19,7 @@ function CVUpload() {
       const formData = new FormData();
       formData.append("cv", file);
 
-      const response = await axios.post("http://localhost:8000/api/cv/verify-cv", formData, {
+      const response = await api.post("/api/cv/verify-cv", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -62,9 +62,9 @@ function CVUpload() {
     if (file) {
       handleFileUpload(file);
     }
-  }, [])
+  }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
     <div className="w-full h-screen">
@@ -72,23 +72,33 @@ function CVUpload() {
       <div className="flex flex-col items-center w-full h-lvh mt-15">
         <h2 className="text-3xl font-bold mb-7">Verify Candidate CV</h2>
         <div
-          className={`${isDragActive ? "bg-blue-100" : "bg-white"} border-dashed border-2 border-gray-400 rounded-[5vw] flex flex-col items-center justify-center w-2/3 h-2/3`} {...getRootProps()}
+          className={`${
+            isDragActive ? "bg-blue-100" : "bg-white"
+          } border-dashed border-2 border-gray-400 rounded-[5vw] flex flex-col items-center justify-center w-2/3 h-2/3`}
+          {...getRootProps()}
         >
           <input {...getInputProps()} />
-          <img src={fileUploadIcon} alt="Upload Icon" className="w-24 h-24 mb-8" />
-          <span className="font-bold text-2xl">Drop your file here, or {" "}
-            <span className="text-blue-400 underline cursor-pointer">Browse</span>
+          <img
+            src={fileUploadIcon}
+            alt="Upload Icon"
+            className="w-24 h-24 mb-8"
+          />
+          <span className="font-bold text-2xl">
+            Drop your file here, or{" "}
+            <span className="text-blue-400 underline cursor-pointer">
+              Browse
+            </span>
           </span>
 
-          <p className="text-gray-400 mt-4">Accepted file formats: .doc, .docx, .pdf</p>
-
+          <p className="text-gray-400 mt-4">
+            Accepted file formats: .doc, .docx, .pdf
+          </p>
         </div>
       </div>
 
       {processing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="w-1/3 min-w-[300px] bg-white rounded-lg p-8 shadow-lg flex flex-col items-center">
-
             {/* Circular Progress Bar */}
             <div className="relative w-24 h-24">
               <svg className="w-full h-full transform -rotate-90">
@@ -119,14 +129,16 @@ function CVUpload() {
               </div>
             </div>
 
-            <span className="text-gray-500 mt-4 text-xl">Processing your file...</span>
+            <span className="text-gray-500 mt-4 text-xl">
+              Processing your file...
+            </span>
           </div>
         </div>
       )}
 
       <Footer />
     </div>
-  )
+  );
 }
 
 export default CVUpload;
