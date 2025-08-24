@@ -18,6 +18,11 @@ const {
 
 class SimpleHeaderClassifier {
   constructor() {
+    // Configurable threshold search range
+    this.thresholdMin = -3;
+    this.thresholdMax = 3;
+    this.thresholdStep = 0.1;
+
     this.rules = {
       isAllUpperCase: { weight: 0 },
       containsYear: { weight: 0 },
@@ -123,8 +128,8 @@ class SimpleHeaderClassifier {
     let bestThreshold = 0;
     let bestF1 = 0;
 
-    // Test different thresholds
-    for (let threshold = -3; threshold <= 3; threshold += 0.1) {
+    // Test different thresholds using configurable range
+    for (let threshold = this.thresholdMin; threshold <= this.thresholdMax; threshold += this.thresholdStep) {
       let truePositives = 0;
       let falsePositives = 0;
       let falseNegatives = 0;
