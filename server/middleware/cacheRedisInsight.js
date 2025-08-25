@@ -73,43 +73,9 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
 }
 
 //==================================================================
-// Manually delete a Redis cache key (for CLI deletion workflows)
-// Logs cache deletion status for clarity
-//==================================================================
-async function deleteCacheKey(key) {
-  try {
-    if (!redisClient) throw new Error("Redis client not initialized");
-    const result = await redisClient.del(key);
-    if (result > 0) {
-      console.log(`🔴 [CACHE DEL] ${key}`);
-    } else {
-      console.log(`⚪ [CACHE NOT FOUND] ${key}`);
-    }
-  } catch (err) {
-    console.error(`❌ Redis DEL error for ${key}:`, err);
-  }
-}
-
-
-//==================================================================
-// Flush all Redis keys (dangerous operation, use only in dev/test)
-//==================================================================
-async function flushAllCache() {
-  try {
-    if (!redisClient) throw new Error("Redis client not initialized");
-    await redisClient.flushAll();
-    console.log(`🔄 [CACHE RESET] Redis FLUSHALL completed`);
-  } catch (err) {
-    console.error("❌ Redis flushAll error:", err);
-  }
-}
-
-//==================================================================
 // Exports
 //==================================================================
 module.exports = {
   cache: cacheRedisInsight,
-  flushAllCache,
-  deleteCacheKey,
   initRedisClient
 };

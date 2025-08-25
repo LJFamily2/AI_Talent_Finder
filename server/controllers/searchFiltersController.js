@@ -12,7 +12,7 @@ const normalizeAuthorId = qh.normalizeAuthorId;
 const ensureAIdField = qh.ensureAIdField;
 
 // Fallback to OpenAlex if no results are found in the database
-const authorController = require("./authorController");
+const authorController = require("./openAlexController");
 
 // Unified search handler (runtime behavior unchanged).
 exports.searchFilters = async (req, res) => {

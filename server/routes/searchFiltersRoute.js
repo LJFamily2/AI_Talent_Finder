@@ -2,7 +2,7 @@
 const express = require('express');
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 const filtersCtrl = require('../controllers/searchFiltersController'); 
-const authorCtrl  = require('../controllers/authorController');      
+const authorCtrl  = require('../controllers/openAlexController');      
 const { normalizeAuthorId } = require('../utils/queryHelpers'); 
 const router = express.Router();
 const SHORT = 900;

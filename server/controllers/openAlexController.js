@@ -4,8 +4,6 @@
 //==================================================================
 
 const axios = require("axios");
-const ResearcherProfile = require("../models/researcherProfileModel");
-const { deleteCacheKey } = require("../middleware/cacheRedisInsight");
 
 // Helpers for OpenAlex API, query parsing, and year range checks
 const {
@@ -298,85 +296,6 @@ exports.searchOpenalexFilters = async (req, res) => {
   }
 };
 
-// //==================================================================
-// // [POST] /api/author/save-profile
-// // Save or update a profile into MongoDB (upsert)
-// //==================================================================
-// async function saveToDatabase(req, res, next) {
-//   try {
-//     const { profile } = req.body?.profile ?? req.body;
-//     if (!profile?._id) return res.status(400).json({ error: "Request body must include 'profile._id'" });
-
-//     const normId = normalizeAuthorId(profile._id || profile.id || profile.identifiers?.openalex);
-//     if (!normId) return res.status(400).json({ error: "Invalid author id" });
-//     profile._id = normId;
-
-//     const updatedProfile = await ResearcherProfile.findByIdAndUpdate(
-//       profile._id,
-//       { $set: profile },
-//       { upsert: true, new: true, setDefaultsOnInsert: true }
-//     );
-
-//     console.log(`📝 [DB SAVED] researcherProfiles:${profile._id}`);
-
-//     return res.json({
-//       message: "Profile saved to DB and cache successfully",
-//       profile: updatedProfile
-//     });
-//   } catch (err) {
-//     console.error("Error in saveToDatabase:", err);
-//     next(err);
-//   }
-// }
-
-// //==================================================================
-// // [DELETE] /api/author/delete-profile
-// // Remove a profile from MongoDB and clear Redis cache key
-// //  - Idempotent: không tồn tại vẫn trả 200 (để CLI không crash)
-// //  - Dùng _id = A\d+ sau khi normalize (single source of truth)
-// //==================================================================
-// async function deleteFromDatabase(req, res, next) {
-//   try {
-//     const { id } = req.body ?? {};
-//     if (!id) return res.status(400).json({ error: "Missing id" });
-
-//     // Chuẩn hóa ID; strict để báo 400 nếu input sai định dạng hoàn toàn
-//     let normalized;
-//     try {
-//       normalized = normalizeAuthorId(id, { strict: true });
-//     } catch {
-//       return res.status(400).json({ error: "Invalid author id" });
-//     }
-
-//     // Xóa theo _id đã normalize (DB đang lưu _id = 'A\d+')
-//     const deletedDoc = await ResearcherProfile.findByIdAndDelete(normalized);
-
-//     // Dọn cache key bất kể có doc hay không (idempotent cleanup)
-//     try {
-//       await deleteCacheKey(`researcherProfiles:${normalized}`);
-//     } catch (e) {
-//       // im lặng nếu key không tồn tại; tránh làm hỏng flow idempotent
-//     }
-
-//     if (!deletedDoc) {
-//       console.info(`[DB DEL] not found -> clean state OK`, { _id: normalized });
-//       return res.status(200).json({ deleted: false, id: normalized, reason: "not_found" });
-//     }
-
-//     console.info(`🗑️  [DB DEL] researcherProfiles:${normalized}`);
-//     return res.status(200).json({
-//       deleted: true,
-//       id: normalized,
-//       message: "Profile deleted from DB successfully"
-//     });
-//   } catch (err) {
-//     console.error("Error in deleteFromDatabase:", err);
-//     next(err);
-//   }
-// }
-
 module.exports = {
   searchOpenalexFilters: exports.searchOpenalexFilters
-  // saveToDatabase,
-  // deleteFromDatabase
 };
