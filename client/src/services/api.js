@@ -5,7 +5,7 @@
  * It provides functions for fetching researcher profiles and works data.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.BACKEND_URL;
 
 /**
  * Generic function to make API requests

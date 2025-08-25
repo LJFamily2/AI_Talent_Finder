@@ -1,24 +1,24 @@
 {
-  "timestamp": "2025-08-06T17:17:39.833Z",
+  "timestamp": "2025-08-18T06:12:42.479Z",
   "datasetSize": {
     "total": 36177,
     "train": 21707,
     "test": 14470
   },
   "testMetrics": {
-    "accuracy": 99.92,
-    "precision": 97.52,
-    "recall": 99.75,
-    "f1Score": 98.62,
+    "accuracy": 100,
+    "precision": 100,
+    "recall": 100,
+    "f1Score": 100,
     "confusionMatrix": {
-      "truePositives": 394,
-      "falsePositives": 10,
-      "trueNegatives": 14065,
-      "falseNegatives": 1
+      "truePositives": 401,
+      "falsePositives": 0,
+      "trueNegatives": 14069,
+      "falseNegatives": 0
     },
     "support": {
-      "positive": 395,
-      "negative": 14075,
+      "positive": 401,
+      "negative": 14069,
       "total": 14470
     }
   },
@@ -131,178 +131,33 @@
   "classificationReport": {
     "summary": {
       "totalSamples": 14470,
-      "headerSamples": 395,
-      "nonHeaderSamples": 14075
+      "headerSamples": 401,
+      "nonHeaderSamples": 14069
     },
     "metrics": {
-      "accuracy": 99.92,
-      "precision": 97.52,
-      "recall": 99.75,
-      "f1Score": 98.62,
+      "accuracy": 100,
+      "precision": 100,
+      "recall": 100,
+      "f1Score": 100,
       "confusionMatrix": {
-        "truePositives": 394,
-        "falsePositives": 10,
-        "trueNegatives": 14065,
-        "falseNegatives": 1
+        "truePositives": 401,
+        "falsePositives": 0,
+        "trueNegatives": 14069,
+        "falseNegatives": 0
       },
       "support": {
-        "positive": 395,
-        "negative": 14075,
+        "positive": 401,
+        "negative": 14069,
         "total": 14470
       }
     },
     "misclassified": {
-      "falsePositives": [
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.6766917293233082,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 482
-        },
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.7114661654135338,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 1042
-        },
-        {
-          "text": "PUBLICATIONS",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 12,
-            "positionRatio": 0.17391304347826086,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": true
-          },
-          "index": 2130
-        },
-        {
-          "text": "reports",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 7,
-            "positionRatio": 0.518796992481203,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 4011
-        },
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.19642857142857142,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 4793
-        },
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.23684210526315788,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 4900
-        },
-        {
-          "text": "WORKING PAPERS",
-          "features": {
-            "isAllUpperCase": true,
-            "containsYear": false,
-            "length": 14,
-            "positionRatio": 0.21568627450980393,
-            "wordCount": 2,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 7690
-        },
-        {
-          "text": "Research Reports",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 16,
-            "positionRatio": 0.9210526315789473,
-            "wordCount": 2,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 10988
-        },
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.599624060150376,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 13114
-        },
-        {
-          "text": "articles",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 8,
-            "positionRatio": 0.12969924812030076,
-            "wordCount": 1,
-            "hasColon": false,
-            "matchesPublicationPattern": false
-          },
-          "index": 13947
-        }
-      ],
-      "falseNegatives": [
-        {
-          "text": "Paper Presentations",
-          "features": {
-            "isAllUpperCase": false,
-            "containsYear": false,
-            "length": 19,
-            "positionRatio": 0.7423442449841605,
-            "wordCount": 2,
-            "hasColon": false,
-            "matchesPublicationPattern": true
-          },
-          "index": 13760
-        }
-      ]
+      "falsePositives": [],
+      "falseNegatives": []
     },
     "classDistribution": {
-      "headers": 2.73,
-      "nonHeaders": 97.27
+      "headers": 2.77,
+      "nonHeaders": 97.23
     }
   }
 }

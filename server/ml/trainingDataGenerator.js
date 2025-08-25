@@ -8,56 +8,17 @@
 const fs = require("fs");
 const path = require("path");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
-// Removed PUBLICATION_PATTERNS, now using AI-detected headers
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const {
+  TextProcessor,
+  RateLimiter,
+  MLFileUtils,
+  ML_CONFIG,
+} = require("../utils/headerFilterUtils");
 const dotenv = require("dotenv");
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-const MAX_CHUNK_SIZE = 8000;
-
-// Split text into chunks of maximum size while preserving complete paragraphs
-function splitIntoChunks(text) {
-  const chunks = [];
-  let currentChunk = "";
-
-  // Split into paragraphs (double newlines)
-  const paragraphs = text.split(/\n\s*\n/);
-
-  for (const paragraph of paragraphs) {
-    // If adding this paragraph would exceed chunk size, start new chunk
-    if (
-      (currentChunk + paragraph).length > MAX_CHUNK_SIZE &&
-      currentChunk.length > 0
-    ) {
-      chunks.push(currentChunk.trim());
-      currentChunk = "";
-    }
-
-    // If single paragraph exceeds chunk size, split on sentences
-    if (paragraph.length > MAX_CHUNK_SIZE) {
-      const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
-      for (const sentence of sentences) {
-        if (
-          (currentChunk + sentence).length > MAX_CHUNK_SIZE &&
-          currentChunk.length > 0
-        ) {
-          chunks.push(currentChunk.trim());
-          currentChunk = "";
-        }
-        currentChunk += sentence + " ";
-      }
-    } else {
-      currentChunk += paragraph + "\n\n";
-    }
-  }
-
-  // Add final chunk if not empty
-  if (currentChunk.trim().length > 0) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks;
-}
+const { PATHS } = ML_CONFIG;
 
 // Rate Limiter for API calls
 class RateLimiter {
@@ -117,35 +78,9 @@ class RateLimiter {
 const rateLimiter = new RateLimiter();
 
 // Configuration
-const TRAINING_DIR = path.join(__dirname, "../data/training");
-const OUTPUT_FILE = path.join(__dirname,"header_training_data.json");
+const OUTPUT_FILE = path.join(PATHS.training, "header_training_data.json");
+
 // Function to check if a line likely contains a publication
-
-/**
- * Split text into chunks of maximum size while preserving line integrity
- */
-function splitIntoChunks(text, maxSize = MAX_CHUNK_SIZE) {
-  const lines = text.split("\n");
-  const chunks = [];
-  let currentChunk = "";
-
-  for (const line of lines) {
-    if (
-      currentChunk.length + line.length + 1 > maxSize &&
-      currentChunk.length > 0
-    ) {
-      chunks.push(currentChunk.trim());
-      currentChunk = "";
-    }
-    currentChunk += line + "\n";
-  }
-
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks;
-}
 
 /**
  * Generates features for a line of text
@@ -266,7 +201,7 @@ async function processCV(filePath, model) {
       __dirname,
       "../ml/detected_headers.json"
     );
-    const allHeaders = JSON.parse(fs.readFileSync(detectedHeadersPath, "utf8"));
+    const allHeaders = MLFileUtils.loadJsonFile(detectedHeadersPath, []);
     console.log(
       `Loaded ${allHeaders.length} headers from detected_headers.json`
     );
@@ -307,25 +242,20 @@ async function generateTrainingData() {
   });
 
   // Create training directory if it doesn't exist
-  if (!fs.existsSync(TRAINING_DIR)) {
-    fs.mkdirSync(TRAINING_DIR, { recursive: true });
-  }
+  MLFileUtils.ensureDirectoryExists(PATHS.training);
 
-  const cvDir = path.join(TRAINING_DIR, "cvs");
-  if (!fs.existsSync(cvDir)) {
-    fs.mkdirSync(cvDir, { recursive: true });
-    console.log(`Created CV directory at ${cvDir}`);
-    console.log(
-      "Please add CV PDF files to this directory and run the script again."
-    );
-    return;
-  }
+  const cvDir = path.join(PATHS.training, "cvs");
+  MLFileUtils.ensureDirectoryExists(cvDir);
 
   const files = fs
     .readdirSync(cvDir)
     .filter((file) => file.toLowerCase().endsWith(".pdf"));
+
   if (files.length === 0) {
-    console.log("No PDF files found in the CV directory.");
+    console.log(`Created CV directory at ${cvDir}`);
+    console.log(
+      "Please add CV PDF files to this directory and run the script again."
+    );
     return;
   }
 
@@ -339,31 +269,31 @@ async function generateTrainingData() {
   }
 
   // Save the training data
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(allTrainingData, null, 2));
+  MLFileUtils.saveJsonFile(OUTPUT_FILE, allTrainingData);
   console.log(`Training data saved to ${OUTPUT_FILE}`);
 
   // Save detected headers separately
-  const headersFile = path.join(TRAINING_DIR, "detected_headers.json");
+  const headersFile = path.join(PATHS.training, "detected_headers.json");
   const uniqueHeaders = [
     ...new Set(
       allTrainingData.filter((item) => item.isHeader).map((item) => item.text)
     ),
   ];
 
-  fs.writeFileSync(headersFile, JSON.stringify(uniqueHeaders, null, 2));
+  MLFileUtils.saveJsonFile(headersFile, uniqueHeaders);
   console.log(`Headers saved to ${headersFile}`);
 
   console.log(
     `Processed ${files.length} CVs, generated ${allTrainingData.length} training examples`
   );
-
-  // Token usage statistics removed
 }
 
-// Run the script if directly
-if (require.main === module) {
-  generateTrainingData().catch(console.error);
-}
+// Main execution
+(async () => {
+  if (require.main === module) {
+    await generateTrainingData();
+  }
+})();
 
 module.exports = {
   generateTrainingData,

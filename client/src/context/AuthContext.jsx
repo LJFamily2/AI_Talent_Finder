@@ -1,146 +1,153 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { API_BASE_URL } from "../config/api";
+
+// Create a separate axios instance for auth checks to avoid global interceptors
+const authAxios = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+});
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const refreshTimerRef = useRef(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const refreshTimerRef = useRef(null);
 
-    const setupTokens = (accessToken, refreshToken) => {
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+  // Configure axios to include cookies with requests
+  axios.defaults.withCredentials = true;
 
-        // Set up refresh timer
-        const decoded = jwtDecode(accessToken);
-        const expiryTime = decoded.exp * 1000; // convert to milliseconds
-        const timeUntilRefresh = expiryTime - Date.now() - 60000; // Refresh 1 minute before expiry
+  const setupRefreshTimer = () => {
+    // Check auth status every 50 minutes to potentially refresh token
+    // Since access token is now 1 hour, refresh at 50 minutes to be safe
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
 
-        if (refreshTimerRef.current) {
-            clearTimeout(refreshTimerRef.current);
-        }
+    refreshTimerRef.current = setTimeout(refreshAccessToken, 50 * 60 * 1000); // 50 minutes
+  };
 
-        refreshTimerRef.current = setTimeout(refreshAccessToken, timeUntilRefresh);
+  const refreshAccessToken = async () => {
+    try {
+      const response = await authAxios.post(`/api/auth/refresh`);
+
+      if (response.data.success) {
+        setupRefreshTimer();
+        return true;
+      }
+      throw new Error("Refresh failed");
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      logout();
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Check if user is logged in by trying to get current user
+    // Cookies will be sent automatically if they exist
+    checkAuthStatus();
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
     };
+  }, []);
 
-    const refreshAccessToken = async () => {
+  const checkAuthStatus = async () => {
+    try {
+      const response = await authAxios.get(`/api/auth/me`);
+      setUser(response.data.data);
+      setupRefreshTimer(); // Set up refresh timer after successful auth
+    } catch (error) {
+      // Suppress console errors for 401 - this is expected when not logged in
+      if (error.response?.status === 401) {
+        // Try to refresh token silently
         try {
-            const refreshToken = localStorage.getItem("refreshToken");
-            if (!refreshToken) {
-                throw new Error("No refresh token available");
-            }
-
-            const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-                refreshToken,
-            });
-
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
-            setupTokens(accessToken, newRefreshToken);
-            return true;
-        } catch (error) {
-            console.error("Error refreshing token:", error);
-            logout();
-            return false;
+          await refreshAccessToken();
+          // Retry the original request
+          const response = await authAxios.get(`/api/auth/me`);
+          setUser(response.data.data);
+          setupRefreshTimer();
+        } catch {
+          // Silently fail - user can still use non-authenticated features
+          setUser(null);
         }
-    };
-
-    useEffect(() => {
-        // Check if user is logged in
-        const accessToken = localStorage.getItem("accessToken");
-        const refreshToken = localStorage.getItem("refreshToken");
-
-        if (accessToken && refreshToken) {
-            setupTokens(accessToken, refreshToken);
-            checkAuthStatus();
-        } else {
-            setLoading(false);
-        }
-
-        return () => {
-            if (refreshTimerRef.current) {
-                clearTimeout(refreshTimerRef.current);
-            }
-        };
-    }, []);
-
-    const checkAuthStatus = async () => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
-            setUser(response.data.data);
-        } catch (error) {
-            if (error.response?.status === 401) {
-                const refreshSuccess = await refreshAccessToken();
-                if (refreshSuccess) {
-                    // Retry the original request
-                    const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
-                    setUser(response.data.data);
-                } else {
-                    logout();
-                }
-            } else {
-                logout();
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const login = async (email, password) => {
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-                email,
-                password,
-            });
-            const { accessToken, refreshToken } = response.data;
-            setupTokens(accessToken, refreshToken);
-            await checkAuthStatus();
-            return { success: true };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.response?.data?.message || "An error occurred",
-            };
-        }
-    };
-
-    const register = async (name, email, password) => {
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
-                name,
-                email,
-                password,
-            });
-            const { accessToken, refreshToken } = response.data;
-            setupTokens(accessToken, refreshToken);
-            await checkAuthStatus();
-            return { success: true };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.response?.data?.message || "An error occurred",
-            };
-        }
-    };
-
-    const logout = () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        delete axios.defaults.headers.common["Authorization"];
-        if (refreshTimerRef.current) {
-            clearTimeout(refreshTimerRef.current);
-        }
+      } else {
+        // Only log non-401 errors (network issues, etc.)
+        console.log("Auth check failed - allowing public access");
         setUser(null);
-    };
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const login = async (email, password) => {
+    try {
+      const response = await authAxios.post(`/api/auth/login`, {
+        email,
+        password,
+      });
+
+      if (response.data.success) {
+        await checkAuthStatus();
+        setupRefreshTimer();
+        return { success: true };
+      }
+
+      return { success: false, error: "Login failed" };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || "An error occurred",
+      };
+    }
+  };
+
+  const register = async (name, email, password) => {
+    try {
+      const response = await authAxios.post(`/api/auth/register`, {
+        name,
+        email,
+        password,
+      });
+
+      if (response.data.success) {
+        await checkAuthStatus();
+        setupRefreshTimer();
+        return { success: true };
+      }
+
+      return { success: false, error: "Registration failed" };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || "An error occurred",
+      };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authAxios.post(`/api/auth/logout`);
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      setUser(null);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => useContext(AuthContext);
