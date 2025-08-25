@@ -16,7 +16,6 @@
 
 const fs = require("fs");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { checkAuthorNameMatch } = require("../utils/authorUtils");
 const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
@@ -54,22 +53,10 @@ module.exports = {
  */
 async function verifyCVWithAI(file, prioritySource = "ai") {
   let cvText = "";
-  let fileCleanedUp = false;
 
   try {
     // Parse PDF to text (with OCR fallback)
     cvText = await extractTextFromPDF(file.path);
-
-    // Clean up uploaded file immediately after extraction
-    try {
-      fs.unlinkSync(file.path);
-      fileCleanedUp = true;
-    } catch (unlinkError) {
-      console.warn(
-        "[AI CV Verification] File cleanup warning:",
-        unlinkError.message
-      );
-    }
 
     // Initialize Google AI model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -85,14 +72,14 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
     // Extract candidate name using AI
     const candidateName = await extractCandidateNameWithAI(model, cvText);
 
-    // Task 2: Handle large CVs by chunking if necessary
+    // Process CV and verify publications with AI
     const verificationResults = await processFullCVWithAI(
       model,
       cvText,
       candidateName
     );
 
-    // Task 1: Get author profile using APIs from sources instead of AI
+    // Get author profile using APIs from sources instead of AI
     const authorProfile = await getAuthorProfileFromAPIs(
       candidateName,
       verificationResults
@@ -122,21 +109,20 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
     };
   } catch (error) {
     console.error("[AI CV Verification] Error:", error);
-
-    // Ensure file cleanup happens even if there's an error
-    if (!fileCleanedUp && file && file.path) {
+    throw error;
+  } finally {
+    // Clean up uploaded file in finally block to ensure it always happens
+    if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
-        console.log("[AI CV Verification] File cleaned up after error");
+        console.log("[AI CV Verification] File cleaned up");
       } catch (cleanupError) {
         console.warn(
-          "[AI CV Verification] File cleanup after error failed:",
+          "[AI CV Verification] File cleanup failed:",
           cleanupError.message
         );
       }
     }
-
-    throw error;
   }
 }
 
@@ -350,8 +336,7 @@ async function processFullCVWithAI(model, cvText, candidateName) {
  * @returns {Promise<Array>} Verification results array
  */
 async function processSmallCVDirectly(model, cvText, candidateName) {
-  try {
-    const directVerificationPrompt = `
+  const directVerificationPrompt = `
 You are an expert at analyzing academic CV content. Your task is to extract ALL publications from this CV and verify each one online.
 
 CANDIDATE NAME: ${candidateName || "Unknown"}
@@ -387,74 +372,31 @@ EXTRACTION AND VERIFICATION GUIDELINES:
 1. Extract ALL publications listed in the CV (journal articles, conference papers, book chapters, etc.)
 2. For each publication, determine if it likely exists online (isOnline: true/false)
 3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
-4. For verified publications, provide links when possible (DOI links preferred, then Google Scholar)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
 5. For unverified publications, set isOnline: false, link: null, citationCount: 0
 6. Estimate citation counts only for verified publications
 7. IMPORTANT: Include ALL publications found in CV, not just verified ones
 
 IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
 
-    const result = await model.generateContent(directVerificationPrompt);
-    const response = await result.response;
-    const verificationText = cleanJSONResponse(response.text());
+  const result = await model.generateContent(directVerificationPrompt);
+  const response = await result.response;
+  const verificationText = cleanJSONResponse(response.text());
 
-    try {
-      const verificationData = JSON.parse(verificationText);
-      const allPublications = verificationData.allPublications || [];
+  try {
+    const verificationData = JSON.parse(verificationText);
+    const allPublications = verificationData.allPublications || [];
 
-      // Transform to expected format - include ALL publications
-      return allPublications.map((item, index) => {
-        const pub = item.publication;
-        const verification = item.verification;
-
-        // Determine status based on verification results
-        let status = "not verified";
-        if (verification.isOnline) {
-          if (verification.hasAuthorMatch) {
-            status = "verified";
-          } else {
-            status = "verified but not same author name";
-          }
-        }
-
-        return {
-          publication: {
-            title: pub.title || "",
-            doi: pub.doi || null,
-            fullText: pub.fullText || "",
-          },
-          verification: {
-            ai_verification: {
-              status: status,
-              details: verification,
-            },
-            displayData: {
-              publication: pub.fullText || pub.title || "",
-              title: pub.title || "Unable to extract",
-              author: Array.isArray(pub.authors)
-                ? pub.authors.join(", ")
-                : "Unable to extract",
-              type: pub.type || "Unknown",
-              year: pub.year || "Unknown",
-              citedBy: verification.citationCount?.toString() || "0",
-              link: verification.link || generateSearchLink(pub.title),
-              status: status,
-            },
-          },
-          authorVerification: {
-            hasAuthorMatch: verification.hasAuthorMatch || false,
-            authorIds: {
-              ai_verified: verification.hasAuthorMatch ? "ai_verified" : null,
-            },
-          },
-        };
-      });
-    } catch (error) {
-      console.error("Error in small CV processing:", error);
-      throw error;
-    }
+    // Transform to expected format using helper function
+    return allPublications.map((item) => {
+      return transformPublicationResult(
+        item.publication,
+        item.verification,
+        item.publication
+      );
+    });
   } catch (error) {
-    console.error("Error in small CV processing:", error);
+    console.error("Error parsing small CV verification result:", error);
     throw error;
   }
 }
@@ -468,9 +410,6 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  */
 async function processLargeCVWithChunking(model, cvText, candidateName) {
   try {
-    // Use the existing ML-powered publication extraction from aiHelpers
-    const { extractPublicationsFromCV } = require("../utils/aiHelpers");
-
     console.log("[AI CV Verification] Using ML model for large CV processing");
 
     // Extract publications using the existing chunked approach
@@ -572,82 +511,18 @@ IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
       const publication = verificationData.publication;
       const verification = verificationData.verification;
 
-      // Determine status
-      let status = "not verified";
-      if (verification.isOnline) {
-        if (verification.hasAuthorMatch) {
-          status = "verified";
-        } else {
-          status = "verified but not same author name";
-        }
-      }
-
-      return {
-        publication: {
-          title: publication.title || pub.title || "",
-          doi: publication.doi || pub.doi || null,
-          fullText: publication.fullText || pub.publication || "",
-        },
-        verification: {
-          ai_verification: {
-            status: status,
-            details: verification,
-          },
-          displayData: {
-            publication: publication.fullText || pub.publication || "",
-            title: publication.title || pub.title || "Unable to extract",
-            author: Array.isArray(publication.authors)
-              ? publication.authors.join(", ")
-              : "Unable to extract",
-            type: publication.type || "Unknown",
-            year: publication.year || "Unknown",
-            citedBy: verification.citationCount?.toString() || "0",
-            link: verification.link || generateSearchLink(publication.title),
-            status: status,
-          },
-        },
-        authorVerification: {
-          hasAuthorMatch: verification.hasAuthorMatch || false,
-          authorIds: {
-            ai_verified: verification.hasAuthorMatch ? "ai_verified" : null,
-          },
-        },
-      };
+      return transformPublicationResult(publication, verification, pub);
     } catch (parseError) {
       console.error(
         "Failed to parse individual publication verification:",
         parseError.message
       );
-      // Return basic not verified result
-      return {
-        publication: {
-          title: pub.title || "Unable to extract",
-          doi: pub.doi || null,
-          fullText: pub.publication || "",
-        },
-        verification: {
-          ai_verification: {
-            status: "not verified",
-            details: null,
-          },
-          displayData: {
-            publication: pub.publication || "",
-            title: pub.title || "Unable to extract",
-            author: "Unable to extract",
-            type: "Unknown",
-            year: "Unknown",
-            citedBy: "0",
-            link: generateSearchLink(pub.title),
-            status: "not verified",
-          },
-        },
-        authorVerification: {
-          hasAuthorMatch: false,
-          authorIds: {
-            ai_verified: null,
-          },
-        },
-      };
+      // Return basic not verified result using helper function
+      return transformPublicationResult(
+        { title: pub.title || "Unable to extract" },
+        { isOnline: false, hasAuthorMatch: false },
+        pub
+      );
     }
   } catch (error) {
     console.error("Error verifying individual publication:", error);
@@ -658,6 +533,68 @@ IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
 //=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
+
+/**
+ * Determine publication verification status based on AI verification results
+ * @param {Object} verification - Verification object with isOnline and hasAuthorMatch
+ * @returns {string} Status string
+ */
+function determinePublicationStatus(verification) {
+  if (!verification || !verification.isOnline) {
+    return "not verified";
+  }
+
+  return verification.hasAuthorMatch
+    ? "verified"
+    : "verified but not same author name";
+}
+
+/**
+ * Transform publication data to expected format
+ * @param {Object} publication - Publication data
+ * @param {Object} verification - Verification data
+ * @param {Object} originalPub - Original publication object (for fallback)
+ * @returns {Object} Formatted result object
+ */
+function transformPublicationResult(
+  publication,
+  verification,
+  originalPub = {}
+) {
+  const status = determinePublicationStatus(verification);
+
+  return {
+    publication: {
+      title: publication.title || originalPub.title || "",
+      doi: publication.doi || originalPub.doi || null,
+      fullText: publication.fullText || originalPub.publication || "",
+    },
+    verification: {
+      ai_verification: {
+        status: status,
+        details: verification,
+      },
+      displayData: {
+        publication: publication.fullText || originalPub.publication || "",
+        title: publication.title || originalPub.title || "Unable to extract",
+        author: Array.isArray(publication.authors)
+          ? publication.authors.join(", ")
+          : "Unable to extract",
+        type: publication.type || "Unknown",
+        year: publication.year || "Unknown",
+        citedBy: verification?.citationCount?.toString() || "0",
+        link: verification?.link || generateSearchLink(publication.title),
+        status: status,
+      },
+    },
+    authorVerification: {
+      hasAuthorMatch: verification?.hasAuthorMatch || false,
+      authorIds: {
+        ai_verified: verification?.hasAuthorMatch ? "ai_verified" : null,
+      },
+    },
+  };
+}
 
 /**
  * Clean and extract JSON from AI response
@@ -707,44 +644,19 @@ function generateSearchLink(title) {
 async function fallbackPublicationExtraction(model, cvText, candidateName) {
   try {
     // Use the existing publication extraction function
-    const { extractPublicationsFromCV } = require("../utils/aiHelpers");
     const rawPublications = await extractPublicationsFromCV(model, cvText);
 
     if (!Array.isArray(rawPublications)) {
       return [];
     }
 
-    // Convert to expected format but mark all as not verified
-    return rawPublications.map((pub, index) => {
-      return {
-        publication: {
-          title: pub.title || "Unable to extract",
-          doi: pub.doi || null,
-          fullText: pub.publication || "",
-        },
-        verification: {
-          ai_verification: {
-            status: "not verified",
-            details: null,
-          },
-          displayData: {
-            publication: pub.publication || "",
-            title: pub.title || "Unable to extract",
-            author: "Unable to extract",
-            type: "Unknown",
-            year: "Unknown",
-            citedBy: "0",
-            link: generateSearchLink(pub.title),
-            status: "not verified",
-          },
-        },
-        authorVerification: {
-          hasAuthorMatch: false,
-          authorIds: {
-            ai_verified: null,
-          },
-        },
-      };
+    // Convert to expected format but mark all as not verified using helper function
+    return rawPublications.map((pub) => {
+      return transformPublicationResult(
+        { title: pub.title || "Unable to extract" },
+        { isOnline: false, hasAuthorMatch: false },
+        pub
+      );
     });
   } catch (fallbackError) {
     console.error(
