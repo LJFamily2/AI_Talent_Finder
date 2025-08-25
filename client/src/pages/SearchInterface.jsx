@@ -6,9 +6,7 @@ import menuIcon from '../assets/menu.png';
 import { Switch } from "@/components/ui/switch"
 import Bulb from '../assets/lightbulb.png';
 import Dot from '../assets/dot.png';
-import letterH from '../assets/letter-h.png';
-import scholarHat from '../assets/scholar-hat.png';
-import infoIcon from '../assets/info.png';
+import filterIcon from '../assets/filter.png';
 import {
   Pagination,
   PaginationContent,
@@ -31,7 +29,9 @@ function SearchInterface() {
     const [expertiseInput, setExpertiseInput] = useState("");
     const [expertiseInputFocused, setExpertiseInputFocused] = useState(false);
     const [peopleList, setPeopleList] = useState([]);
-    const navigate = useNavigate();
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
+    // const navigate = useNavigate();
 
     useEffect(() => {
         fetch('/api/researchers?page=1&limit=10')
@@ -52,16 +52,6 @@ const FIELD_LIST = [
   'Data Science', 'Civil Engineering', 'Business Administration', 'Physics', 'Mathematics',
   // ... add more fields as needed
 ];
-
-// let peopleList = [
-//     { name: 'Jason Carroll', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'James Kim', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Medison Pham', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Linh Cao', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Kim Cheoul', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Minh Tran', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-//     { name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 }]
 
   function CountryModal({ open, onClose, countries, selected, onSelect, search, onSearch }) {
     const modalRef = useRef(null);
@@ -151,27 +141,101 @@ const FIELD_LIST = [
     ) : null;
   }
 
+  // Add filter states
+const [hIndexFilter, setHIndexFilter] = useState({ value: '', comparison: 'equals' });
+const [i10IndexFilter, setI10IndexFilter] = useState({ value: '', comparison: 'equals' });
+// selectedFields and selectedCountries already exist
+
+// Filtering function
+const filteredPeopleList = peopleList.filter(person => {
+  // H-index filter
+  let hIndexPass = true;
+  if (hIndexFilter.value !== '') {
+    const val = Number(hIndexFilter.value);
+    if (hIndexFilter.comparison === 'equals') hIndexPass = person.hIndex === val;
+    if (hIndexFilter.comparison === 'less-than') hIndexPass = person.hIndex < val;
+    if (hIndexFilter.comparison === 'larger-than') hIndexPass = person.hIndex > val;
+  }
+  // i10-index filter
+  let i10IndexPass = true;
+  if (i10IndexFilter.value !== '') {
+    const val = Number(i10IndexFilter.value);
+    if (i10IndexFilter.comparison === 'equals') i10IndexPass = person.i10Index === val;
+    if (i10IndexFilter.comparison === 'less-than') i10IndexPass = person.i10Index < val;
+    if (i10IndexFilter.comparison === 'larger-than') i10IndexPass = person.i10Index > val;
+  }
+  return hIndexPass && i10IndexPass;
+});
+
+// Then sort the filtered list
+const sortedPeopleList = [...filteredPeopleList].sort((a, b) => {
+  let valA = a[sortBy];
+  let valB = b[sortBy];
+  if (sortBy === 'name') {
+    return sortOrder === 'asc'
+      ? valA.localeCompare(valB)
+      : valB.localeCompare(valA);
+  }
+  valA = Number(valA);
+  valB = Number(valB);
+  return sortOrder === 'asc' ? valA - valB : valB - valA;
+});
+
   return (
     <div>
         <Header />
-        <div className='w-screen h-max bg-[#F3F4F6] flex p-10'>
-            {/* Left side: filter */}
-            <div className='w-fit min-w-90 h-full flex justify-center'>
-                <div className='w-full bg-white py-8 rounded-2xl shadow-md h-full border border-[#D9D9D9]'>
+        <div className='w-screen h-max bg-[#F3F4F6] flex'>
+            <form>
+            {/* Left side: search and filters */}{/* Left side: filter */}
+            <div className='w-min min-w-90 h-full flex justify-center'>
+                <div className='w-full bg-white py-8 pl-8 pr-10 shadow-md h-full border border-[#D9D9D9]'>
+                    <div className='flex items-center gap-4 mb-8'>
+                        <img src={filterIcon} alt='Filter' className='w-4 h-4' />
+                        <h3 className='text-lg text-[#625B71] font-bold text-center'>FILTER</h3>
+                    </div>
+
+                    <div className='flex items-center justify-between mb-6 gap-1'>
+                        <button className='border-1 border-[#BDD7EF] rounded-md flex-1 py-2 text-[#6A6A6A] font-semibold cursor-pointer' type='reset'>Clear</button>
+                        <button className='bg-[#FAD9DA] rounded-md flex-1 py-2 text-[#C41A24] font-semibold cursor-pointer' type='button'>Apply filter</button>
+                    </div>
+
+                    <hr className='mt-8 mb-12 border-[#D9D9D9]' />
+
+                    <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
+                    <div className='w-full border border-gray-300 bg-white rounded-sm flex justify-between items-center py-2 px-4 mb-18'>
+                        <input
+                            type='text'
+                            placeholder='e.g. Michael'
+                            className='focus:outline-0 w-full'
+                        />
+                    </div>
+
                     {/* Subsection: Research-based metrics */}
-                    <div className='px-6'>
+                    <div className=''>
                         <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
-                    <form action="/processing.php">
+
                         <div className='flex items-center justify-between '>
                             <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
                             <div className='flex w-3/4 justify-end items-center gap-5'>
-                                <select name="comparison" className='border border-gray-300 bg-white rounded-lg py-1 px-2 text-gray-500'>
-                                    <option value="equals" >equals</option>
-                                    <option value="less-than">less than</option>
-                                    <option value="larger-than">larger than</option>
+                                <select
+                                name="comparison"
+                                value={hIndexFilter.comparison}
+                                onChange={e => setHIndexFilter(f => ({ ...f, comparison: e.target.value }))}
+                                className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'
+                                >
+                                <option value="equals" >equals</option>
+                                <option value="less-than">less than</option>
+                                <option value="larger-than">larger than</option>
                                 </select>
                                 <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                    <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0}/>
+                                    <input
+                                    type='number'
+                                    id="hIndex"
+                                    value={hIndexFilter.value}
+                                    onChange={e => setHIndexFilter(f => ({ ...f, value: e.target.value }))}
+                                    className='w-30 focus:outline-0 text-end px-3'
+                                    min={0}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -182,29 +246,32 @@ const FIELD_LIST = [
                         <div className='flex items-center justify-between'>
                             <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
                             <div className='flex w-3/4 justify-end items-center gap-5'>
-                                <select name="comparison" className='border border-gray-300 bg-white rounded-lg py-1 px-2 text-gray-500'>
-                                    <option value="equals" >equals</option>
-                                    <option value="less-than">less than</option>
-                                    <option value="larger-than">larger than</option>
+                                <select
+                                name="comparison"
+                                value={i10IndexFilter.comparison}
+                                onChange={e => setI10IndexFilter(f => ({ ...f, comparison: e.target.value }))}
+                                className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'
+                                >
+                                <option value="equals" >equals</option>
+                                <option value="less-than">less than</option>
+                                <option value="larger-than">larger than</option>
                                 </select>
                                 <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                    <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0}/>
+                                    <input
+                                    type='number'
+                                    id="i10Index"
+                                    value={i10IndexFilter.value}
+                                    onChange={e => setI10IndexFilter(f => ({ ...f, value: e.target.value }))}
+                                    className='w-30 focus:outline-0 text-end px-3'
+                                    min={0}
+                                    />
                                 </div>
                             </div>
                         </div>
-
-                        <div className='flex gap-2 mt-6'>
-                            <button type="reset" className='w-1/2 bg-white py-1 rounded-lg border border-[#9F9F9F] cursor-pointer hover:bg-gray-200 hover:border-gray-300'>Clear</button>
-                            <button type="submit" className='w-1/2 bg-[#E60028] text-white py-1 rounded-lg cursor-pointer hover:bg-[#B4001F]'>Apply</button>
-                        </div>
-                    </form>
                     </div>
-                    
-
-                    <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
 
                     {/* Subsection: Field */}
-                    <div className='px-6'>
+                    <div className='mt-10'>
                         <div className='flex items-center justify-between'>
                         <h4 className='text-lg mb-5 font-semibold mt-6'>Expertise field</h4>
                             <button
@@ -267,14 +334,9 @@ const FIELD_LIST = [
                             ))}
                         </div>
                     </div>
-                    
-
-                    {/* Space between elements */}
-
-                    <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
 
                     {/* Subsection: Institution country */}
-                    <div className='px-6'>
+                    <div className=' mt-15'>
                         <h4 className='text-lg mb-5 font-semibold'>Institution country</h4>
                     <div className='flex flex-col gap-2'>
                         <div>
@@ -304,34 +366,90 @@ const FIELD_LIST = [
                     </div>
                     </div>
 
-                    <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
-
-
-                    {/* Other links */}
-                    <div className='px-6'>
-                        <h4 className='text-lg mb-5 font-semibold'>Other links</h4>
-                        <div className='flex justify-between items-center mb-2'>
-                            <label htmlFor='hasScopusID'>Candidate has Scopus ID</label>
-                            <Switch id="hasScopusID"/>
+                    {/* Subsection: Institution */}
+                    <h4 className='text-lg mb-5 font-semibold mt-15'>Institution</h4>
+                    <div className='flex flex-col gap-2 mb-6'>
+                        <div>
+                            <input type='checkbox' id='insIsHUST' className='mr-4' />
+                            <label htmlFor='insIsHUST'>Hanoi University of Science and Technology</label>
                         </div>
-                        <div className='flex justify-between items-center'> 
-                            <label htmlFor='hasOrcidID'>Candidate has ORCID ID</label>
-                            <Switch id="hasOrcidID"/>
+                        <div>
+                            <input type='checkbox' id='insIsVNU' className='mr-4' />
+                            <label htmlFor='insIsVNU'>Vietnam National University</label>
                         </div>
+                        <div>
+                            <input type='checkbox' id='insIsMIT' className='mr-4' />
+                            <label htmlFor='insIsMIT'>Massachusetts Institute of Technology</label>
+                        </div>
+                        <div>
+                            <input type='checkbox' id='insIsStanford' className='mr-4' />
+                            <label htmlFor='insIsStanford'>Stanford University</label>
+                        </div>
+                        <div>
+                            <input type='checkbox' id='insIsHarvard' className='mr-4' />
+                            <label htmlFor='insIsHarvard'>Harvard University</label>
+                        </div>
+                        <button className='w-min self-end cursor-pointer text-gray-500'>More...</button>
+                    </div>
+                    
+                    <hr className='mt-12 mb-10 border-[#D9D9D9]' />
+                    <div className='flex items-center justify-between gap-1'>
+                        <button className='flex-1 border-1 border-[#BDD7EF] rounded-md py-2 text-[#6A6A6A] font-semibold cursor-pointer' type='reset'>Clear</button>
+                        <button className='flex-1 bg-[#FAD9DA] rounded-md py-2 text-[#C41A24] font-semibold cursor-pointer border-1 border-[#FAD9DA]' type='button'>Apply filter</button>
                     </div>
                 </div>
             </div>
-
+            </form>
             
 
             {/* Right side: search results */}
-            <div className='w-3/5 h-full mx-auto'>
+            <div className='w-3/5 h-full mx-auto mt-16'>
                 <div className='w-full'>
+                    {/* Sort by: name, h-index, i10-index, citations count, works count */}
+                    <div className='bg-[#E5E5E5] py-3 px-6 rounded-md mb-12 flex items-center justify-start'>
+                        <span className='text-[#555555] text-md mr-3'> Sort by</span>
+                        <div className='*:px-5 *:py-3 *:rounded-md *:text-sm flex items-center gap-3 ml-4 *:cursor-pointer *:whitespace-nowrap'>
+                          {[
+                            { key: 'name', label: 'name' },
+                            { key: 'hIndex', label: 'h-index' },
+                            { key: 'i10Index', label: 'i10-index' },
+                            { key: 'total_citations', label: 'citations' },
+                            { key: 'total_works', label: 'works count' },
+                            ].map(({ key, label }) => (
+  <button
+    key={key}
+    className={
+      sortBy === key
+        ? 'font-semibold bg-[#4D8BC5] text-white'
+        : 'bg-white text-black font-normal'
+    }
+    onClick={() => {
+      if (sortBy === key) {
+        setSortOrder(order => (order === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortBy(key);
+        setSortOrder('asc');
+      }
+    }}
+  >
+    {label}
+    {sortBy === key && (
+      <span className="ml-2">
+        {sortOrder === 'asc' ? '▲' : '▼'}
+      </span>
+    )}
+  </button>
+))}
+                        </div>
+                    </div>
+                    
+                    
+
                     {/* Spacer */}
                     <div className='h-10'></div>
-                    
+
                     {/* People List */}
-                    {peopleList.map((person, index) => (
+                    {sortedPeopleList.map((person, index) => (
                     <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] pb-8 px-6 pt-6 bg-white rounded-sm' key={index}>
                         <div>
                             <div className='flex items-start justify-between gap-4'>
