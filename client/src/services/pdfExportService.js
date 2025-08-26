@@ -20,10 +20,17 @@ class PDFExportService {
     }
 
     // Check if researchers already have full profile data
-    const needsFullData = researchers.some(
-      (researcher) =>
-        !researcher.research_metrics || !researcher.citation_trends
-    );
+    const needsFullData = researchers.some((researcher) => {
+      // Check if we have the essential PDF data
+      const hasBasicInfo = researcher.basic_info?.name;
+      const hasMetrics =
+        researcher.research_metrics &&
+        researcher.research_metrics.h_index !== undefined &&
+        researcher.research_metrics.i10_index !== undefined;
+      const hasAffiliation = researcher.current_affiliation?.display_name;
+
+      return !(hasBasicInfo && hasMetrics && hasAffiliation);
+    });
 
     let fullProfiles = researchers;
 
@@ -31,14 +38,30 @@ class PDFExportService {
       // Fetch full profiles for researchers that need it
       fullProfiles = await Promise.all(
         researchers.map(async (researcher) => {
-          // If researcher already has full data, return as-is
-          if (researcher.research_metrics && researcher.citation_trends) {
+          // If researcher already has essential data, return as-is
+          const hasBasicInfo = researcher.basic_info?.name;
+          const hasMetrics =
+            researcher.research_metrics &&
+            researcher.research_metrics.h_index !== undefined &&
+            researcher.research_metrics.i10_index !== undefined;
+          const hasAffiliation = researcher.current_affiliation?.display_name;
+
+          if (hasBasicInfo && hasMetrics && hasAffiliation) {
+            console.log(
+              "PDFExportService - using existing data for:",
+              researcher.basic_info?.name
+            ); // Debug log
             return researcher;
           }
 
           // Otherwise, fetch full profile
           try {
-            return await getResearcherProfile(researcher.id);
+            const researcherId = researcher._id || researcher.id;
+            if (!researcherId) {
+              throw new Error("No researcher ID found");
+            }
+            const fullProfile = await getResearcherProfile(researcherId);
+            return fullProfile;
           } catch (error) {
             console.error(
               `Error fetching profile for ${
@@ -47,7 +70,8 @@ class PDFExportService {
               error
             );
             // Return a minimal profile if fetch fails
-            return this.createMinimalProfile(researcher);
+            const minimalProfile = this.createMinimalProfile(researcher);
+            return minimalProfile;
           }
         })
       );

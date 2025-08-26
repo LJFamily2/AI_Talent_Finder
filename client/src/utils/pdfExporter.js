@@ -412,11 +412,138 @@ export class ResearcherPDFExporter {
   }
 
   /**
+   * Add fields section with grouped topics
+   */
+  addFieldsWithTopicsSection(title, fields) {
+    if (!fields || fields.length === 0) return;
+
+    // Check if we need a new page
+    if (this.currentY > this.pageHeight - 60) {
+      this.doc.addPage();
+      this.currentY = 25;
+    }
+
+    this.doc.setFontSize(14);
+    this.doc.setFont(undefined, "bold");
+    this.doc.setTextColor(37, 99, 235);
+    this.doc.text(title, this.margin, this.currentY);
+    this.currentY += 10;
+
+    fields.forEach((field) => {
+      // Check if we need a new page
+      if (this.currentY > this.pageHeight - 30) {
+        this.doc.addPage();
+        this.currentY = 25;
+      }
+
+      // Add field name as bullet point
+      this.doc.setFont(undefined, "bold");
+      this.doc.setFontSize(10);
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text("•", this.margin, this.currentY);
+      this.doc.text(field.display_name, this.margin + 8, this.currentY);
+      this.currentY += 6;
+
+      // Add topics under the field if they exist
+      if (field.topics && field.topics.length > 0) {
+        const topics = field.topics;
+        const useColumnLayout = topics.length > 5;
+
+        if (useColumnLayout) {
+          // 2-column layout for topics with more than 5 items
+          const columnWidth = (this.usableWidth - 40) / 2; // 40px for indentation and gap
+          const leftColumnX = this.margin + 20; // Indent topics
+          const rightColumnX = leftColumnX + columnWidth + 20;
+
+          const itemsPerColumn = Math.ceil(topics.length / 2);
+          let leftColumnY = this.currentY;
+          let rightColumnY = this.currentY;
+
+          topics.forEach((topic, index) => {
+            const isLeftColumn = index < itemsPerColumn;
+            const columnX = isLeftColumn ? leftColumnX : rightColumnX;
+            let columnY = isLeftColumn ? leftColumnY : rightColumnY;
+
+            // Check if we need a new page
+            if (columnY > this.pageHeight - 20) {
+              this.doc.addPage();
+              this.currentY = 25;
+              leftColumnY = this.currentY;
+              rightColumnY = this.currentY;
+              columnY = this.currentY;
+            }
+
+            // Add topic as sub-bullet point
+            this.doc.setFont(undefined, "normal");
+            this.doc.setFontSize(9);
+            this.doc.setTextColor(75, 85, 99);
+            this.doc.text("-", columnX, columnY);
+
+            // Split long text into multiple lines if needed
+            const maxWidth = columnWidth - 10;
+            const textLines = this.doc.splitTextToSize(
+              topic.display_name,
+              maxWidth
+            );
+            this.doc.text(textLines, columnX + 6, columnY);
+
+            // Calculate height based on number of lines
+            const lineHeight = 4;
+            const textHeight = textLines.length * lineHeight;
+            const itemHeight = Math.max(textHeight, lineHeight) + 2;
+
+            if (isLeftColumn) {
+              leftColumnY += itemHeight;
+            } else {
+              rightColumnY += itemHeight;
+            }
+          });
+
+          // Set currentY to the bottom of the tallest column
+          this.currentY = Math.max(leftColumnY, rightColumnY) + 4;
+        } else {
+          // Single column layout for 5 or fewer topics
+          topics.forEach((topic) => {
+            // Check if we need a new page
+            if (this.currentY > this.pageHeight - 20) {
+              this.doc.addPage();
+              this.currentY = 25;
+            }
+
+            // Add topic as sub-bullet point
+            this.doc.setFont(undefined, "normal");
+            this.doc.setFontSize(9);
+            this.doc.setTextColor(75, 85, 99);
+            this.doc.text("-", this.margin + 20, this.currentY);
+
+            // Split long text into multiple lines if needed
+            const maxWidth = this.usableWidth - 30;
+            const textLines = this.doc.splitTextToSize(
+              topic.display_name,
+              maxWidth
+            );
+            this.doc.text(textLines, this.margin + 26, this.currentY);
+
+            // Calculate height based on number of lines
+            const lineHeight = 4;
+            const textHeight = textLines.length * lineHeight;
+            this.currentY += Math.max(textHeight, lineHeight) + 2;
+          });
+        }
+      }
+
+      this.currentY += 6; // Extra spacing between fields
+    });
+
+    this.currentY += 8; // Extra spacing after the section
+  }
+
+  /**
    * Add affiliations and research areas sections
    */
   addProfileSections(researcher) {
     const { basic_info: { affiliations = [] } = {} } = researcher;
-    const { research_areas: { fields = [], topics = [] } = {} } = researcher;
+    const { research_areas: { fields = [] } = {} } = researcher;
     const {
       current_affiliation: {
         institution: currentInst = "",
@@ -447,8 +574,7 @@ export class ResearcherPDFExporter {
       pastAffiliations,
       "institution.display_name"
     );
-    this.addFullDisplaySection("Research Fields", fields, "display_name");
-    this.addFullDisplaySection("Research Topics", topics, "display_name");
+    this.addFieldsWithTopicsSection("Research Fields", fields);
   }
 
   /**

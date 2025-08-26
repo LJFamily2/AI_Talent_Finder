@@ -14,20 +14,31 @@ async function getBookmarks(req, res) {
   try {
     const userId = req.user.id;
 
-    // Find or create the user's bookmark document and populate only necessary data
+    // Find or create the user's bookmark document and populate all necessary data
     let bookmark = await Bookmark.findOne({ userId }).populate({
       path: "researcherIds",
-      select: "name research_metrics last_known_affiliations topics", // Only select necessary fields
+      select:
+        "name research_metrics last_known_affiliations topics affiliations identifiers citation_trends", // Include all fields needed for PDF
       populate: [
         {
           path: "last_known_affiliations",
-          select: "display_name", // Only get institution name
+          select: "display_name",
           model: "Institution",
         },
         {
           path: "topics",
-          select: "display_name", // Only get topic name
+          select: "display_name field_id",
           model: "Topic",
+          populate: {
+            path: "field_id",
+            select: "display_name",
+            model: "Field",
+          },
+        },
+        {
+          path: "affiliations.institution",
+          select: "display_name",
+          model: "Institution",
         },
       ],
     });
@@ -41,7 +52,7 @@ async function getBookmarks(req, res) {
       });
     }
 
-    // Transform data to match frontend expectations and include only necessary fields
+    // Transform data to match frontend expectations and include full data for PDF export
     const transformedData = bookmark.researcherIds.map((researcher) => {
       // Get the primary institution name
       const institutionName =
@@ -49,24 +60,68 @@ async function getBookmarks(req, res) {
         "Unknown Institution";
 
       // Get the primary research field/topic
-      const fieldName = researcher.topics?.[0]?.display_name || "Unknown Field";
+      const fieldName =
+        researcher.topics?.[0]?.field_id?.display_name ||
+        researcher.topics?.[0]?.display_name ||
+        "Unknown Field";
+
+      // Group topics by field
+      const fieldTopicsMap = new Map();
+      researcher.topics?.forEach((topic) => {
+        const fieldName = topic.field_id?.display_name || "Uncategorized";
+        if (!fieldTopicsMap.has(fieldName)) {
+          fieldTopicsMap.set(fieldName, []);
+        }
+        fieldTopicsMap.get(fieldName).push({
+          display_name: topic.display_name,
+        });
+      });
+
+      // Convert map to array format for fields with their topics
+      const fieldsWithTopics = Array.from(fieldTopicsMap.entries()).map(
+        ([fieldName, topics]) => ({
+          display_name: fieldName,
+          topics: topics,
+        })
+      );
 
       return {
         _id: researcher._id,
         basic_info: {
           name: researcher.name || "Unknown",
+          affiliations:
+            researcher.affiliations?.map((aff) => ({
+              institution: {
+                display_name:
+                  aff.institution?.display_name || "Unknown Institution",
+              },
+            })) || [],
         },
         current_affiliation: {
           display_name: institutionName,
         },
+        current_affiliations:
+          researcher.last_known_affiliations?.map((inst) => ({
+            display_name: inst.display_name,
+          })) || [],
         research_metrics: {
           h_index: researcher.research_metrics?.h_index || 0,
           i10_index: researcher.research_metrics?.i10_index || 0,
+          total_citations: researcher.research_metrics?.total_citations || 0,
+          total_works: researcher.research_metrics?.total_works || 0,
+          two_year_mean_citedness:
+            researcher.research_metrics?.two_year_mean_citedness || 0,
         },
         research_areas: {
-          fields:
-            researcher.topics?.length > 0 ? [{ display_name: fieldName }] : [],
-          topics: [],
+          fields: fieldsWithTopics,
+          topics: [], // Remove topics as a separate section
+        },
+        citation_trends: {
+          counts_by_year: researcher.citation_trends || [],
+        },
+        identifiers: {
+          orcid: researcher.identifiers?.orcid || "",
+          openalex: researcher.identifiers?.openalex || "",
         },
       };
     });
