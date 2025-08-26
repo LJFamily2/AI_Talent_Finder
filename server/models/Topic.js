@@ -7,7 +7,6 @@ const SyncStatusSchema = new mongoose.Schema({
 }, { _id: false });
 
 const TopicSchema = new mongoose.Schema({
-    _id: { type: String, required: true },
     display_name: { type: String, required: true },
     field_id: { type: String, ref: "Field" },
     sync_status: { type: SyncStatusSchema, default: () => ({}) }
