@@ -17,7 +17,11 @@ async function getBookmarks(req, res) {
     // Find or create the user's bookmark document and populate researcher data
     let bookmark = await Bookmark.findOne({ userId }).populate({
       path: "researcherIds",
-      populate: [{ path: "last_known_affiliations" }, { path: "topics" }],
+      populate: [
+        { path: "affiliations.institution" },
+        { path: "last_known_affiliations" },
+        { path: "topics" },
+      ],
     });
 
     // If no bookmark exists, return empty array
@@ -26,7 +30,7 @@ async function getBookmarks(req, res) {
         success: true,
         count: 0,
         data: [],
-      }); 
+      });
     }
 
     res.status(200).json({

@@ -3,7 +3,7 @@
 // Combines candidate search (id, name) and multi-filter search
 //==================================================================
 
-const ResearcherProfile = require("../models/researcherProfileModel");
+const Researcher = require("../models/Researcher");
 
 // helpers query parsing and metric conditions
 const {
@@ -11,7 +11,7 @@ const {
   toSafeRegex,
   buildMetricCond,
   chooseOp,
-  clampPageLimit
+  clampPageLimit,
 } = require("../utils/queryHelpers");
 
 // fall back to OpenAlex if no results found
@@ -28,31 +28,37 @@ exports.searchFilters = async (req, res) => {
   const {
     id,
     name,
-    country,            // OR across affiliation countries
-    topic,              // OR across topics or fields
+    country, // OR across affiliation countries
+    topic, // OR across topics or fields
     hindex,
     i10index,
-    op,                 // global fallback operator (eq|gt|gte|lt|lte)
-    op_hindex,          // optional override for hindex
-    op_i10,             // optional override for i10index
-    identifier,         // identifiers.<key> must exist and non-empty (supports multi)
-    affiliation,        // affiliation name (regex, supports multi)
-    year_from,          // inclusive
-    year_to,            // inclusive
+    op, // global fallback operator (eq|gt|gte|lt|lte)
+    op_hindex, // optional override for hindex
+    op_i10, // optional override for i10index
+    identifier, // identifiers.<key> must exist and non-empty (supports multi)
+    affiliation, // affiliation name (regex, supports multi)
+    year_from, // inclusive
+    year_to, // inclusive
     page = 1,
-    limit = 20
+    limit = 20,
   } = req.query;
 
   try {
     // 1) Detail by ID
     if (id) {
-      const profileDoc = await ResearcherProfile.findById(id);
-      if (!profileDoc) return res.status(404).json({ error: "Author not found" });
+      const profileDoc = await Researcher.findById(id);
+      if (!profileDoc)
+        return res.status(404).json({ error: "Author not found" });
       return res.json({ profile: profileDoc });
     }
 
     // 2) Pagination (safe bounds) - DB max 100, default 20
-    const { page: pageNum, limit: limNum } = clampPageLimit(page, limit, 100, 20);
+    const { page: pageNum, limit: limNum } = clampPageLimit(
+      page,
+      limit,
+      100,
+      20
+    );
     const skip = (pageNum - 1) * limNum;
 
     // 3) Build query
@@ -65,12 +71,14 @@ exports.searchFilters = async (req, res) => {
     }
 
     // COUNTRY (include_any / OR across entire affiliation history)
-    const countries = parseMultiOr(country).map(c => c.toUpperCase());
+    const countries = parseMultiOr(country).map((c) => c.toUpperCase());
     if (countries.length === 1) {
-      andParts.push({ "basic_info.affiliations.institution.country_code": countries[0] });
+      andParts.push({
+        "basic_info.affiliations.institution.country_code": countries[0],
+      });
     } else if (countries.length > 1) {
       andParts.push({
-        "basic_info.affiliations.institution.country_code": { $in: countries }
+        "basic_info.affiliations.institution.country_code": { $in: countries },
       });
     }
 
@@ -88,7 +96,7 @@ exports.searchFilters = async (req, res) => {
 
     // METRICS (each metric can have its own op, fallback to global op, default eq)
     const opH = chooseOp(op_hindex, op, "eq");
-    const opI = chooseOp(op_i10,    op, "eq");
+    const opI = chooseOp(op_i10, op, "eq");
 
     const hCond = buildMetricCond("research_metrics.h_index", opH, hindex);
     if (hCond) andParts.push(hCond);
@@ -97,22 +105,26 @@ exports.searchFilters = async (req, res) => {
     if (iCond) andParts.push(iCond);
 
     // IDENTIFIER exists and non-empty (supports multi OR)
-    const idents = parseMultiOr(identifier).map(x => x.toLowerCase());
+    const idents = parseMultiOr(identifier).map((x) => x.toLowerCase());
     if (idents.length === 1) {
-      andParts.push({ [`identifiers.${idents[0]}`]: { $exists: true, $ne: "" } });
+      andParts.push({
+        [`identifiers.${idents[0]}`]: { $exists: true, $ne: "" },
+      });
     } else if (idents.length > 1) {
       andParts.push({
-        $or: idents.map(k => ({ [`identifiers.${k}`]: { $exists: true, $ne: "" } }))
+        $or: idents.map((k) => ({
+          [`identifiers.${k}`]: { $exists: true, $ne: "" },
+        })),
       });
     }
 
     // AFFILIATION + YEAR RANGE (inclusive checks on history) — supports multi names
     const affNames = parseMultiOr(affiliation);
     const from = Number.isFinite(+year_from) ? +year_from : null;
-    const to   = Number.isFinite(+year_to)   ? +year_to   : null;
+    const to = Number.isFinite(+year_to) ? +year_to : null;
 
     if (affNames.length > 0) {
-      const affElemQueries = affNames.map(affName => {
+      const affElemQueries = affNames.map((affName) => {
         const affRx = toSafeRegex(affName);
         const affQuery = { "institution.display_name": affRx };
         if (from != null && to != null) {
@@ -134,8 +146,8 @@ exports.searchFilters = async (req, res) => {
         from != null && to != null
           ? { years: { $elemMatch: { $gte: from, $lte: to } } }
           : from != null
-            ? { years: { $elemMatch: { $gte: from } } }
-            : { years: { $elemMatch: { $lte: to } } };
+          ? { years: { $elemMatch: { $gte: from } } }
+          : { years: { $elemMatch: { $lte: to } } };
 
       andParts.push({ "basic_info.affiliations": { $elemMatch: yearCond } });
     }
@@ -147,8 +159,8 @@ exports.searchFilters = async (req, res) => {
     console.log(`🔎 [FILTERS DB] ${JSON.stringify(query)}`);
 
     // 5) Execute
-    const total = await ResearcherProfile.countDocuments(query);
-    const docs  = await ResearcherProfile.find(query)
+    const total = await Researcher.countDocuments(query);
+    const docs = await Researcher.find(query)
       .sort({ "basic_info.name": 1 })
       .skip(skip)
       .limit(limNum);
@@ -163,7 +175,7 @@ exports.searchFilters = async (req, res) => {
       count: docs.length,
       page: pageNum,
       limit: limNum,
-      authors: docs
+      authors: docs,
     });
   } catch (err) {
     console.error("Error in searchFilters:", err);
@@ -172,5 +184,5 @@ exports.searchFilters = async (req, res) => {
 };
 
 module.exports = {
-  searchFilters: exports.searchFilters
+  searchFilters: exports.searchFilters,
 };

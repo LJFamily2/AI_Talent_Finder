@@ -23,7 +23,7 @@ const MetricsSchema = new mongoose.Schema(
 
 const AffiliationSchema = new mongoose.Schema(
   {
-    institution_id: {
+    institution: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institution",
     },
