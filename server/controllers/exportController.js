@@ -1,5 +1,6 @@
 const excel = require("exceljs");
 const Researcher = require("../models/Researcher");
+const Field = require("../models/Field");
 
 const exportResearchersToExcel = async (req, res) => {
   try {
@@ -22,9 +23,15 @@ const exportResearchersToExcel = async (req, res) => {
       _id: { $in: researcherIds },
     })
       .populate("last_known_affiliations")
-      .populate("topics")
       .populate({
-        path: "affiliations.institution_id",
+        path: "topics",
+        populate: {
+          path: "field_id",
+          select: "display_name",
+        },
+      })
+      .populate({
+        path: "affiliations.institution",
         select: "display_name ror country_code",
       });
 
@@ -44,30 +51,24 @@ const exportResearchersToExcel = async (req, res) => {
     row1.values = [
       "Basic Info", // A1
       "Identifiers", // B1
-      "", // C1 (will be merged with B1)
-      "Research Metrics", // D1
+      "Research Metrics", // C1
       "",
       "",
       "",
-      "", // E1-H1 (will be merged)
-      "Topics", // I1
-      "Last Known Affiliations", // J1
-      "Affiliations", // K1
-      "",
-      "", // L1-M1 (will be merged)
-      "Citation Trends", // N1
-      "",
-      "", // O1-P1 (will be merged)
+      "", // D1-G1 (will be merged)
+      "Fields", // H1
+      "", // I1 (will be merged)
+      "Affiliations", // J1
+      "", // K1 (will be merged)
     ];
 
     // Merge Level 1 headers
-    worksheet.mergeCells("B1:C1"); // Identifiers
-    worksheet.mergeCells("D1:H1"); // Research Metrics
-    worksheet.mergeCells("K1:M1"); // Affiliations
-    worksheet.mergeCells("N1:P1"); // Citation Trends
+    worksheet.mergeCells("C1:G1"); // Research Metrics
+    worksheet.mergeCells("H1:I1"); // Fields
+    worksheet.mergeCells("J1:K1"); // Affiliations
 
     // Style the Level 1 headers
-    ["A1", "B1", "D1", "I1", "J1", "K1", "N1"].forEach((cell) => {
+    ["A1", "B1", "C1", "H1", "J1", ].forEach((cell) => {
       worksheet.getCell(cell).style = {
         font: { bold: true, size: 12 },
         alignment: { horizontal: "center", vertical: "middle" },
@@ -83,21 +84,16 @@ const exportResearchersToExcel = async (req, res) => {
     const row2 = worksheet.getRow(2);
     row2.values = [
       "Name", // A2
-      "OpenAlex", // B2
-      "ORCID", // C2
-      "H-Index", // D2
-      "i10-Index", // E2
-      "2-Year Mean Citedness", // F2
-      "Total Citations", // G2
-      "Total Works", // H2
+      "ORCID", // B2
+      "H-Index", // C2
+      "i10-Index", // D2
+      "2-Year Mean Citedness", // E2
+      "Total Citations", // F2
+      "Total Works", // G2
+      "Field Name", // H2
       "Topics", // I2
-      "Last Known Affiliations", // J2
-      "Institution Name", // K2
-      "Years", // L2
-      "", // M2 (spacing)
-      "Year", // N2
-      "Works Count", // O2
-      "Cited By Count", // P2
+      "Institution Name", // J2
+      "Years", // K2
     ];
 
     // Style the Level 2 headers
@@ -113,11 +109,6 @@ const exportResearchersToExcel = async (req, res) => {
       "I2",
       "J2",
       "K2",
-      "L2",
-      "M2",
-      "N2",
-      "O2",
-      "P2",
     ].forEach((cell) => {
       worksheet.getCell(cell).style = {
         font: { bold: true },
@@ -133,62 +124,84 @@ const exportResearchersToExcel = async (req, res) => {
     // Define columns with widths
     worksheet.columns = [
       { key: "name", width: 20 }, // Basic Info - Name
-      { key: "openalex", width: 20 }, // Identifiers - OpenAlex
       { key: "orcid", width: 20 }, // Identifiers - ORCID
       { key: "hIndex", width: 10 }, // Research Metrics
       { key: "i10Index", width: 10 },
       { key: "meanCitedness", width: 20 },
       { key: "totalCitations", width: 15 },
       { key: "totalWorks", width: 15 },
-      { key: "topics", width: 30 }, // Topics
-      { key: "lastKnownAffiliations", width: 30 }, // Last Known Affiliations
+      { key: "fieldName", width: 30 }, // Fields - Field Name
+      { key: "topics", width: 50 }, // Fields - Topics (comma-separated)
       { key: "affiliation_institution_name", width: 30 }, // Affiliations - Institution Name
       { key: "affiliation_years", width: 15 },
-      { key: "spacing", width: 5 }, // Spacing column
-      { key: "citation_year", width: 10 }, // Citation Trends
-      { key: "works_count", width: 15 },
-      { key: "cited_by_count", width: 15 },
     ];
 
     // Add researcher data starting from row 3
     let currentRow = 3;
 
     researchers.forEach((researcher) => {
-      // Process topics, affiliations, and citation trends from new model
+      // Process topics and group them by field
       const topics = researcher.topics || [];
-      const lastKnownAffiliations = researcher.last_known_affiliations || [];
       const affiliations = researcher.affiliations || [];
-      const citationTrends = researcher.citation_trends || [];
+
+      // Group topics by field but keep each topic as individual entry
+      const fieldGroups = {};
+      topics.forEach((topic) => {
+        const fieldName = topic.field_id?.display_name || "Unknown Field";
+        const topicName = topic.display_name || "";
+
+        if (!fieldGroups[fieldName]) {
+          fieldGroups[fieldName] = [];
+        }
+        if (topicName) {
+          fieldGroups[fieldName].push(topicName);
+        }
+      });
+
+      // Create individual entries for each topic, but keep track of field grouping
+      const fieldEntries = [];
+      Object.entries(fieldGroups).forEach(([fieldName, topicsList]) => {
+        topicsList.forEach((topicName, index) => {
+          fieldEntries.push({
+            fieldName: index === 0 ? fieldName : "", // Only show field name on first topic of each field
+            topics: topicName, // Each topic gets its own row
+            isFirstInField: index === 0, // Flag to identify first topic in field
+            fieldGroupName: fieldName, // Keep original field name for merging
+          });
+        });
+      });
+
+      // If no topics, show empty entry
+      if (fieldEntries.length === 0) {
+        fieldEntries.push({
+          fieldName: "",
+          topics: "",
+          isFirstInField: true,
+          fieldGroupName: "",
+        });
+      }
 
       // Find the maximum array length to determine how many rows this researcher needs
       const maxArrayLength = Math.max(
-        topics.length || 1,
-        lastKnownAffiliations.length || 1,
-        affiliations.length || 1,
-        citationTrends.length || 1
+        fieldEntries.length || 1,
+        affiliations.length || 1
       );
 
       const startRow = currentRow;
 
       // Add rows for each array element
       for (let i = 0; i < maxArrayLength; i++) {
-        const topic = topics[i]?.display_name || topics[i] || "";
-        const lastKnownAffiliation =
-          lastKnownAffiliations[i]?.display_name ||
-          lastKnownAffiliations[i] ||
-          "";
+        const fieldEntry = fieldEntries[i] || {};
         const affiliation = affiliations[i] || {};
-        const citationTrend = citationTrends[i] || {};
 
         // Handle populated institution data
         const institutionName =
-          affiliation?.institution_id?.display_name ||
-          affiliation?.institution_id ||
+          affiliation?.institution?.display_name ||
+          affiliation?.institution ||
           "";
 
         worksheet.addRow({
           name: i === 0 ? researcher.name || "" : "",
-          openalex: i === 0 ? researcher.identifiers?.openalex || "" : "",
           orcid: i === 0 ? researcher.identifiers?.orcid || "" : "",
           hIndex: i === 0 ? researcher.research_metrics?.h_index || "" : "",
           i10Index: i === 0 ? researcher.research_metrics?.i10_index || "" : "",
@@ -200,14 +213,11 @@ const exportResearchersToExcel = async (req, res) => {
             i === 0 ? researcher.research_metrics?.total_citations || "" : "",
           totalWorks:
             i === 0 ? researcher.research_metrics?.total_works || "" : "",
-          topics: topic,
-          lastKnownAffiliations: lastKnownAffiliation,
+          fieldName: fieldEntry.fieldGroupName || "", // Use fieldGroupName for proper merging
+          topics: fieldEntry.topics || "",
           affiliation_institution_name: institutionName,
           affiliation_years: affiliation?.years?.join(", ") || "",
           spacing: "", // Empty spacing column
-          citation_year: citationTrend?.year || "",
-          works_count: citationTrend?.works_count || "",
-          cited_by_count: citationTrend?.cited_by_count || "",
         });
         currentRow++;
       }
@@ -221,33 +231,52 @@ const exportResearchersToExcel = async (req, res) => {
           worksheet.mergeCells(`A${startRow}:A${endRow}`);
         }
 
-        // Merge OpenAlex ID
-        if (researcher.identifiers?.openalex) {
-          worksheet.mergeCells(`B${startRow}:B${endRow}`);
-        }
-
         // Merge ORCID
         if (researcher.identifiers?.orcid) {
-          worksheet.mergeCells(`C${startRow}:C${endRow}`);
+          worksheet.mergeCells(`B${startRow}:B${endRow}`);
         }
 
         // Merge Research Metrics
         if (researcher.research_metrics?.h_index !== undefined) {
-          worksheet.mergeCells(`D${startRow}:D${endRow}`);
+          worksheet.mergeCells(`C${startRow}:C${endRow}`);
         }
         if (researcher.research_metrics?.i10_index !== undefined) {
-          worksheet.mergeCells(`E${startRow}:E${endRow}`);
+          worksheet.mergeCells(`D${startRow}:D${endRow}`);
         }
         if (
           researcher.research_metrics?.two_year_mean_citedness !== undefined
         ) {
-          worksheet.mergeCells(`F${startRow}:F${endRow}`);
+          worksheet.mergeCells(`E${startRow}:E${endRow}`);
         }
         if (researcher.research_metrics?.total_citations !== undefined) {
-          worksheet.mergeCells(`G${startRow}:G${endRow}`);
+          worksheet.mergeCells(`F${startRow}:F${endRow}`);
         }
         if (researcher.research_metrics?.total_works !== undefined) {
-          worksheet.mergeCells(`H${startRow}:H${endRow}`);
+          worksheet.mergeCells(`G${startRow}:G${endRow}`);
+        }
+
+        // Merge field names for topics within the same field
+        let fieldMergeStart = startRow;
+        let currentFieldName = "";
+
+        for (let rowIndex = 0; rowIndex < fieldEntries.length; rowIndex++) {
+          const entry = fieldEntries[rowIndex];
+          const currentRowNum = startRow + rowIndex;
+
+          if (entry.fieldGroupName !== currentFieldName) {
+            // End previous field merge if needed
+            if (currentFieldName && fieldMergeStart < currentRowNum - 1) {
+              worksheet.mergeCells(`H${fieldMergeStart}:H${currentRowNum - 1}`);
+            }
+            // Start new field merge
+            fieldMergeStart = currentRowNum;
+            currentFieldName = entry.fieldGroupName;
+          }
+        }
+
+        // Handle the last field merge
+        if (currentFieldName && fieldMergeStart < endRow) {
+          worksheet.mergeCells(`H${fieldMergeStart}:H${endRow}`);
         }
       }
     });

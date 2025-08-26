@@ -14,13 +14,21 @@ async function getBookmarks(req, res) {
   try {
     const userId = req.user.id;
 
-    // Find or create the user's bookmark document and populate researcher data
+    // Find or create the user's bookmark document and populate only necessary data
     let bookmark = await Bookmark.findOne({ userId }).populate({
       path: "researcherIds",
+      select: "name research_metrics last_known_affiliations topics", // Only select necessary fields
       populate: [
-        { path: "affiliations.institution" },
-        { path: "last_known_affiliations" },
-        { path: "topics" },
+        {
+          path: "last_known_affiliations",
+          select: "display_name", // Only get institution name
+          model: "Institution",
+        },
+        {
+          path: "topics",
+          select: "display_name", // Only get topic name
+          model: "Topic",
+        },
       ],
     });
 
@@ -33,10 +41,40 @@ async function getBookmarks(req, res) {
       });
     }
 
+    // Transform data to match frontend expectations and include only necessary fields
+    const transformedData = bookmark.researcherIds.map((researcher) => {
+      // Get the primary institution name
+      const institutionName =
+        researcher.last_known_affiliations?.[0]?.display_name ||
+        "Unknown Institution";
+
+      // Get the primary research field/topic
+      const fieldName = researcher.topics?.[0]?.display_name || "Unknown Field";
+
+      return {
+        _id: researcher._id,
+        basic_info: {
+          name: researcher.name || "Unknown",
+        },
+        current_affiliation: {
+          display_name: institutionName,
+        },
+        research_metrics: {
+          h_index: researcher.research_metrics?.h_index || 0,
+          i10_index: researcher.research_metrics?.i10_index || 0,
+        },
+        research_areas: {
+          fields:
+            researcher.topics?.length > 0 ? [{ display_name: fieldName }] : [],
+          topics: [],
+        },
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: bookmark.researcherIds.length,
-      data: bookmark.researcherIds,
+      count: transformedData.length,
+      data: transformedData,
     });
   } catch (error) {
     console.error("Error fetching bookmarks:", error);
