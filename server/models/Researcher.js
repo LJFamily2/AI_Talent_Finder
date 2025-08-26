@@ -56,6 +56,7 @@ const ResearcherSchema = new mongoose.Schema(
     ],
 
     topics: [{ type: mongoose.Schema.Types.ObjectId, ref: "Topic" }],
+    topics: [{ type: mongoose.Schema.Types.ObjectId, ref: "Topic" }],
 
     citation_trends: [CitationTrendSchema],
 
@@ -64,8 +65,13 @@ const ResearcherSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
-  }
-);
+    versionKey: false
+});
+
+ResearcherSchema.index({ "name": 1 })
+ResearcherSchema.index({ "research_metrics.h_index": 1 });
+ResearcherSchema.index({ "research_metrics.i10_index": 1 });
+ResearcherSchema.index({ "research_metrics.total_citations": 1 });
+ResearcherSchema.index({ "research_metrics.total_works": 1 });
 
 module.exports = mongoose.model("Researcher", ResearcherSchema);

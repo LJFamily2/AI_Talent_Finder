@@ -8,7 +8,7 @@ const SyncStatusSchema = new mongoose.Schema({
 
 const TopicSchema = new mongoose.Schema({
     display_name: { type: String, required: true },
-    field_id: { type: String, ref: "Field" },
+    field_id: { type: mongoose.Schema.Types.ObjectId, ref: "Field" },
     sync_status: { type: SyncStatusSchema, default: () => ({}) }
 }, {
     timestamps: true,
