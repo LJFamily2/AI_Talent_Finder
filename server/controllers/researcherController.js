@@ -1,5 +1,5 @@
 const axios = require("axios");
-const researcherProfile = require("../models/researcherProfileModel");
+const Researcher = require("../models/Researcher");
 
 module.exports = {
   getResearcherProfile,
@@ -20,7 +20,7 @@ async function getResearcherProfile(req, res) {
     }
 
     // Fetch researcher data
-    const researcher = await researcherProfile.findById(id);
+    const researcher = await Researcher.findById(id);
 
     if (!researcher) {
       return res.status(404).json({
