@@ -28,6 +28,7 @@ const exportResearchersToExcel = async (req, res) => {
         populate: {
           path: "field_id",
           select: "display_name",
+          model: Field,
         },
       })
       .populate({
@@ -56,26 +57,26 @@ const exportResearchersToExcel = async (req, res) => {
       "",
       "",
       "", // D1-G1 (will be merged)
-      "Fields", // H1
+      "Affiliations", // H1
       "", // I1 (will be merged)
-      "Affiliations", // J1
+      "Fields", // J1
       "", // K1 (will be merged)
     ];
 
     // Merge Level 1 headers
     worksheet.mergeCells("C1:G1"); // Research Metrics
-    worksheet.mergeCells("H1:I1"); // Fields
-    worksheet.mergeCells("J1:K1"); // Affiliations
+    worksheet.mergeCells("H1:I1"); // Affiliations
+    worksheet.mergeCells("J1:K1"); // Fields
 
     // Style the Level 1 headers
-    ["A1", "B1", "C1", "H1", "J1", ].forEach((cell) => {
+    ["A1", "B1", "C1", "H1", "J1"].forEach((cell) => {
       worksheet.getCell(cell).style = {
-        font: { bold: true, size: 12 },
+        font: { bold: true, size: 12, color: { argb: "FFFFFFFF" } },
         alignment: { horizontal: "center", vertical: "middle" },
         fill: {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "FFE0E0E0" },
+          fgColor: { argb: "FF16365C" },
         },
       };
     });
@@ -90,36 +91,26 @@ const exportResearchersToExcel = async (req, res) => {
       "2-Year Mean Citedness", // E2
       "Total Citations", // F2
       "Total Works", // G2
-      "Field Name", // H2
-      "Topics", // I2
-      "Institution Name", // J2
-      "Years", // K2
+      "Institution Name", // H2
+      "Years", // I2
+      "Field Name", // J2
+      "Topics", // K2
     ];
 
     // Style the Level 2 headers
-    [
-      "A2",
-      "B2",
-      "C2",
-      "D2",
-      "E2",
-      "F2",
-      "G2",
-      "H2",
-      "I2",
-      "J2",
-      "K2",
-    ].forEach((cell) => {
-      worksheet.getCell(cell).style = {
-        font: { bold: true },
-        alignment: { horizontal: "center", vertical: "middle" },
-        fill: {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFF0F0F0" },
-        },
-      };
-    });
+    ["A2", "B2", "C2", "D2", "E2", "F2", "G2", "H2", "I2", "J2", "K2"].forEach(
+      (cell) => {
+        worksheet.getCell(cell).style = {
+          font: { bold: true, color: { argb: "FFFFFFFF" } },
+          alignment: { horizontal: "center", vertical: "middle" },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFF0000" },
+          },
+        };
+      }
+    );
 
     // Define columns with widths
     worksheet.columns = [
@@ -130,10 +121,10 @@ const exportResearchersToExcel = async (req, res) => {
       { key: "meanCitedness", width: 20 },
       { key: "totalCitations", width: 15 },
       { key: "totalWorks", width: 15 },
-      { key: "fieldName", width: 30 }, // Fields - Field Name
-      { key: "topics", width: 50 }, // Fields - Topics (comma-separated)
       { key: "affiliation_institution_name", width: 30 }, // Affiliations - Institution Name
       { key: "affiliation_years", width: 15 },
+      { key: "fieldName", width: 30 }, // Fields - Field Name
+      { key: "topics", width: 50 }, // Fields - Topics (comma-separated)
     ];
 
     // Add researcher data starting from row 3
@@ -213,11 +204,10 @@ const exportResearchersToExcel = async (req, res) => {
             i === 0 ? researcher.research_metrics?.total_citations || "" : "",
           totalWorks:
             i === 0 ? researcher.research_metrics?.total_works || "" : "",
-          fieldName: fieldEntry.fieldGroupName || "", // Use fieldGroupName for proper merging
-          topics: fieldEntry.topics || "",
           affiliation_institution_name: institutionName,
           affiliation_years: affiliation?.years?.join(", ") || "",
-          spacing: "", // Empty spacing column
+          fieldName: fieldEntry.fieldGroupName || "", // Use fieldGroupName for proper merging
+          topics: fieldEntry.topics || "",
         });
         currentRow++;
       }
@@ -266,7 +256,7 @@ const exportResearchersToExcel = async (req, res) => {
           if (entry.fieldGroupName !== currentFieldName) {
             // End previous field merge if needed
             if (currentFieldName && fieldMergeStart < currentRowNum - 1) {
-              worksheet.mergeCells(`H${fieldMergeStart}:H${currentRowNum - 1}`);
+              worksheet.mergeCells(`J${fieldMergeStart}:J${currentRowNum - 1}`);
             }
             // Start new field merge
             fieldMergeStart = currentRowNum;
@@ -276,14 +266,14 @@ const exportResearchersToExcel = async (req, res) => {
 
         // Handle the last field merge
         if (currentFieldName && fieldMergeStart < endRow) {
-          worksheet.mergeCells(`H${fieldMergeStart}:H${endRow}`);
+          worksheet.mergeCells(`J${fieldMergeStart}:J${endRow}`);
         }
       }
     });
 
     // Set column styles
     worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell) => {
+      row.eachCell((cell, colNumber) => {
         cell.alignment = {
           horizontal: "center",
           vertical: "middle",
@@ -295,6 +285,25 @@ const exportResearchersToExcel = async (req, res) => {
           bottom: { style: "thin", color: { argb: "FF000000" } },
           right: { style: "thin", color: { argb: "FF000000" } },
         };
+
+        // Apply background colors to data rows (rowNumber >= 3)
+        if (rowNumber >= 3) {
+          if (colNumber === 1) {
+            // Name column (A) - #daeef3
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFDAEEF3" },
+            };
+          } else if (colNumber === 8 || colNumber === 9) {
+            // Affiliation columns (H, I) - Institution Name and Years - #ddd9c4
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFDDD9C4" },
+            };
+          }
+        }
       });
     });
 
