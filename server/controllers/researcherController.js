@@ -20,7 +20,15 @@ async function getResearcherProfile(req, res) {
     }
 
     // Fetch researcher data
-    const researcher = await Researcher.findById(id);
+    const researcher = await Researcher.findById(id)
+      .populate({
+        path: "topics",
+        model: "Topic",
+        populate: { path: "field_id", model: "Field" },
+      })
+      .populate({ path: "last_known_affiliations", model: "Institution" })
+      .populate({ path: "affiliations.institution", model: "Institution" })
+      .lean();
 
     if (!researcher) {
       return res.status(404).json({
