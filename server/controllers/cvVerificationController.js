@@ -62,7 +62,16 @@ async function verifyCV(file, prioritySource) {
   let cvText = "";
   try {
     // Parse PDF to text (with OCR fallback)
+    console.log("[CV Verification] Starting PDF text extraction...");
+    const pdfStartTime = Date.now();
     cvText = await extractTextFromPDF(file.path);
+    const pdfEndTime = Date.now();
+    console.log(
+      `[CV Verification] PDF text extraction completed in ${
+        pdfEndTime - pdfStartTime
+      }ms`
+    );
+
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
@@ -78,20 +87,46 @@ async function verifyCV(file, prioritySource) {
     });
 
     // Extract candidate name using AI
+    console.log("[CV Verification] Starting candidate name extraction...");
+    const nameStartTime = Date.now();
     const candidateName = await extractCandidateNameWithAI(model, cvText);
+    const nameEndTime = Date.now();
+    console.log(
+      `[CV Verification] Candidate name extraction completed in ${
+        nameEndTime - nameStartTime
+      }ms`
+    );
 
     // Extract publications using AI
+    console.log("[CV Verification] Starting publications extraction...");
+    const pubStartTime = Date.now();
     const publications = await extractPublicationsFromCV(model, cvText);
+    const pubEndTime = Date.now();
+    console.log(
+      `[CV Verification] Publications extraction completed in ${
+        pubEndTime - pubStartTime
+      }ms`
+    );
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
     }
 
     // Verify each publication with both Google Scholar and Scopus
+    console.log(
+      `[CV Verification] Starting verification of ${publications.length} publications...`
+    );
+    const verificationStartTime = Date.now();
     const verificationResults = await Promise.all(
       publications.map((pub) =>
         processPublicationVerification(pub, candidateName)
       )
+    );
+    const verificationEndTime = Date.now();
+    console.log(
+      `[CV Verification] Publication verification completed in ${
+        verificationEndTime - verificationStartTime
+      }ms`
     );
 
     // Aggregate author details from multiple sources
@@ -127,11 +162,20 @@ async function verifyCV(file, prioritySource) {
     if (Object.values(allAuthorIds).some((id) => id)) {
       try {
         // Use the aggregator to get comprehensive author details
+        console.log("[CV Verification] Starting author details aggregation...");
+        const aggregationStartTime = Date.now();
         const rawAuthorDetails = await aggregateAuthorDetails(
           allAuthorIds,
           candidateName,
           prioritySource
         );
+        const aggregationEndTime = Date.now();
+        console.log(
+          `[CV Verification] Author details aggregation completed in ${
+            aggregationEndTime - aggregationStartTime
+          }ms`
+        );
+
         if (rawAuthorDetails) {
           // Transform the result to match the expected structure
           aggregatedAuthorDetails = {
@@ -177,7 +221,7 @@ async function verifyCV(file, prioritySource) {
     console.error("[CV Verification] Error:", error);
     throw error;
   }
-};
+}
 
 //=============================================================================
 // HELPER FUNCTIONS FOR DISPLAY DATA EXTRACTION
@@ -353,12 +397,64 @@ const determineVerificationStatus = (
  * @returns {Promise<Object>} Verification result for the publication
  */
 const processPublicationVerification = async (pub, candidateName) => {
-  const [/* scholarResult, */ scopusResult, openAlexResult] = await Promise.all(
-    [
-      // verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
-      verifyWithScopus(pub.title, pub.doi, candidateName),
-      verifyWithOpenAlex(pub.title, pub.doi, candidateName),
-    ]
+  console.log(
+    `[Publication Verification] Starting verification for: "${pub.title}"`
+  );
+  const overallStartTime = Date.now();
+
+  const scholarStartTime = Date.now();
+  const scopusStartTime = Date.now();
+  const openAlexStartTime = Date.now();
+
+  const [scholarResult, scopusResult, openAlexResult] = await Promise.all([
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithGoogleScholar(
+        pub.title,
+        pub.doi,
+        candidateName
+      );
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] Google Scholar verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithScopus(pub.title, pub.doi, candidateName);
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] Scopus verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithOpenAlex(
+        pub.title,
+        pub.doi,
+        candidateName
+      );
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] OpenAlex verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+  ]);
+
+  const overallEndTime = Date.now();
+  console.log(
+    `[Publication Verification] Overall verification completed in ${
+      overallEndTime - overallStartTime
+    }ms for: "${pub.title}"`
   );
 
   // Combine authors from all three sources
@@ -366,15 +462,15 @@ const processPublicationVerification = async (pub, candidateName) => {
   let hasAuthorMatch = false;
 
   // Create a mock scholarResult to maintain compatibility
-  const scholarResult = {
-    status: "not verified",
-    details: null,
-  };
+  // const scholarResult = {
+  //   status: "not verified",
+  //   details: null,
+  // };
 
   // Get authors from Google Scholar
-  // if (scholarResult.details?.extractedAuthors) {
-  //   allAuthors.push(...scholarResult.details.extractedAuthors);
-  // }
+  if (scholarResult.details?.extractedAuthors) {
+    allAuthors.push(...scholarResult.details.extractedAuthors);
+  }
   // Get authors from Scopus
   if (scopusResult.details?.extractedAuthors) {
     allAuthors.push(...scopusResult.details.extractedAuthors);
@@ -415,11 +511,11 @@ const processPublicationVerification = async (pub, candidateName) => {
       },
       scopus: {
         status: scopusResult.status,
-        // details: scopusResult.details,
+        details: scopusResult.details,
       },
       openalex: {
         status: openAlexResult.status,
-        // details: openAlexResult.details,
+        details: openAlexResult.details,
       },
       displayData: {
         publication: pub.publication || "Unable to verify",
