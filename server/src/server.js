@@ -21,6 +21,7 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: process.env.VITE_API_URL,
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent
   })
 );
