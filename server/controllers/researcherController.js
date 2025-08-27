@@ -37,9 +37,70 @@ async function getResearcherProfile(req, res) {
       });
     }
 
+    // Group topics by field
+    const fieldTopicsMap = new Map();
+    researcher.topics?.forEach((topic) => {
+      const fieldName = topic.field_id?.display_name || "Uncategorized";
+      if (!fieldTopicsMap.has(fieldName)) {
+        fieldTopicsMap.set(fieldName, []);
+      }
+      fieldTopicsMap.get(fieldName).push({
+        display_name: topic.display_name,
+      });
+    });
+
+    // Convert map to array format for fields with their topics
+    const fieldsWithTopics = Array.from(fieldTopicsMap.entries()).map(
+      ([fieldName, topics]) => ({
+        display_name: fieldName,
+        topics: topics,
+      })
+    );
+
+    // Transform data to match PDF exporter expected structure
+    const transformedData = {
+      basic_info: {
+        name: researcher.name || "Unknown",
+        affiliations: researcher.affiliations.map((aff) => ({
+          institution: {
+            display_name:
+              aff.institution?.display_name || "Unknown Institution",
+          },
+        })),
+      },
+      identifiers: {
+        orcid: researcher.identifiers?.orcid || "",
+        openalex: researcher.identifiers?.openalex || "",
+      },
+      research_metrics: {
+        h_index: researcher.research_metrics?.h_index || 0,
+        i10_index: researcher.research_metrics?.i10_index || 0,
+        two_year_mean_citedness:
+          researcher.research_metrics?.two_year_mean_citedness || 0,
+        total_citations: researcher.research_metrics?.total_citations || 0,
+        total_works: researcher.research_metrics?.total_works || 0,
+      },
+      research_areas: {
+        fields: fieldsWithTopics,
+        topics: [], // Remove topics as a separate section
+      },
+      citation_trends: {
+        counts_by_year: researcher.citation_trends || [],
+      },
+      current_affiliation: {
+        display_name:
+          researcher.last_known_affiliations?.[0]?.display_name ||
+          "Unknown Institution",
+      },
+      current_affiliations:
+        researcher.last_known_affiliations?.map((inst) => ({
+          display_name: inst.display_name,
+        })) || [],
+    };
+
     res.status(200).json({
       success: true,
-      data: researcher,
+      data: transformedData,
     });
   } catch (error) {
     console.error("Error fetching researcher profile:", error);

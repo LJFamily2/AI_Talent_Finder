@@ -58,6 +58,7 @@ export default function SavedResearchers() {
       const response = await getBookmarks();
 
       // Transform API data to match component's expected format
+      // Store both display data and full data for PDF export
       const transformedData = response.data.map((researcher) => ({
         id: researcher._id,
         name: researcher.basic_info?.name || "Unknown",
@@ -71,6 +72,8 @@ export default function SavedResearchers() {
           researcher.research_areas?.fields?.[0]?.display_name ||
           researcher.research_areas?.topics?.[0]?.display_name ||
           "Unknown Field",
+        // Store the complete researcher data directly since it now includes all fields
+        ...researcher, // Spread the complete researcher data
       }));
 
       setSavedResearchers(transformedData);
