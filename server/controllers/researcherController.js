@@ -19,19 +19,16 @@ async function getResearcherProfile(req, res) {
       });
     }
 
-    // Fetch researcher data with populated references
+    // Fetch researcher data
     const researcher = await Researcher.findById(id)
-      .populate("last_known_affiliations", "display_name")
       .populate({
         path: "topics",
-        select: "display_name field_id",
-        populate: {
-          path: "field_id",
-          select: "display_name",
-          model: "Field",
-        },
+        model: "Topic",
+        populate: { path: "field_id", model: "Field" },
       })
-      .populate("affiliations.institution", "display_name");
+      .populate({ path: "last_known_affiliations", model: "Institution" })
+      .populate({ path: "affiliations.institution", model: "Institution" })
+      .lean();
 
     if (!researcher) {
       return res.status(404).json({
