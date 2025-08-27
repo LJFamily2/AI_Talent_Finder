@@ -22,7 +22,7 @@ import {
 } from "../services/api";
 import { exportResearcherById } from "../services/pdfExportService";
 export default function ResearcherProfile() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [researcher, setResearcher] = useState(null);
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,11 +40,11 @@ export default function ResearcherProfile() {
   // Function to fetch works for a specific page
   const fetchWorksPage = useCallback(
     async (page) => {
-      if (!id) return;
+      if (!slug) return;
 
       setWorksLoading(true);
       try {
-        const worksData = await getResearcherWorks(id, page, worksPerPage);
+        const worksData = await getResearcherWorks(slug, page, worksPerPage);
         setWorks(worksData.results || []);
         setTotalWorks(worksData.meta?.count || 0);
         setTotalPages(worksData.meta?.total_pages || 0);
@@ -55,7 +55,7 @@ export default function ResearcherProfile() {
         setWorksLoading(false);
       }
     },
-    [id, worksPerPage]
+    [slug, worksPerPage]
   );
 
   const handleExportMenuClick = (event) => {
@@ -77,7 +77,7 @@ export default function ResearcherProfile() {
   const handleExportXLSX = async () => {
     handleExportMenuClose();
     try {
-      const blob = await exportResearcherProfile(id);
+      const blob = await exportResearcherProfile(slug);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -95,7 +95,7 @@ export default function ResearcherProfile() {
   const handleExportPDF = async () => {
     handleExportMenuClose();
     try {
-      await exportResearcherById(id);
+      await exportResearcherById(slug);
     } catch (error) {
       console.error("PDF export failed:", error);
       alert("Failed to export PDF. Please try again.");
@@ -104,15 +104,15 @@ export default function ResearcherProfile() {
 
   useEffect(() => {
     const fetchResearcherData = async () => {
-      if (!id) return;
+      if (!slug) return;
 
       try {
         setLoading(true);
-        const researcherData = await getResearcherProfile(id);
+        const researcherData = await getResearcherProfile(slug);
         setResearcher(researcherData);
 
-        // Fetch works data if we have an OpenAlex ID
-        if (id) {
+        // Fetch works data if we have a slug
+        if (slug) {
           // Fetch first page of works
           await fetchWorksPage(1);
         }
@@ -125,14 +125,14 @@ export default function ResearcherProfile() {
     };
 
     fetchResearcherData();
-  }, [id, fetchWorksPage]);
+  }, [slug, fetchWorksPage]);
 
   // Effect to fetch works when page changes
   useEffect(() => {
-    if (researcher && id) {
+    if (researcher && slug) {
       fetchWorksPage(currentPage);
     }
-  }, [currentPage, researcher, id, fetchWorksPage]);
+  }, [currentPage, researcher, slug, fetchWorksPage]);
 
   if (loading) {
     return (

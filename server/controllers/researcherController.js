@@ -9,18 +9,18 @@ module.exports = {
 // Get a single researcher profile by ID
 async function getResearcherProfile(req, res) {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
 
-    // Validate ID
-    if (!id) {
+    // Validate slug
+    if (!slug) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a researcher ID",
+        message: "Please provide a researcher slug",
       });
     }
 
-    // Fetch researcher data
-    const researcher = await Researcher.findById(id)
+    // Fetch researcher data by slug
+    const researcher = await Researcher.findOne({ slug })
       .populate({
         path: "topics",
         model: "Topic",
