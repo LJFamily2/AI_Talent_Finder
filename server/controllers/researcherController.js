@@ -115,15 +115,35 @@ async function getResearcherProfile(req, res) {
 // Get researcher works from OpenAlex with pagination
 async function getResearcherWorks(req, res) {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
     const { page = 1, per_page = 20 } = req.query;
 
-    // Validate ID
-    if (!id) {
+    // Validate slug
+    if (!slug) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a researcher ID",
+        message: "Please provide a researcher slug",
       });
+    }
+
+    // Look up researcher by slug
+    const researcher = await Researcher.findOne({ slug }).lean();
+    if (
+      !researcher ||
+      !researcher.identifiers ||
+      !researcher.identifiers.openalex
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Researcher or OpenAlex ID not found",
+      });
+    }
+
+    // Extract OpenAlex ID (should be just the ID, not the full URL)
+    let openalexId = researcher.identifiers.openalex;
+    // If it's a URL, extract the last part
+    if (openalexId.startsWith("http")) {
+      openalexId = openalexId.split("/").pop();
     }
 
     // Validate pagination parameters
@@ -135,7 +155,7 @@ async function getResearcherWorks(req, res) {
     const baseUrl = "https://api.openalex.org/works";
     const selectFields =
       "id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,best_oa_location,topics,counts_by_year";
-    const filter = `authorships.author.id:${id}`;
+    const filter = `authorships.author.id:${openalexId}`;
 
     const url = `${baseUrl}?select=${selectFields}&filter=${filter}&per_page=${perPage}&page=${pageNum}`;
 

@@ -110,12 +110,6 @@ export default function ResearcherProfile() {
         setLoading(true);
         const researcherData = await getResearcherProfile(slug);
         setResearcher(researcherData);
-
-        // Fetch works data if we have a slug
-        if (slug) {
-          // Fetch first page of works
-          await fetchWorksPage(1);
-        }
       } catch (error) {
         console.error("Error fetching researcher:", error);
         setError(error.message);
@@ -125,7 +119,15 @@ export default function ResearcherProfile() {
     };
 
     fetchResearcherData();
-  }, [slug, fetchWorksPage]);
+  }, [slug]);
+
+  // Fetch works when researcher is loaded or page changes
+  useEffect(() => {
+    if (researcher) {
+      fetchWorksPage(currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, researcher]);
 
   // Effect to fetch works when page changes
   useEffect(() => {
