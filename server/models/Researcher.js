@@ -46,6 +46,7 @@ const CitationTrendSchema = new mongoose.Schema(
 const ResearcherSchema = new mongoose.Schema(
   {
     name: { type: String, default: "" },
+    slug: { type: String, unique: true, sparse: true },
 
     identifiers: IdentifierSchema,
     research_metrics: MetricsSchema,
@@ -56,7 +57,6 @@ const ResearcherSchema = new mongoose.Schema(
     ],
 
     topics: [{ type: mongoose.Schema.Types.ObjectId, ref: "Topic" }],
-    topics: [{ type: mongoose.Schema.Types.ObjectId, ref: "Topic" }],
 
     citation_trends: [CitationTrendSchema],
 
@@ -65,13 +65,53 @@ const ResearcherSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    versionKey: false
-});
+    versionKey: false,
+  }
+);
 
-ResearcherSchema.index({ "name": 1 })
+ResearcherSchema.index({ name: 1 });
+ResearcherSchema.index({ slug: 1 });
 ResearcherSchema.index({ "research_metrics.h_index": 1 });
 ResearcherSchema.index({ "research_metrics.i10_index": 1 });
 ResearcherSchema.index({ "research_metrics.total_citations": 1 });
 ResearcherSchema.index({ "research_metrics.total_works": 1 });
+
+// Generate unique slug before saving
+ResearcherSchema.pre("save", async function (next) {
+  if (this.isNew || this.isModified("name")) {
+    if (this.name && this.name.trim() !== "") {
+      // Inline slug generation
+      const generateSlug = (name) => {
+        if (!name) return "";
+        return name
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, "") // Remove special characters except hyphens
+          .replace(/\s+/g, "-") // Replace spaces with hyphens
+          .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+          .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+      };
+
+      let baseSlug = generateSlug(this.name);
+      let slug = baseSlug;
+      let counter = 1;
+
+      // Check for existing slugs and make it unique
+      while (true) {
+        const existingResearcher = await this.constructor.findOne({
+          slug,
+          _id: { $ne: this._id },
+        });
+        if (!existingResearcher) {
+          this.slug = slug;
+          break;
+        }
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model("Researcher", ResearcherSchema);

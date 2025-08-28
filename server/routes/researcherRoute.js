@@ -6,7 +6,7 @@ const {
 } = require("../controllers/researcherController");
 
 // Researcher routes
-router.get("/:id", getResearcherProfile);
-router.get("/:id/works", getResearcherWorks);
+router.get("/:slug", getResearcherProfile);
+router.get("/:slug/works", getResearcherWorks);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaThLarge,
   FaBars,
@@ -26,6 +27,7 @@ import { exportResearchersToExcel } from "../services/exportService";
 import { exportResearchersWithFullData } from "../services/pdfExportService";
 
 export default function SavedResearchers() {
+  const navigate = useNavigate();
   const [savedResearchers, setSavedResearchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -355,9 +357,13 @@ export default function SavedResearchers() {
                       ? "border-blue-500"
                       : "border-[#D9D9D9]"
                   } bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
-                  onClick={() =>
-                    selectMode && toggleSelectResearcher(person.id)
-                  }
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelectResearcher(person.id);
+                    } else if (person.slug) {
+                      navigate(`/researcher-profile/${person.slug}`);
+                    }
+                  }}
                 >
                   <button
                     onClick={(e) => {
@@ -484,9 +490,13 @@ export default function SavedResearchers() {
                       ? "border-blue-500"
                       : "border-[#D9D9D9]"
                   } bg-white rounded-md px-4 py-2 shadow-sm hover:shadow-md transition-all cursor-pointer text-md`}
-                  onClick={() =>
-                    selectMode && toggleSelectResearcher(person.id)
-                  }
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelectResearcher(person.id);
+                    } else if (person.slug) {
+                      navigate(`/researcher-profile/${person.slug}`);
+                    }
+                  }}
                 >
                   <div className="w-1/4 flex items-center">
                     {selectMode && (
