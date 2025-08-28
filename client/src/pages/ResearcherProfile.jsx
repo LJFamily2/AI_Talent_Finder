@@ -212,7 +212,8 @@ export default function ResearcherProfile() {
       total_citations = 0,
       total_works = 0,
     } = {},
-    research_areas: { fields = [], topics = [] } = {},
+    // support either nested fields.topics shape or legacy topics array
+    research_areas: { fields = [], topics: legacyTopics = [] } = {},
     citation_trends: { counts_by_year = [] } = {},
     current_affiliation: {
       institution: currentInst = "",
@@ -220,9 +221,29 @@ export default function ResearcherProfile() {
     } = {},
   } = researcher;
 
+  // derive topics from fields if present, otherwise fall back to legacy topics
+  let topics = [];
+  if (Array.isArray(fields) && fields.length > 0) {
+    for (const fld of fields) {
+      if (Array.isArray(fld.topics)) {
+        for (const t of fld.topics) {
+          // keep only display_name for previous UI; include field name if needed
+          topics.push({
+            display_name: t.display_name || t.name || "",
+            field: fld.display_name || "",
+          });
+        }
+      }
+    }
+  } else if (Array.isArray(legacyTopics) && legacyTopics.length > 0) {
+    topics = legacyTopics.map((t) =>
+      typeof t === "string" ? { display_name: t } : { display_name: t.display_name || t.name || "" }
+    );
+  }
+
   const currentAffiliations =
     Array.isArray(researcher.current_affiliations) &&
-    researcher.current_affiliations.length > 0
+      researcher.current_affiliations.length > 0
       ? researcher.current_affiliations
       : [];
 
