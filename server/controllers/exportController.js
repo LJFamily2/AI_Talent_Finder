@@ -1,46 +1,38 @@
 const excel = require("exceljs");
 const Researcher = require("../models/Researcher");
 const Field = require("../models/Field");
+const mongoose = require("mongoose");
 
 const exportResearchersToExcel = async (req, res) => {
   try {
     const { researcherIds } = req.body;
+    let researchers = [];
 
-    // Validate researcherIds
-    if (
-      !researcherIds ||
-      !Array.isArray(researcherIds) ||
-      researcherIds.length === 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide an array of researcher IDs",
-      });
-    }
-
-    // Fetch researchers data with populated references
-    const researchers = await Researcher.find({
-      _id: { $in: researcherIds },
-    })
-      .populate("last_known_affiliations")
-      .populate({
-        path: "topics",
-        populate: {
-          path: "field_id",
-          select: "display_name",
-          model: Field,
-        },
-      })
-      .populate({
-        path: "affiliations.institution",
-        select: "display_name ror country_code",
-      });
-
-    if (!researchers || researchers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No researchers found",
-      });
+    if (Array.isArray(researcherIds) && researcherIds.length > 0) {
+      // Use a single $or query for both ObjectId and slug
+      const orQuery = researcherIds.map((id) =>
+        mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { slug: id }
+      );
+      researchers = await Researcher.find({ $or: orQuery })
+        .populate("last_known_affiliations")
+        .populate({
+          path: "topics",
+          populate: {
+            path: "field_id",
+            select: "display_name",
+            model: Field,
+          },
+        })
+        .populate({
+          path: "affiliations.institution",
+          select: "display_name ror country_code",
+        });
+      if (!researchers || researchers.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No researchers found",
+        });
+      }
     }
 
     // Create workbook and worksheet

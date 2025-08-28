@@ -5,7 +5,9 @@
  * It provides functions for fetching researcher profiles and works data.
  */
 
-const API_BASE_URL = import.meta.env.BACKEND_URL;
+import { API_BASE_URL as CONFIG_API_BASE_URL } from "../config/api";
+// fall back to env var if config export is not available
+const API_BASE_URL = CONFIG_API_BASE_URL || import.meta.env.BACKEND_URL || "";
 
 /**
  * Generic function to make API requests
@@ -14,26 +16,35 @@ const API_BASE_URL = import.meta.env.BACKEND_URL;
  * @returns {Promise<Object>} API response data
  */
 const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const fetchOptions = {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  };
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    });
-
+    const response = await fetch(url, fetchOptions);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
     }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "API request failed");
+    const contentType = (
+      response.headers.get("content-type") || ""
+    ).toLowerCase();
+    if (contentType.includes("application/json")) {
+      const json = await response.json();
+      if (Object.prototype.hasOwnProperty.call(json, "success")) {
+        if (json.success) {
+          return json.data;
+        } else {
+          throw new Error(json.message || "API request failed");
+        }
+      }
+      return json;
     }
-
-    return data.data;
+    return await response.text();
   } catch (error) {
     console.error("API request error:", error);
     throw error;
