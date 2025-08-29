@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import Header from "../components/Header";
 import fileUploadIcon from "../assets/document-upload.svg";
 import { useDropzone } from "react-dropzone";
@@ -11,32 +12,7 @@ function CVUpload() {
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
   const navigate = useNavigate();
-  const progressIntervalRef = useRef(null);
-  const processingStartTimeRef = useRef(null);
-
-  // Smooth progress simulation function
-  const simulateProgress = (startProgress, targetProgress, duration) => {
-    const startTime = Date.now();
-    const progressDiff = targetProgress - startProgress;
-
-    const updateProgress = () => {
-      const elapsed = Date.now() - startTime;
-      const progressRatio = Math.min(elapsed / duration, 1);
-
-      // Use easing function for smoother animation
-      const easedProgress =
-        progressRatio * progressRatio * (3 - 2 * progressRatio);
-      const currentProgress = startProgress + progressDiff * easedProgress;
-
-      setProgress(Math.round(currentProgress));
-
-      if (progressRatio < 1) {
-        progressIntervalRef.current = requestAnimationFrame(updateProgress);
-      }
-    };
-
-    progressIntervalRef.current = requestAnimationFrame(updateProgress);
-  };
+  const socketRef = useRef(null);
 
   const handleFileUpload = useCallback(
     async (file) => {
@@ -59,36 +35,47 @@ function CVUpload() {
           },
         });
 
-        // Start processing phase (20-95%)
+        // Connect to socket.io server
+        if (!socketRef.current) {
+          // Use Vite env variable for backend URL
+          const backendUrl =
+            import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+          socketRef.current = io(backendUrl, {
+            withCredentials: true,
+          });
+        }
+
+        const { jobId } = response.data;
         setProgressPhase("processing");
-        processingStartTimeRef.current = Date.now();
 
-        // Simulate processing with dynamic timing
-        // First phase: Quick initial processing (20-40% in 2 seconds)
-        simulateProgress(20, 40, 2000);
+        // Join the job room
+        socketRef.current.emit("joinJob", jobId);
 
-        setTimeout(() => {
-          // Second phase: Slower processing (40-75% in 8 seconds)
-          simulateProgress(40, 75, 8000);
+        // Listen for progress updates
+        socketRef.current.on("progress", (data) => {
+          // Progress from backend is 10-100, map to 20-100 for UI
+          const mapped = 20 + ((data.progress - 10) * 80) / 90;
+          setProgress(Math.round(mapped));
+        });
 
+        socketRef.current.on("complete", (data) => {
+          setProgress(100);
+          setProgressPhase("complete");
           setTimeout(() => {
-            // Third phase: Final processing (75-95% in remaining time, min 5 seconds)
-            simulateProgress(75, 95, 5000);
+            setProcessing(false);
+            navigate("/cv-verification", {
+              state: { publications: data.result },
+            });
+          }, 1000);
+        });
 
-            setTimeout(() => {
-              // Complete phase (95-100%)
-              setProgressPhase("complete");
-              simulateProgress(95, 100, 1000);
-
-              setTimeout(() => {
-                setProcessing(false);
-                navigate("/cv-verification", {
-                  state: { publications: response.data },
-                });
-              }, 1000);
-            }, 5000);
-          }, 8000);
-        }, 2000);
+        socketRef.current.on("error", (data) => {
+          setProcessing(false);
+          setProgress(0);
+          alert(
+            "Error during CV verification: " + (data.error || "Unknown error")
+          );
+        });
       } catch (error) {
         console.error("Error verifying CV:", error);
         setProcessing(false);
@@ -101,8 +88,9 @@ function CVUpload() {
   // Cleanup effect
   useEffect(() => {
     return () => {
-      if (progressIntervalRef.current) {
-        cancelAnimationFrame(progressIntervalRef.current);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
   }, []);

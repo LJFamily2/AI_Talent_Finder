@@ -1,6 +1,6 @@
 import Footer from "../components/Footer";
 import Header from "../components/Header";
-import autoplayVideo from "../assets/landing-page-autoplay.mp4";
+import autoplayVideo from "../assets/Landing-page-autoplay.mp4";
 import imageFindAcademics from "../assets/landing-find-academics.png";
 import arrowDownIcon from "../assets/arrow-down.png";
 import imageVerifyCV from "../assets/landing-verify-cv.png";
