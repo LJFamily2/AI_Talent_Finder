@@ -120,7 +120,7 @@ const searchOpenAlex = async (title, maxResults) => {
     console.error("❌ [OpenAlex] Search error:", err.message);
     return { results: [] };
   }
-};
+}; 
 
 /**
  * Finds a matching publication in OpenAlex search results
