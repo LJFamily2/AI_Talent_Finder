@@ -59,6 +59,28 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Server Error" });
 });
 
+// --- Socket.io Setup ---
+const http = require("http");
+const { Server } = require("socket.io");
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  },
+});
+
+// Make io accessible in controllers
+app.set("io", io);
+
+// Example: handle socket connections (expand later as needed)
+io.on("connection", (socket) => {
+  socket.on("joinJob", (jobId) => {
+    socket.join(jobId);
+  });
+});
+
 // Start the HTTP Server
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
