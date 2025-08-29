@@ -23,6 +23,7 @@ app.use(
     origin: process.env.CLIENT_URL,
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent
+    preflightContinue: true,
   })
 );
 
