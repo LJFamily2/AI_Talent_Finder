@@ -442,6 +442,8 @@ const processPublicationVerification = async (pub, candidateName) => {
 
   const [scholarResult, scopusResult, openAlexResult] = await Promise.all([
     (async () => {
+      // The following code is commented out to save Google Scholar credits:
+      /*
       const start = Date.now();
       const result = await verifyWithGoogleScholar(
         pub.title,
@@ -455,6 +457,9 @@ const processPublicationVerification = async (pub, candidateName) => {
         }ms for: "${pub.title}"`
       );
       return result;
+      */
+      // Skip Google Scholar request to save credits
+      return null;
     })(),
     (async () => {
       const start = Date.now();

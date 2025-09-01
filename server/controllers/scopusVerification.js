@@ -48,7 +48,7 @@ const verifyWithScopus = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 5
+  maxResultsToCheck = 3
 ) => {
   try {
     // Step 1: Search Scopus database for the publication

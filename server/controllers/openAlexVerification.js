@@ -53,7 +53,7 @@ const verifyWithOpenAlex = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 5
+  maxResultsToCheck = 3
 ) => {
   try {
     // Step 1: Search OpenAlex for the publication
