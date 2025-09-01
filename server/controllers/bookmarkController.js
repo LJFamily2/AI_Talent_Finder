@@ -18,7 +18,7 @@ async function getBookmarks(req, res) {
     let bookmark = await Bookmark.findOne({ userId }).populate({
       path: "researcherIds",
       select:
-        "name research_metrics last_known_affiliations topics affiliations identifiers citation_trends", // Include all fields needed for PDF
+        "name slug research_metrics last_known_affiliations topics affiliations identifiers citation_trends", // Include all fields needed for PDF
       populate: [
         {
           path: "last_known_affiliations",
@@ -123,6 +123,7 @@ async function getBookmarks(req, res) {
           orcid: researcher.identifiers?.orcid || "",
           openalex: researcher.identifiers?.openalex || "",
         },
+        slug: researcher.slug || "",
       };
     });
 
