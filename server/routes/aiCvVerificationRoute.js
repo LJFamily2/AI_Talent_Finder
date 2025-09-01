@@ -13,7 +13,7 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const { verifyCVWithAI } = require("../controllers/aiCvVerificationController");
+const { verifyCVWithAI } = require("../controllers/geminiAICvVerificationController");
 
 const router = express.Router();
 
@@ -73,7 +73,7 @@ const upload = multer({
  * @returns {Array} results - Detailed verification of each publication
  * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
-router.post("/ai-verify-cv", upload.single("cvFile"), async (req, res) => {
+router.post("/gemini-ai-verify-cv", upload.single("cvFile"), async (req, res) => {
   try {
     // Validate file upload
     if (!req.file) {
@@ -84,7 +84,7 @@ router.post("/ai-verify-cv", upload.single("cvFile"), async (req, res) => {
     }
 
     // Extract priority source from request body
-    const prioritySource = req.body.prioritySource || "ai";
+    const prioritySource = req.body.prioritySource;
 
     // Log verification attempt
     console.log(
