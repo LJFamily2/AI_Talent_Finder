@@ -1,188 +1,258 @@
-//==================================================================
-// Search Filters Controller (Unified)
-// Combines candidate search (id, name) and multi-filter search
-//==================================================================
-
+const mongoose = require("mongoose");
 const Researcher = require("../models/Researcher");
+const Field = require("../models/Field");
+const Institution = require("../models/Institution");
+const Country = require("../models/Country");
 
-// helpers query parsing and metric conditions
-const {
-  parseMultiOr,
-  toSafeRegex,
-  buildMetricCond,
-  chooseOp,
-  clampPageLimit,
-} = require("../utils/queryHelpers");
+const { buildComparison, parseYearBounds, inYearRange } = require("../utils/queryHelpers");
 
-// fall back to OpenAlex if no results found
-const authorController = require("./authorController");
+// -----------------------------
+// Enrich fields (from search_tags) - returns map _id => display_name
+// -----------------------------
+async function enrichFields(fieldIds) {
+  const fields = await Field.find({ _id: { $in: fieldIds } }, { display_name: 1 }).lean();
+  return Object.fromEntries(fields.map(f => [f._id, f.display_name]));
+}
 
-//==================================================================
-// [GET] /api/search-filters/search
-// - exact by id
-// - regex by name
-// - filters: country (OR), topic (OR across topics|fields), metrics, identifier,
-//            affiliation + year range
-//==================================================================
-exports.searchFilters = async (req, res) => {
-  const {
-    id,
-    name,
-    country, // OR across affiliation countries
-    topic, // OR across topics or fields
-    hindex,
-    i10index,
-    op, // global fallback operator (eq|gt|gte|lt|lte)
-    op_hindex, // optional override for hindex
-    op_i10, // optional override for i10index
-    identifier, // identifiers.<key> must exist and non-empty (supports multi)
-    affiliation, // affiliation name (regex, supports multi)
-    year_from, // inclusive
-    year_to, // inclusive
-    page = 1,
-    limit = 20,
-  } = req.query;
+// -----------------------------
+// Compute matched/unmatched filters
+// -----------------------------
+function computeMatch(selectedFilters, researcherTags, maps) {
+  const matched = [];
+  const unmatched = [];
+  const { fieldMap, topicMap, instMap, countryMap } = maps;
 
-  try {
-    // 1) Detail by ID
-    if (id) {
-      const profileDoc = await Researcher.findById(id);
-      if (!profileDoc)
-        return res.status(404).json({ error: "Author not found" });
-      return res.json({ profile: profileDoc });
-    }
-
-    // 2) Pagination (safe bounds) - DB max 100, default 20
-    const { page: pageNum, limit: limNum } = clampPageLimit(
-      page,
-      limit,
-      100,
-      20
-    );
-    const skip = (pageNum - 1) * limNum;
-
-    // 3) Build query
-    const query = {};
-    const andParts = [];
-
-    // NAME (case-insensitive substring)
-    if (name) {
-      andParts.push({ "basic_info.name": toSafeRegex(name) });
-    }
-
-    // COUNTRY (include_any / OR across entire affiliation history)
-    const countries = parseMultiOr(country).map((c) => c.toUpperCase());
-    if (countries.length === 1) {
-      andParts.push({
-        "basic_info.affiliations.institution.country_code": countries[0],
-      });
-    } else if (countries.length > 1) {
-      andParts.push({
-        "basic_info.affiliations.institution.country_code": { $in: countries },
-      });
-    }
-
-    // TOPIC & FIELDS (include_any / OR)
-    const topics = parseMultiOr(topic);
-    if (topics.length > 0) {
-      const topicOrs = [];
-      for (const t of topics) {
-        const rx = toSafeRegex(t);
-        topicOrs.push({ "research_areas.topics.display_name": rx });
-        topicOrs.push({ "research_areas.fields.display_name": rx });
+  selectedFilters.forEach(tag => {
+    const [type, id] = tag.split(":");
+    const displayName = (() => {
+      switch (type) {
+        case "field": return fieldMap[id] || id;
+        case "topic": return topicMap[id] || id;
+        case "institution": return instMap[id] || id;
+        case "country": return countryMap[id] || id;
+        default: return id;
       }
-      andParts.push({ $or: topicOrs });
-    }
+    })();
 
-    // METRICS (each metric can have its own op, fallback to global op, default eq)
-    const opH = chooseOp(op_hindex, op, "eq");
-    const opI = chooseOp(op_i10, op, "eq");
+    if (researcherTags.includes(tag)) matched.push(displayName);
+    else unmatched.push(displayName);
+  });
 
-    const hCond = buildMetricCond("research_metrics.h_index", opH, hindex);
-    if (hCond) andParts.push(hCond);
+  return {
+    matched,
+    unmatched,
+    matchCount: matched.length,
+    totalFilters: selectedFilters.length
+  };
+}
 
-    const iCond = buildMetricCond("research_metrics.i10_index", opI, i10index);
-    if (iCond) andParts.push(iCond);
+// -----------------------------
+// Controller: searchResearchers
+// -----------------------------
+exports.searchResearchers = async (req, res) => {
+  try {
+    const {
+      search_tags = [],
+      h_index,
+      i10_index,
+      researcher_name,
+      sort_field = "match_count",
+      sort_order = "desc",
+      page = 1,
+      limit = 20,
+      year_from,
+      year_to
+    } = req.body;
 
-    // IDENTIFIER exists and non-empty (supports multi OR)
-    const idents = parseMultiOr(identifier).map((x) => x.toLowerCase());
-    if (idents.length === 1) {
-      andParts.push({
-        [`identifiers.${idents[0]}`]: { $exists: true, $ne: "" },
-      });
-    } else if (idents.length > 1) {
-      andParts.push({
-        $or: idents.map((k) => ({
-          [`identifiers.${k}`]: { $exists: true, $ne: "" },
-        })),
-      });
-    }
+    const matchStage = {};
 
-    // AFFILIATION + YEAR RANGE (inclusive checks on history) — supports multi names
-    const affNames = parseMultiOr(affiliation);
-    const from = Number.isFinite(+year_from) ? +year_from : null;
-    const to = Number.isFinite(+year_to) ? +year_to : null;
+    // -----------------------------
+    // Build query filters
+    // -----------------------------
+    if (search_tags.length > 0) matchStage.search_tags = { $in: search_tags };
+    if (h_index) matchStage["research_metrics.h_index"] = buildComparison(h_index);
+    if (i10_index) matchStage["research_metrics.i10_index"] = buildComparison(i10_index);
+    if (researcher_name) matchStage.name = { $regex: researcher_name, $options: "i" };
 
-    if (affNames.length > 0) {
-      const affElemQueries = affNames.map((affName) => {
-        const affRx = toSafeRegex(affName);
-        const affQuery = { "institution.display_name": affRx };
-        if (from != null && to != null) {
-          affQuery["years"] = { $elemMatch: { $gte: from, $lte: to } };
-        } else if (from != null) {
-          affQuery["years"] = { $elemMatch: { $gte: from } };
-        } else if (to != null) {
-          affQuery["years"] = { $elemMatch: { $lte: to } };
+    // -----------------------------
+    // Year range for affiliations
+    // -----------------------------
+    const { from: yFrom, to: yTo } = parseYearBounds(year_from, year_to);
+    if (yFrom != null || yTo != null) {
+      matchStage.affiliations = {
+        $elemMatch: {
+          years: { $exists: true, $not: { $size: 0 } }
         }
-        return { "basic_info.affiliations": { $elemMatch: affQuery } };
-      });
-
-      // if search multi affiliations, use $or
-      if (affElemQueries.length === 1) andParts.push(affElemQueries[0]);
-      else andParts.push({ $or: affElemQueries });
-    } else if (from != null || to != null) {
-      // if no affiliation names, still check year range
-      const yearCond =
-        from != null && to != null
-          ? { years: { $elemMatch: { $gte: from, $lte: to } } }
-          : from != null
-          ? { years: { $elemMatch: { $gte: from } } }
-          : { years: { $elemMatch: { $lte: to } } };
-
-      andParts.push({ "basic_info.affiliations": { $elemMatch: yearCond } });
+      };
     }
 
-    // 4) Combine
-    if (andParts.length === 1) Object.assign(query, andParts[0]);
-    else if (andParts.length > 1) query.$and = andParts;
+    const skip = (page - 1) * limit;
+    const order = sort_order === "asc" ? 1 : -1;
 
-    console.log(`🔎 [FILTERS DB] ${JSON.stringify(query)}`);
+    // -----------------------------
+    // Aggregation pipeline
+    // -----------------------------
+    const pipeline = [
+      { $match: matchStage },
 
-    // 5) Execute
-    const total = await Researcher.countDocuments(query);
-    const docs = await Researcher.find(query)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(limNum);
+      // Lookup topics
+      {
+        $lookup: {
+          from: "topics",
+          localField: "topics",
+          foreignField: "_id",
+          as: "topics"
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          search_tags: 1,
+          affiliations: 1,
+          last_known_affiliations: 1,
+          research_metrics: 1,
+          topics: 1
+        }
+      },
 
-    // 6) Auto fallback to OpenAlex if no results
-    if (total === 0) {
-      return authorController.searchOpenalexFilters(req, res);
-    }
+      // Filter affiliations by year range if provided
+      ...(yFrom != null || yTo != null
+        ? [{
+          $addFields: {
+            affiliations: {
+              $filter: {
+                input: "$affiliations",
+                as: "aff",
+                cond: {
+                  $function: {
+                    body: function (years, from, to) {
+                      if (!Array.isArray(years) || years.length === 0) return false;
+                      from = from != null ? from : to;
+                      to = to != null ? to : from;
+                      return years.some(y => y >= from && y <= to);
+                    },
+                    args: ["$$aff.years", yFrom, yTo],
+                    lang: "js"
+                  }
+                }
+              }
+            }
+          }
+        }] : []),
 
-    return res.json({
-      total,
-      count: docs.length,
-      page: pageNum,
-      limit: limNum,
-      authors: docs,
+      // Add a field for matchCount (number of selected filters matched)
+      {
+        $addFields: {
+          matchCount: {
+            $size: {
+              $filter: {
+                input: "$search_tags",
+                as: "tag",
+                cond: { $in: ["$$tag", search_tags] }
+              }
+            }
+          }
+        }
+      },
+
+      // Sort
+      {
+        $sort:
+          sort_field === "match_count"
+            ? { matchCount: order }
+            : sort_field === "name"
+              ? { name: order }
+              : { [`research_metrics.${sort_field}`]: order }
+      },
+
+      // Pagination
+      { $skip: skip },
+      { $limit: limit }
+    ];
+
+    let researchers = await Researcher.aggregate(pipeline);
+
+    // -----------------------------
+    // Enrich fields from search_tags
+    // -----------------------------
+    const allFieldIds = [...new Set(
+      researchers.flatMap(r =>
+        r.search_tags.filter(tag => tag.startsWith("field:")).map(tag => tag.split(":")[1])
+      )
+    )];
+    const fieldMap = await enrichFields(allFieldIds);
+
+    // -----------------------------
+    // Enrich last_known affiliations and other display names
+    // -----------------------------
+    const allInstIds = [...new Set(researchers.flatMap(r => r.last_known_affiliations))];
+    const allCountries = [...new Set(
+      researchers.flatMap(r =>
+        r.search_tags.filter(tag => tag.startsWith("country:")).map(tag => tag.split(":")[1])
+      )
+    )];
+
+    const [institutions, countries] = await Promise.all([
+      Institution.find({ _id: { $in: allInstIds } }, { display_name: 1 }).lean(),
+      Country.find({ _id: { $in: allCountries } }, { display_name: 1 }).lean()
+    ]);
+
+    const instMap = Object.fromEntries(institutions.map(i => [i._id, i.display_name]));
+    const countryMap = Object.fromEntries(countries.map(c => [c._id, c.display_name]));
+
+    // For topics, we already have display_name from $lookup
+    const topicMap = Object.fromEntries(
+      researchers.flatMap(r => r.topics.map(t => [t._id, t.display_name]))
+    );
+
+    // -----------------------------
+    // Compute matched/unmatched and final formatting
+    // -----------------------------
+    researchers = researchers.map(r => {
+      const { matched, unmatched, matchCount, totalFilters } =
+        computeMatch(search_tags, r.search_tags, { fieldMap, topicMap, instMap, countryMap });
+
+      return {
+        _id: r._id,
+        name: r.name,
+        fields: r.search_tags
+          .filter(tag => tag.startsWith("field:"))
+          .map(tag => fieldMap[tag.split(":")[1]]),
+        topics: r.topics, // no need
+        last_known_affiliations: r.last_known_affiliations.map(id => instMap[id]),
+        research_metrics: {
+          h_index: r.research_metrics.h_index,
+          i10_index: r.research_metrics.i10_index,
+          total_citations: r.research_metrics.total_citations,
+          total_works: r.research_metrics.total_works
+        },
+        match: {
+          matched,
+          unmatched,
+          matchCount,
+          totalFilters
+        }
+      };
     });
-  } catch (err) {
-    console.error("Error in searchFilters:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+
+    // -----------------------------
+    // Get total count for pagination
+    // -----------------------------
+    const total = await Researcher.countDocuments(matchStage);
+
+    res.json({
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalResearchers: researchers.length,
+      researchers
+    });
+
+  } catch (error) {
+    console.error("Error in searchResearchers aggregation:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-module.exports = {
-  searchFilters: exports.searchFilters,
-};
+module.exports = { searchResearchers: exports.searchResearchers };

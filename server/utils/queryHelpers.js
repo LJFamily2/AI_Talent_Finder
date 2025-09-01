@@ -97,6 +97,19 @@ function chooseOp(specificOp, globalOp, defaultOp = "eq") {
   return pick(specificOp) || pick(globalOp) || defaultOp;
 }
 
+// Helper to build numeric conditions
+const buildComparison = (filter) => {
+  const { operator, value } = filter;
+  switch (operator) {
+    case ">": return { $gt: value };
+    case ">=": return { $gte: value };
+    case "<": return { $lt: value };
+    case "<=": return { $lte: value };
+    case "=": return value;
+    default: return value;
+  }
+};
+
 /** Mongo: build numeric metric condition; skip only when truly missing/blank/NaN. */
 function buildMetricCond(path, op, value) {
   const num = toNumberSafe(value);
@@ -162,6 +175,7 @@ module.exports = {
 
   // operators & metrics
   chooseOp,
+  buildComparison,
   buildMetricCond,              // Mongo
   buildExternalMetricCond,      // OpenAlex
 
