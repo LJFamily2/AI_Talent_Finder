@@ -15,7 +15,7 @@ const searchFiltersRoutes = require("./searchFiltersRoute");
 router.use("/api/cv", cvVerificationRoutes);
 router.use("/api", aiCvVerificationRoutes);
 router.use("/api/auth", authRoutes);
-router.use("/api/search", searchFiltersRoutes);
+router.use("/api/search-filters", searchFiltersRoutes);
 
 router.use("/api/export", exportRoutes);
 router.use("/api/researcher", researcherRoutes);

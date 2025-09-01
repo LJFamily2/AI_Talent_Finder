@@ -1,11 +1,9 @@
-
 # Dependency directories
 node_modules/
 
 # Build output
 dist/
 build/
-dist-ssr/
 
 # Test coverage
 coverage/
@@ -37,6 +35,14 @@ Thumbs.db
 *.sln
 *.sw?
 
+# Data and ML artifacts
+data/
+ml/*.json
+ml/*.pkl
+ml/*.h5
+ml/*.pt
+ml/*.ckpt
+
 # Misc
 *.local
 *.cache
@@ -47,3 +53,7 @@ Thumbs.db
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+eng.traineddata
+# Seeding samples
+**/seed.js

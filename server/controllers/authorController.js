@@ -4,94 +4,90 @@
 //==================================================================
 
 const axios = require("axios");
-const ResearcherProfile = require("../models/researcherProfileModel");
+const Researcher = require("../models/Researcher");
 const { deleteCacheKey } = require("../middleware/cacheRedisInsight");
+
+// Helpers for OpenAlex API, query parsing, and year range checks
+const {
+  parseMultiOr,
+  buildSearchStringFromPhrases,
+  chooseOp,
+  buildExternalMetricCond,
+  clampPageLimit,
+  parseYearBounds,
+  inYearRange,
+} = require("../utils/queryHelpers");
 
 const OPENALEX_BASE = "https://api.openalex.org";
 
 //==================================================================
-// [GET] /api/author/search-author
-// Search for author candidates in MongoDB by name, or get single profile by ID
+// [GET] /api/search-filters/openalex
 //==================================================================
-async function searchByCandidates(req, res, next) {
-  try {
-    const { id, name, page = 1, limit = 20 } = req.query;
+exports.searchOpenalexFilters = async (req, res) => {
+  const {
+    id,
+    name,
+    country,
+    topic,
+    hindex,
+    i10index,
+    op, // global op (fallback)
+    op_hindex, // priority for hindex
+    op_i10, // priority i10index
+    identifier,
+    affiliation,
+    year_from,
+    year_to,
+    page = 1,
+    limit = 20,
+  } = req.query;
 
-    if (id) {
-      const profileDoc = await ResearcherProfile.findById(id);
-      console.log(`📂 [DB INFO] researcherProfiles:${id}`);
-      if (!profileDoc) return res.status(404).json({ error: "Author not found" });
-      return res.json({ profile: profileDoc });
-    }
-
-    if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
-
-    const pageNum = parseInt(page, 10);
-    const limNum  = parseInt(limit, 10);
-    const skip    = (pageNum - 1) * limNum;
-    const regex   = new RegExp(name, "i");
-
-    console.log(`🔍 [DB SEARCH] authorLists:${name}`);
-
-    const filter = { "basic_info.name": regex };
-    const total = await ResearcherProfile.countDocuments(filter);
-    const docs  = await ResearcherProfile
-      .find(filter)
-      .sort({ "basic_info.name": 1 })
-      .skip(skip)
-      .limit(limNum)
-      .select({ _id: 1, "basic_info.name": 1 });
-
-    const candidates = docs.map(doc => ({
-      _id:  doc._id,
-      name: doc.basic_info?.name || ""
-    }));
-
-    return res.json({
-      total,
-      count: candidates.length,
-      page:  pageNum,
-      limit: limNum,
-      candidates
+  // helper: resolve org name -> list Institution IDs (I……)
+  async function resolveInstitutionIdsByName(q, max = 5) {
+    if (!q) return [];
+    const qp = new URLSearchParams({ search: q, per_page: String(max) });
+    const url = `${OPENALEX_BASE}/institutions?${qp}`;
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent": "AcademicTalentFinder/1.0",
+        Accept: "application/json",
+      },
     });
-  } catch (err) {
-    console.error("Error in searchByCandidates:", err);
-    next(err);
+    const results = Array.isArray(data.results) ? data.results : [];
+    return results.map((r) => r.id).filter(Boolean); // e.g. "https://openalex.org/I..."
   }
-}
 
-//==================================================================
-// [GET] /api/author/fetch-author
-// Fetch author(s) from OpenAlex API (list or detail by ID)
-//==================================================================
-async function searchByFetch(req, res, next) {
   try {
-    const { id, name, page = 1, limit = 20 } = req.query;
-
+    // 1) Detail by ID - OpenAlex
     if (id) {
-      console.log(`📂 [OPENALEX INFO] researcherProfiles:${id}`);
-      const { data: a } = await axios.get(`${OPENALEX_BASE}/authors/${encodeURIComponent(id)}`);
+      const { data: a } = await axios.get(
+        `${OPENALEX_BASE}/authors/${encodeURIComponent(id)}`,
+        {
+          headers: {
+            "User-Agent": "AcademicTalentFinder/1.0",
+            Accept: "application/json",
+          },
+        }
+      );
 
       const sortedConcepts = Array.isArray(a.x_concepts)
-        ? [...a.x_concepts].sort((a, b) => b.score - a.score)
+        ? [...a.x_concepts].sort((x, y) => (y.score || 0) - (x.score || 0))
         : [];
-
-      const topTopics = sortedConcepts.slice(0, 10).map(c => ({
+      const topTopics = sortedConcepts.slice(0, 10).map((c) => ({
         display_name: c.display_name,
-        count: Math.round(c.score * 100)
+        count: Math.round((c.score || 0) * 100),
+      }));
+      const fields = sortedConcepts.slice(0, 5).map((c) => ({
+        display_name: c.display_name,
+        count: Math.round((c.score || 0) * 100),
       }));
 
-      const fields = sortedConcepts.slice(0, 5).map(c => ({
-        display_name: c.display_name,
-        count: Math.round(c.score * 100)
-      }));
-
-      const fallbackAff = (a.affiliations?.[0]?.institution?.display_name)
+      const fallbackAff = a.affiliations?.[0]?.institution?.display_name
         ? {
             institution: "",
             display_name: a.affiliations[0].institution.display_name,
             ror: a.affiliations[0].institution.ror || "",
-            country_code: a.affiliations[0].institution.country_code || ""
+            country_code: a.affiliations[0].institution.country_code || "",
           }
         : { institution: "", display_name: "", ror: "", country_code: "" };
 
@@ -100,7 +96,7 @@ async function searchByFetch(req, res, next) {
             institution: "",
             display_name: a.last_known_institution.display_name,
             ror: a.last_known_institution.ror || "",
-            country_code: a.last_known_institution.country_code || ""
+            country_code: a.last_known_institution.country_code || "",
           }
         : fallbackAff;
 
@@ -108,69 +104,231 @@ async function searchByFetch(req, res, next) {
         _id: id,
         basic_info: {
           name: a.display_name || "",
-          affiliations: (a.affiliations || []).map(entry => ({
+          affiliations: (a.affiliations || []).map((entry) => ({
             institution: {
               display_name: entry.institution?.display_name || "",
               ror: entry.institution?.ror || "",
               id: entry.institution?.id || "",
-              country_code: entry.institution?.country_code || ""
+              country_code: entry.institution?.country_code || "",
             },
-            years: entry.years || []
-          }))
+            years: entry.years || [],
+          })),
         },
         identifiers: {
           openalex: a.id || "",
           orcid: a.orcid || "",
-          scopus: "",
-          google_scholar_id: ""
         },
         research_metrics: {
           h_index: a.summary_stats?.h_index || 0,
           i10_index: a.summary_stats?.i10_index || 0,
           two_year_mean_citedness: a.summary_stats?.["2yr_mean_citedness"] || 0,
           total_citations: a.cited_by_count || 0,
-          total_works: a.works_count || 0
+          total_works: a.works_count || 0,
         },
-        research_areas: {
-          fields,
-          topics: topTopics
-        },
+        research_areas: { fields, topics: topTopics },
         citation_trends: {
           cited_by_table: [],
-          counts_by_year: a.counts_by_year || []
+          counts_by_year: a.counts_by_year || [],
         },
-        current_affiliation: currentAff
+        current_affiliation: currentAff,
       };
 
       return res.json({ profile });
     }
 
-    if (!name) return res.status(400).json({ error: "Either 'id' or 'name' is required" });
+    // 2) Build query filters for OpenAlex API
+    const filters = [];
 
-    console.log(`📡 [FETCH OPENALEX] openalexLists:${name || 'query'}`);
+    // COUNTRY (multi) -> last_known_institutions.country_code:eg|pk
+    const countries = parseMultiOr(country).map((c) => c.toLowerCase());
+    if (countries.length === 1) {
+      filters.push(`last_known_institutions.country_code:${countries[0]}`);
+    } else if (countries.length > 1) {
+      filters.push(
+        `last_known_institutions.country_code:${countries.join("|")}`
+      );
+    }
 
-    const pageNum = parseInt(page, 10);
-    const limNum = parseInt(limit, 10);
-    const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(name)}&page=${pageNum}&per_page=${limNum}`;
-    const { data } = await axios.get(url);
+    // Operators cho metrics
+    const opH = chooseOp(op_hindex, op, "eq");
+    const opI = chooseOp(op_i10, op, "eq");
 
-    const total = data.meta?.count ?? 0;
+    const hFrag = buildExternalMetricCond("summary_stats.h_index", opH, hindex);
+    if (hFrag) filters.push(hFrag);
+
+    const iFrag = buildExternalMetricCond(
+      "summary_stats.i10_index",
+      opI,
+      i10index
+    );
+    if (iFrag) filters.push(iFrag);
+
+    // Identifier flags
+    if (identifier) {
+      const idNorm = String(identifier).toLowerCase();
+      if (idNorm === "openalex") filters.push("ids.openalex!=null");
+      else if (idNorm === "orcid") filters.push("has_orcid:true");
+      else if (idNorm === "scopus") filters.push("ids.scopus!=null");
+      else if (idNorm === "google_scholar")
+        filters.push("ids.google_scholar!=null");
+    }
+
+    // affiliation: ID/ROR/name
+    let affIds = [];
+    if (affiliation) {
+      const affStr = String(affiliation).trim();
+      if (/^https?:\/\/openalex\.org\/I/i.test(affStr)) {
+        affIds = [affStr];
+      } else if (/^https?:\/\/ror\.org\//i.test(affStr)) {
+        filters.push(`affiliations.institution.ror:${affStr}`);
+      } else {
+        affIds = await resolveInstitutionIdsByName(affStr, 5);
+      }
+      if (affIds.length) {
+        filters.push(`affiliations.institution.id:${affIds.join("|")}`);
+      }
+    }
+
+    // SEARCH terms: name + multi topics (quoted phrases)
+    const topics = parseMultiOr(topic);
+    const searchStr = buildSearchStringFromPhrases(
+      [name, ...topics].filter(Boolean)
+    );
+
+    // Pagination: defult 20, max 100
+    const { page: pageNum, limit: limNum } = clampPageLimit(
+      page,
+      limit,
+      20,
+      20
+    );
+
+    const params = new URLSearchParams();
+    if (filters.length) params.append("filter", filters.join(","));
+    if (searchStr) params.append("search", searchStr);
+    params.append("page", pageNum);
+    params.append("per_page", limNum);
+
+    const url = `${OPENALEX_BASE}/authors?${params.toString()}`;
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent": "AcademicTalentFinder/1.0",
+        Accept: "application/json",
+      },
+    });
+
+    // Mapping results to match our profile structure
     const results = Array.isArray(data.results) ? data.results : [];
-    const authors = results.map(r => ({ _id: r.id, name: r.display_name || "" }));
+    let authors = results.map((a) => {
+      const sorted = Array.isArray(a.x_concepts)
+        ? [...a.x_concepts].sort((x, y) => (y.score || 0) - (x.score || 0))
+        : [];
+      const topicsTop = sorted.slice(0, 10).map((c) => ({
+        display_name: c.display_name,
+        count: Math.round((c.score || 0) * 100),
+      }));
+      const fields = sorted.slice(0, 5).map((c) => ({
+        display_name: c.display_name,
+        count: Math.round((c.score || 0) * 100),
+      }));
+
+      const fallbackAff = a.affiliations?.[0]?.institution?.display_name
+        ? {
+            institution: "",
+            display_name: a.affiliations[0].institution.display_name,
+            ror: a.affiliations[0].institution.ror || "",
+            country_code: a.affiliations[0].institution.country_code || "",
+          }
+        : { institution: "", display_name: "", ror: "", country_code: "" };
+
+      const currentAff = a.last_known_institution?.display_name
+        ? {
+            institution: "",
+            display_name: a.last_known_institution.display_name,
+            ror: a.last_known_institution.ror || "",
+            country_code: a.last_known_institution.country_code || "",
+          }
+        : fallbackAff;
+
+      return {
+        _id: a.id,
+        basic_info: {
+          name: a.display_name || "",
+          affiliations: (a.affiliations || []).map((entry) => ({
+            institution: {
+              display_name: entry.institution?.display_name || "",
+              ror: entry.institution?.ror || "",
+              id: entry.institution?.id || "",
+              country_code: entry.institution?.country_code || "",
+            },
+            years: entry.years || [],
+          })),
+        },
+        identifiers: {
+          openalex: a.id || "",
+          orcid: a.orcid || "",
+          scopus: "",
+          google_scholar_id: "",
+        },
+        research_metrics: {
+          h_index: a.summary_stats?.h_index || 0,
+          i10_index: a.summary_stats?.i10_index || 0,
+          two_year_mean_citedness: a.summary_stats?.["2yr_mean_citedness"] || 0,
+          total_citations: a.cited_by_count || 0,
+          total_works: a.works_count || 0,
+        },
+        research_areas: { fields, topics: topicsTop },
+        citation_trends: {
+          cited_by_table: [],
+          counts_by_year: a.counts_by_year || [],
+        },
+        current_affiliation: currentAff,
+
+        //raw data for affiliations to filter by year later
+        __affiliations_raw: a.affiliations || [],
+      };
+    });
+
+    // 3) filter by year range
+    const { from, to } = parseYearBounds(year_from, year_to);
+    if (from != null || to != null) {
+      authors = authors.filter((a) => {
+        if (!Array.isArray(a.__affiliations_raw)) return false;
+        if (affIds.length) {
+          // only check affiliations with specified IDs
+          return a.__affiliations_raw.some(
+            (aff) =>
+              affIds.includes(aff.institution?.id) &&
+              inYearRange(aff.years, from, to)
+          );
+        }
+        // if not filtering by specific IDs, check any affiliation
+        return a.__affiliations_raw.some((aff) =>
+          inYearRange(aff.years, from, to)
+        );
+      });
+    }
+
+    // 4) total count of OpenAlex results
+    const totalAll = data?.meta?.count ?? 0;
 
     return res.json({
-      total,
-      count: authors.length,
+      total: totalAll, // total of OpenAlex results
+      count: authors.length, // total after year filter per page
       page: pageNum,
       limit: limNum,
-      authors
+      authors,
     });
   } catch (err) {
-    console.error("Error in searchByFetch:", err);
-    next(err);
+    console.error("Error in searchOpenalexFilters:", err.stack || err);
+    return res
+      .status(500)
+      .json({
+        error: "OpenAlex fetch error",
+        details: err.response?.data || err.message,
+      });
   }
-}
-
+};
 
 //==================================================================
 // [POST] /api/author/save-profile
@@ -178,10 +336,13 @@ async function searchByFetch(req, res, next) {
 //==================================================================
 async function saveToDatabase(req, res, next) {
   try {
-    const { profile } = req.body;
-    if (!profile?._id) return res.status(400).json({ error: "Request body must include 'profile._id'" });
+    const { profile } = req.body?.profile ?? req.body;
+    if (!profile?._id)
+      return res
+        .status(400)
+        .json({ error: "Request body must include 'profile._id'" });
 
-    const updatedProfile = await ResearcherProfile.findByIdAndUpdate(
+    const updatedProfile = await Researcher.findByIdAndUpdate(
       profile._id,
       { $set: profile },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -191,7 +352,7 @@ async function saveToDatabase(req, res, next) {
 
     return res.json({
       message: "Profile saved to DB and cache successfully",
-      profile: updatedProfile
+      profile: updatedProfile,
     });
   } catch (err) {
     console.error("Error in saveToDatabase:", err);
@@ -208,8 +369,9 @@ async function deleteFromDatabase(req, res, next) {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: "Missing id" });
 
-    const deleted = await ResearcherProfile.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ error: "Author not found in DB" });
+    const deleted = await Researcher.findByIdAndDelete(id);
+    if (!deleted)
+      return res.status(404).json({ error: "Author not found in DB" });
 
     console.log(`🗑️  [DB DEL] researcherProfiles:${id}`);
     await deleteCacheKey(`researcherProfiles:${id}`);
@@ -222,8 +384,7 @@ async function deleteFromDatabase(req, res, next) {
 }
 
 module.exports = {
-  searchByCandidates,
-  searchByFetch,
+  searchOpenalexFilters: exports.searchOpenalexFilters,
   saveToDatabase,
-  deleteFromDatabase
+  deleteFromDatabase,
 };

@@ -11,8 +11,8 @@ const BookmarkSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    researcherProfileIds: {
-      type: [String],
+    researcherIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Researcher" }],
       required: true,
     },
   },
@@ -23,7 +23,7 @@ const BookmarkSchema = new mongoose.Schema(
 );
 
 // Create compound index to ensure user can't bookmark the same researcher twice
-BookmarkSchema.index({ userId: 1, researcherProfileIds: 1 }, { unique: true });
+BookmarkSchema.index({ userId: 1, researcherIds: 1 }, { unique: true });
 
 //==================================================================
 // Export Mongo Model

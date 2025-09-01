@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaThLarge,
   FaBars,
@@ -6,17 +7,27 @@ import {
   FaDownload,
   FaUserSlash,
   FaRegBookmark,
+  FaFilePdf,
 } from "react-icons/fa";
 import { FaSortUp, FaSortDown } from "react-icons/fa"; // Add these icons for sorting
 import letterH from "../assets/letter-h.png";
 import scholarHat from "../assets/scholar-hat.png";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Snackbar, Alert } from "@mui/material";
+import {
+  Snackbar,
+  Alert,
+  Menu,
+  MenuItem,
+  ButtonGroup,
+  Button,
+} from "@mui/material";
 import { getBookmarks, removeBookmark } from "../services/bookmarkService";
 import { exportResearchersToExcel } from "../services/exportService";
+import { exportResearchersWithFullData } from "../services/pdfExportService";
 
 export default function SavedResearchers() {
+  const navigate = useNavigate();
   const [savedResearchers, setSavedResearchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -26,6 +37,10 @@ export default function SavedResearchers() {
   const [selectedResearchers, setSelectedResearchers] = useState([]);
 
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
+
+  // Export dropdown state
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   const [toast, setToast] = useState({
     open: false,
@@ -45,6 +60,7 @@ export default function SavedResearchers() {
       const response = await getBookmarks();
 
       // Transform API data to match component's expected format
+      // Store both display data and full data for PDF export
       const transformedData = response.data.map((researcher) => ({
         id: researcher._id,
         name: researcher.basic_info?.name || "Unknown",
@@ -58,6 +74,8 @@ export default function SavedResearchers() {
           researcher.research_areas?.fields?.[0]?.display_name ||
           researcher.research_areas?.topics?.[0]?.display_name ||
           "Unknown Field",
+        // Store the complete researcher data directly since it now includes all fields
+        ...researcher, // Spread the complete researcher data
       }));
 
       setSavedResearchers(transformedData);
@@ -107,6 +125,55 @@ export default function SavedResearchers() {
     } catch (error) {
       console.error("Export failed:", error);
       showToast(error.message || "Export failed. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportMenuClick = (event) => {
+    setExportAnchorEl(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setExportAnchorEl(null);
+  };
+
+  const handleExportPDF = async () => {
+    handleExportMenuClose();
+    try {
+      const data = selectMode
+        ? savedResearchers.filter((r) => selectedResearchers.includes(r.id))
+        : savedResearchers;
+
+      if (data.length === 0) {
+        showToast("No researchers to export", "warning");
+        return;
+      }
+
+      setLoading(true);
+
+      await exportResearchersWithFullData(data);
+
+      const message = selectMode
+        ? `Successfully exported ${data.length} selected researcher${
+            data.length > 1 ? "s" : ""
+          } to PDF`
+        : `Successfully exported all ${data.length} researcher${
+            data.length > 1 ? "s" : ""
+          } to PDF`;
+
+      showToast(message, "success");
+
+      // Clear selection after export if in select mode
+      if (selectMode) {
+        setSelectedResearchers([]);
+      }
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      showToast(
+        error.message || "PDF export failed. Please try again.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -230,24 +297,43 @@ export default function SavedResearchers() {
                 {selectMode ? "Cancel" : "Select"}
               </button>
 
-              <button
-                onClick={handleExport}
-                disabled={
-                  loading || (selectMode && selectedResearchers.length === 0)
-                }
-                className={`flex items-center gap-2 rounded-xl font-medium px-4 py-2 shadow transition-all ${
-                  loading || (selectMode && selectedResearchers.length === 0)
-                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+              <ButtonGroup variant="contained" color="primary">
+                <Button
+                  onClick={handleExportMenuClick}
+                  endIcon={<FaDownload />}
+                  disabled={
+                    loading || (selectMode && selectedResearchers.length === 0)
+                  }
+                >
+                  {loading
+                    ? "Exporting..."
+                    : selectMode
+                    ? `Export Selected (${selectedResearchers.length})`
+                    : "Export All"}
+                </Button>
+              </ButtonGroup>
+              <Menu
+                anchorEl={exportAnchorEl}
+                open={exportMenuOpen}
+                onClose={handleExportMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
               >
-                <FaDownload className="text-current" />
-                {loading
-                  ? "Exporting..."
-                  : selectMode
-                  ? `Export Selected (${selectedResearchers.length})`
-                  : "Export All"}
-              </button>
+                <MenuItem onClick={handleExport}>
+                  <FaDownload className="mr-2" />
+                  Export as Excel
+                </MenuItem>
+                <MenuItem onClick={handleExportPDF}>
+                  <FaFilePdf className="mr-2" />
+                  Export as PDF
+                </MenuItem>
+              </Menu>
             </div>
           </div>
 
@@ -271,9 +357,13 @@ export default function SavedResearchers() {
                       ? "border-blue-500"
                       : "border-[#D9D9D9]"
                   } bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
-                  onClick={() =>
-                    selectMode && toggleSelectResearcher(person.id)
-                  }
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelectResearcher(person.id);
+                    } else if (person.slug) {
+                      navigate(`/researcher-profile/${person.slug}`);
+                    }
+                  }}
                 >
                   <button
                     onClick={(e) => {
@@ -400,9 +490,13 @@ export default function SavedResearchers() {
                       ? "border-blue-500"
                       : "border-[#D9D9D9]"
                   } bg-white rounded-md px-4 py-2 shadow-sm hover:shadow-md transition-all cursor-pointer text-md`}
-                  onClick={() =>
-                    selectMode && toggleSelectResearcher(person.id)
-                  }
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelectResearcher(person.id);
+                    } else if (person.slug) {
+                      navigate(`/researcher-profile/${person.slug}`);
+                    }
+                  }}
                 >
                   <div className="w-1/4 flex items-center">
                     {selectMode && (
