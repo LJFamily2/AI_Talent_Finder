@@ -5,9 +5,19 @@ function foldString(s = "") {
   catch (e) { return (s || "").toLowerCase(); }
 }
 
+function tokenizeFolded(s = "") {
+  return Array.from(new Set(
+    String(s)
+      .split(/[\s\W_]+/u)
+      .map(t => t.trim())
+      .filter(Boolean)
+  ));
+}
+
 const InstitutionSchema = new mongoose.Schema({
   display_name: { type: String, required: true },
   display_name_folded: { type: String, index: true },
+  display_name_tokens: { type: [String], index: true },
   ror: { type: String, default: "" },
   country_code: { type: String, ref: "Country", required: true }
 }, {
@@ -16,7 +26,11 @@ const InstitutionSchema = new mongoose.Schema({
 });
 
 InstitutionSchema.pre("save", function(next) {
-  if (this.display_name) this.display_name_folded = foldString(this.display_name);
+  if (this.display_name) {
+    const folded = foldString(this.display_name);
+    this.display_name_folded = folded;
+    this.display_name_tokens = tokenizeFolded(folded);
+  }
   next();
 });
 
@@ -27,6 +41,7 @@ InstitutionSchema.pre("findOneAndUpdate", function(next) {
     const folded = foldString(set.display_name);
     if (!update.$set) update.$set = {};
     update.$set.display_name_folded = folded;
+    update.$set.display_name_tokens = tokenizeFolded(folded);
     this.setUpdate(update);
   }
   next();

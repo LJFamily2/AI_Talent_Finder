@@ -63,11 +63,33 @@ function parseMultiOr(input) {
 //==============================
 // Text helpers
 //==============================
-/** Safe case-insensitive regex from user text (supports quoted phrase). */
-function toSafeRegex(s) {
-  const raw = String(s ?? "").replace(/^"|"$/g, "");
-  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(escaped, "i");
+/** exact string escaper (keeps the "old" behavior for callers that expect an escaped pattern string) */
+function escapeRegex(input = "") {
+  return String(input ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+//** make the string input localized to put in the input */
+function foldString(s = "") {
+  try {
+    return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  } catch (e) {
+    return (s || "").toLowerCase();
+  }
+}
+
+/** 
+ * Safe regex builder / pattern helper.
+ * - By default returns a RegExp with case-insensitive flag.
+ * - { asString: true } returns the escaped pattern string (without flags).
+ * - { anchor: true } prefixes '^' to the pattern.
+ */
+function toSafeRegex(input, opts = {}) {
+  const { asString = false, flags = "i", anchor = false } = opts;
+  const raw = String(input ?? "").replace(/^"|"$/g, "");
+  const escaped = escapeRegex(raw);
+  const pattern = (anchor ? "^" : "") + escaped;
+  if (asString) return pattern;
+  return new RegExp(pattern, flags);
 }
 
 /** Quote a phrase for OpenAlex search= (keeps spaces intact) */
@@ -169,6 +191,8 @@ module.exports = {
   parseMultiOr,
 
   // text
+  escapeRegex,
+  foldString,
   toSafeRegex,
   quotePhrase,
   buildSearchStringFromPhrases,

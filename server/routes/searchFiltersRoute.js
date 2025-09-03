@@ -5,7 +5,7 @@ const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 // const filtersCtrl = require('../controllers/searchFiltersController'); 
 const searchCtrl = require('../controllers/searchFiltersController');
 const authorCtrl  = require('../controllers/authorController');      
-const { getCountriesFilter } = require('../controllers/filtersController');
+const { getCountriesFilter, getInstitutionsFilter } = require('../controllers/filtersController');
 
 const router = express.Router();
 const SHORT = 900;
@@ -73,7 +73,8 @@ router.get(
 // build filters functions
 //========================
 
-// get countries
-router.get("/countries", getCountriesFilter)
+router.get("/countries", getCountriesFilter);
+router.get("/institutions", getInstitutionsFilter);
+
 
 module.exports = router;

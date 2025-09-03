@@ -23,7 +23,13 @@ import documentIcon from '../assets/document.png';
 import nameIcon from '../assets/name.png';
 import citationIcon from '../assets/citation.png';
 import scoreIcon from '../assets/score.png';
-import { loadCountriesFilter, searchResearchers } from '@/services/searchFiltersService';
+import {
+    buildFilterPayload,
+    searchResearchers,
+    // loadCountriesFilter,
+    searchInstitutions,
+    listInstitutions
+} from '@/services/searchFiltersService';
 
 function SearchInterface() {
     const [showSortModal, setShowSortModal] = useState(false);
@@ -38,6 +44,15 @@ function SearchInterface() {
     const [expertiseInput, setExpertiseInput] = useState("");
     const [expertiseInputFocused, setExpertiseInputFocused] = useState(false);
 
+    // // State for institutions filter
+    const [showInstitutionModal, setShowInstitutionModal] = useState(false);
+    const [selectedInstitutions, setSelectedInstitutions] = useState([]); // array of { search_tag, display_name }
+    const [institutionInput, setInstitutionInput] = useState("");
+    const [institutionInputFocused, setInstitutionInputFocused] = useState(false);
+    const [institutionSuggestions, setInstitutionSuggestions] = useState([]);
+    const [institutionLoading, setInstitutionLoading] = useState(false);
+    const instLastQueryRef = useRef("");
+
     const COUNTRY_LIST = [
         'United States of America', 'China', 'Brazil', 'India', 'Germany',
         'United Kingdom of Great Britain and Northern Ireland', 'Indonesia', 'Japan', 'France', 'Russian Federation', 'Spain',
@@ -48,42 +63,43 @@ function SearchInterface() {
         'Data Science', 'Civil Engineering', 'Business Administration', 'Physics', 'Mathematics',
         // ... add more fields as needed
     ];
-    // ============ Test load countries data ===========
-    async function loadTest() {
-        try {
-            const countries = await loadCountriesFilter();
-            console.log(countries)  // to UI
-        } catch (err) {
-            console.error("loadCountriesFilter error:", err);
-        }
-    }
-    loadTest();
-    // =================================================
 
-    // =========== Example for search function =========
-    const filters = {
-        "search_tags": [
-            "topic:68a8de08121e05e29ad0d0da",
-            "field:68a8de2b121e05e29ad0d14c",
-            "country:AU"
-        ],
-        "h_index": {
-            "operator": ">=",
-            "value": 200
-        },
-        "page": 1,
-        "limit": 20
-    }
-    async function search(filters) {
-        try {
-            const results = await searchResearchers(filters)
-            console.log(results) // to UI
-        } catch (error) {
-            console.log(error)
-        }
-    }
-    search(filters)
-    // =================================================
+    // // ============ Test load countries data ===========
+    // async function loadTest() {
+    //     try {
+    //         const countries = await loadCountriesFilter();
+    //         console.log(countries)  // to UI
+    //     } catch (err) {
+    //         console.error("loadCountriesFilter error:", err);
+    //     }
+    // }
+    // loadTest();
+    // // =================================================
+
+    // // =========== Example for search function =========
+    // const filters = {
+    //     "search_tags": [
+    //         "topic:68a8de08121e05e29ad0d0da",
+    //         "field:68a8de2b121e05e29ad0d14c",
+    //         "country:AU"
+    //     ],
+    //     "h_index": {
+    //         "operator": ">=",
+    //         "value": 200
+    //     },
+    //     "page": 1,
+    //     "limit": 20
+    // }
+    // async function search(filters) {
+    //     try {
+    //         const results = await searchResearchers(filters)
+    //         console.log(results) // to UI
+    //     } catch (error) {
+    //         console.log(error)
+    //     }
+    // }
+    // search(filters)
+    // // =================================================
 
     let peopleList = [
         { name: 'Jason Carroll', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
@@ -251,6 +267,217 @@ function SearchInterface() {
         ) : null;
     }
 
+    function InstitutionModal({ open, onClose, selected, onSelect }) {
+        const modalRef = useRef(null);
+        const [query, setQuery] = useState("");
+        const [items, setItems] = useState([]);
+        const [offset, setOffset] = useState(0);
+        const [hasMore, setHasMore] = useState(true);
+        const [loading, setLoading] = useState(false);
+        const sentinelRef = useRef(null);
+        const PAGE_SIZE = 50;
+        const lastQueryRef = useRef("");
+
+        useEffect(() => {
+            function handleClickOutside(event) {
+                if (modalRef.current && !modalRef.current.contains(event.target)) {
+                    onClose();
+                }
+            }
+            if (open) document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }, [onClose, open]);
+
+        // load initial page when modal opens and no query
+        useEffect(() => {
+            if (!open) return;
+            setItems([]);
+            setOffset(0);
+            setHasMore(true);
+            setQuery("");
+            lastQueryRef.current = "";
+
+            (async () => {
+                setLoading(true);
+                try {
+                    const page = await listInstitutions(0, PAGE_SIZE);
+                    setItems(page);
+                    setOffset(page.length);
+                    setHasMore(page.length === PAGE_SIZE);
+                } catch (error) {
+                    console.error("listInstitutions error:", error);
+                } finally {
+                    setLoading(false);
+                }
+            })();
+
+        }, [open]);
+
+        //debounced search when query changes
+        useEffect(() => {
+            const q = (query || "").trim();
+            lastQueryRef.current = q;
+            const timer = setTimeout(async () => {
+                if (!open) return;
+                if (!q) {
+                    // when query cleared, reload initial list
+                    setLoading(true);
+                    try {
+                        const page = await listInstitutions(0, PAGE_SIZE);
+                        setItems(page);
+                        setOffset(page.length);
+                        setHasMore(page.length === PAGE_SIZE);
+                    } catch (error) {
+                        console.error("listInstitutions error:", error);
+                    } finally {
+                        setLoading(false);
+                    }
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const results = await searchInstitutions(q);
+                    if (lastQueryRef.current !== q) return;
+                    setItems(results);
+                    setOffset(results.length);
+                    setHasMore(false);
+                } catch (error) {
+                    console.error("searchInstitutions error", error);
+                } finally {
+                    setLoading(false);
+                }
+            }, 350);
+            return () => clearTimeout(timer);
+        }, [query, open]);
+
+        useEffect(() => {
+            if (!open) return;
+            if (query && query.trim()) return;  // don't infinite-scroll while searching
+            const el = sentinelRef.current;
+            if (!el) return;
+            const obs = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && hasMore && !loading) {
+                        (async () => {
+                            setLoading(true);
+                            try {
+                                const page = await listInstitutions(offset, PAGE_SIZE);
+                                setItems(prev => [...prev, ...page]);
+                                setOffset(prev => prev + page.length);
+                                setHasMore(page.length === PAGE_SIZE);
+                            } catch (err) {
+                                console.error("listInstitutions (more) error", err);
+                            } finally {
+                                setLoading(false);
+                            }
+                        })();
+                    }
+                });
+            }, { root: null, rootMargin: "0px", threshold: 1.0 });
+
+            obs.observe(el);
+            return () => obs.disconnect();
+        }, [open, offset, hasMore, loading, query])
+
+        const filtered = items;
+        return open ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
+                <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
+                    <button className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
+                    <input
+                        type="text"
+                        placeholder="Search institutions..."
+                        className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                    />
+                    <div className="text-gray-500 text-sm mb-2">All institutions ({items.length})</div>
+                    <div className="border-b mb-2"></div>
+                    <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
+                        {filtered.map((item) => {
+                            const checked = selected.some(s => s.search_tag === item.search_tag); // compare by search_tag
+                            return (
+                                <label key={item.search_tag} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => onSelect(item)} // pass the item object; parent toggles by search_tag
+                                        className="w-5 h-5 accent-[#E60028]"
+                                    />
+                                    <span>{item.display_name}</span>
+                                </label>
+                            );
+                        })}
+                        {filtered.length === 0 && !loading && <div className="text-gray-400 text-center py-8">No institutions found</div>}
+                        {loading && <div className="text-center py-4 text-gray-500">Loading...</div>}
+                        <div ref={sentinelRef} style={{ height: 1 }} />
+                    </div>
+                </div>
+            </div>
+        ) : null;
+    }
+
+    // debounced suggestion fetch using searchInstitutions
+    useEffect(() => {
+        const q = (institutionInput || "").trim();
+        instLastQueryRef.current = q;
+        const timer = setTimeout(async () => {
+            if (!q) {
+                setInstitutionSuggestions([]);
+                return;
+            }
+            setInstitutionLoading(true);
+            try {
+                const results = await searchInstitutions(q, 10);
+                if (instLastQueryRef.current !== q) return; // avoid race overwrite
+                setInstitutionSuggestions(results || []);
+            } catch (err) {
+                console.error("searchInstitutions (suggest) error", err);
+            } finally {
+                setInstitutionLoading(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [institutionInput]);
+
+    // helper: toggle selection by search_tag
+    function toggleInstitutionSelection(item) {
+        setSelectedInstitutions(prev => {
+            const exists = prev.some(s => s.search_tag === item.search_tag);
+            if (exists) return prev.filter(s => s.search_tag !== item.search_tag);
+            return [...prev, item];
+        });
+    }
+
+    // when adding from inline suggestions
+    function addInstitutionSelection(item) {
+        setSelectedInstitutions(prev => prev.some(s => s.search_tag === item.search_tag) ? prev : [...prev, item]);
+        setInstitutionInput("");
+        setInstitutionSuggestions([]);
+    }
+
+    async function handleApply(e) {
+        e?.preventDefault?.();
+        // gather controlled state values (avoid DOM queries)
+        const payload = buildFilterPayload({
+            selectedInstitutions,
+            // selectedFields,
+            // selectedCountries,
+            page: 1,
+            limit: 20
+        });
+
+        try {
+            const results = await searchResearchers(payload);
+            console.log(results)
+            // handle results
+        } catch (err) {
+            // handle error
+            console.error("searchResearchers failed error:", err);
+        }
+    }
+
     return (
         <div>
             <Header />
@@ -368,6 +595,74 @@ function SearchInterface() {
                             </div>
                         </div>
 
+                        {/* Subsection: Institution */}
+                        <div className='px-6'>
+                            <div className='flex items-center justify-between'>
+                                <h4 className='text-lg mb-5 font-semibold mt-6'>Institutions</h4>
+                                <button
+                                    className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
+                                    style={{ visibility: selectedInstitutions.length > 0 ? 'visible' : 'hidden' }}
+                                    onClick={() => setSelectedInstitutions([])}
+                                >
+                                    Clear filter
+                                </button>
+                            </div>
+                            <div className='flex items-center gap-3'>
+                                <img
+                                    src={menuIcon}
+                                    alt='Menu'
+                                    className='w-4 h-5 cursor-pointer'
+                                    onClick={() => setShowInstitutionModal(true)}
+                                />
+                                <div className='w-full relative'>
+                                    <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
+                                        <input
+                                            type='text'
+                                            placeholder='e.g. RMIT'
+                                            className='focus:outline-0 w-full'
+                                            value={institutionInput}
+                                            onChange={e => setInstitutionInput(e.target.value)}
+                                            onFocus={() => setInstitutionInputFocused(true)}
+                                            onBlur={() => setTimeout(() => setInstitutionInputFocused(false), 150)}
+                                        />
+                                    </div>
+                                    {/* Dropdown for suggestions for institutions */}
+                                    {institutionInputFocused && institutionInput.trim() && (
+                                        <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
+                                            {institutionLoading && (
+                                                <div className='px-4 py-2 text-sm text-gray-500'>Searching…</div>
+                                            )}
+                                            {!institutionLoading && institutionSuggestions.length === 0 && (
+                                                <div className='px-4 py-2 text-sm text-gray-500'>No institutions found</div>
+                                            )}
+                                            {!institutionLoading && institutionSuggestions.map(item => (
+                                                <div
+                                                    key={item.search_tag}
+                                                    className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
+                                                    onMouseDown={() => addInstitutionSelection(item)} // pass whole item
+                                                >
+                                                    {item.display_name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className='flex flex-col gap-3 mt-4'>
+                                {selectedInstitutions.map(inst => (
+                                    <div key={inst.search_tag} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
+                                        <button
+                                            className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
+                                            onClick={() => setSelectedInstitutions(prev => prev.filter(s => s.search_tag !== inst.search_tag))}
+                                        >
+                                            ×
+                                        </button>
+                                        {inst.display_name}
+                                        {console.log(inst)}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* Space between elements */}
 
@@ -406,19 +701,14 @@ function SearchInterface() {
 
                         <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
 
-
-                        {/* Other links */}
-                        <div className='px-6'>
-                            <h4 className='text-lg mb-5 font-semibold'>Other links</h4>
-                            <div className='flex justify-between items-center mb-2'>
-                                <label htmlFor='hasScopusID'>Candidate has Scopus ID</label>
-                                <Switch id="hasScopusID" />
-                            </div>
-                            <div className='flex justify-between items-center'>
-                                <label htmlFor='hasOrcidID'>Candidate has ORCID ID</label>
-                                <Switch id="hasOrcidID" />
-                            </div>
-                        </div>
+                        {/* Apply all filters button */}
+                        <button
+                            type="button"
+                            onClick={handleApply}
+                            className='w-full bg-[#E60028] text-white py-1 rounded-lg cursor-pointer hover:bg-[#B4001F]'
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
 
@@ -567,6 +857,13 @@ function SearchInterface() {
                 }}
                 search={fieldSearch}
                 onSearch={setFieldSearch}
+            />
+
+            <InstitutionModal
+                open={showInstitutionModal}
+                onClose={() => setShowInstitutionModal(false)}
+                selected={selectedInstitutions}
+                onSelect={(item) => toggleInstitutionSelection(item)}
             />
             <Footer />
         </div>

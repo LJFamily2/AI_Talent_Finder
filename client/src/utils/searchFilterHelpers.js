@@ -29,7 +29,7 @@ export function parseSearchTags(search_tags) {
     return result;
 }
 
-// turns json from db to search_tag format
+// turns countries json from db to search_tag format
 export function buildCountriesFilter(data) {
     if (!Array.isArray(data)) return [];
     return data
@@ -37,6 +37,17 @@ export function buildCountriesFilter(data) {
         .map(item => ({
             search_tag: `country:${item._id}`,
             display_name: item.display_name
+        }));
+}
+
+// turns institutions json from db to search_tag format
+export function buildInstitutionsFilter(data) {
+    if (!Array.isArray(data)) return [];
+    return data
+        .filter(item => item && item._id !== undefined && item._id !== null)
+        .map(item => ({
+            search_tag: `institution:${item._id}`,
+            display_name: item.display_name || ""
         }));
 }
 
