@@ -25,6 +25,15 @@ function fmtTTL(sec) {
   return `${sec} seconds`;
 }
 
+// Helper to stable-stringify objects for keys
+function stableStringify(obj) {
+  if (obj === null) return "null";
+  if (typeof obj !== "object") return String(obj);
+  if (Array.isArray(obj)) return `[${obj.map(stableStringify).join(",")}]`;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
+}
+
 //==================================================================
 // Express Middleware: Redis Cache Wrapper for GET APIs
 // - Automatically checks for cached response before hitting DB/API
@@ -38,8 +47,17 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
     const redis = req.app?.locals?.redisClient || redisClient;
     if (!redis) return next();
 
-    const segments = keyBuilder(req);
-    const key = segments.join(":");
+    // allow keyBuilder to return string | array | object | Promise<...>
+    let segments = await Promise.resolve().then(() => keyBuilder(req));
+    let key;
+    if (Array.isArray(segments)) {
+      key = segments.join(":");
+    } else if (typeof segments === "string") {
+      key = segments;
+    } else {
+      // object or other -> stable stringify
+      key = stableStringify(segments);
+    }
 
     // Try to fetch from Redis cache first
     try {

@@ -61,22 +61,44 @@ export default function SavedResearchers() {
 
       // Transform API data to match component's expected format
       // Store both display data and full data for PDF export
-      const transformedData = response.data.map((researcher) => ({
-        id: researcher._id,
-        name: researcher.basic_info?.name || "Unknown",
-        institution:
-          researcher.current_affiliation?.display_name ||
-          researcher.basic_info?.affiliations?.[0]?.institution?.display_name ||
-          "Unknown Institution",
-        hIndex: researcher.research_metrics?.h_index || 0,
-        i10Index: researcher.research_metrics?.i10_index || 0,
-        field:
-          researcher.research_areas?.fields?.[0]?.display_name ||
-          researcher.research_areas?.topics?.[0]?.display_name ||
-          "Unknown Field",
-        // Store the complete researcher data directly since it now includes all fields
-        ...researcher, // Spread the complete researcher data
-      }));
+      const transformedData = response.data.map((researcher) => {
+        // build array of field display names from researcher.research_areas.fields
+        const fieldsArray =
+          Array.isArray(researcher.research_areas?.fields) &&
+            researcher.research_areas.fields.length > 0
+            ? researcher.research_areas.fields.map(
+              (f) => f.display_name || "Unknown"
+            )
+            : [];
+
+        const institutionsArray =
+          Array.isArray(researcher.current_affiliations) &&
+            researcher.current_affiliations.length > 0
+            ? researcher.current_affiliations.map(
+              (i) => i.display_name || "Unknown"
+            )
+            : [];
+
+        return {
+          id: researcher._id,
+          name: researcher.basic_info?.name || "Unknown",
+          institution: institutionsArray,
+            // researcher.current_affiliation?.display_name ||
+            // researcher.basic_info?.affiliations?.[0]?.institution?.display_name ||
+            // "Unknown Institution",
+          hIndex: researcher.research_metrics?.h_index || 0,
+          i10Index: researcher.research_metrics?.i10_index || 0,
+          // new fields property: list of display_name values
+          fields: fieldsArray,
+          // keep a backward-compatible single 'field' (first item) if other code expects it
+          field:
+            fieldsArray[0] ||
+            researcher.research_areas?.fields?.[0]?.display_name ||
+            "Unknown Field",
+          // Store the complete researcher data directly since it now includes all fields
+          ...researcher, // Spread the complete researcher data
+        };
+      });
 
       setSavedResearchers(transformedData);
     } catch (error) {
@@ -109,12 +131,10 @@ export default function SavedResearchers() {
       const result = await exportResearchersToExcel(data);
 
       const message = selectMode
-        ? `Successfully exported ${result.count} selected researcher${
-            result.count > 1 ? "s" : ""
-          } to ${result.filename}`
-        : `Successfully exported all ${result.count} researcher${
-            result.count > 1 ? "s" : ""
-          } to ${result.filename}`;
+        ? `Successfully exported ${result.count} selected researcher${result.count > 1 ? "s" : ""
+        } to ${result.filename}`
+        : `Successfully exported all ${result.count} researcher${result.count > 1 ? "s" : ""
+        } to ${result.filename}`;
 
       showToast(message, "success");
 
@@ -155,12 +175,10 @@ export default function SavedResearchers() {
       await exportResearchersWithFullData(data);
 
       const message = selectMode
-        ? `Successfully exported ${data.length} selected researcher${
-            data.length > 1 ? "s" : ""
-          } to PDF`
-        : `Successfully exported all ${data.length} researcher${
-            data.length > 1 ? "s" : ""
-          } to PDF`;
+        ? `Successfully exported ${data.length} selected researcher${data.length > 1 ? "s" : ""
+        } to PDF`
+        : `Successfully exported all ${data.length} researcher${data.length > 1 ? "s" : ""
+        } to PDF`;
 
       showToast(message, "success");
 
@@ -252,16 +270,15 @@ export default function SavedResearchers() {
         <div className="w-4/5 mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold flex items-center gap-3">
-              Saved Researchers
+              {/* Saved Researchers */}
               <div className="flex rounded-lg overflow-hidden border border-blue-200 ml-2">
                 <button
                   onClick={() => setViewMode("grid")}
                   className={`px-3 py-2 flex items-center justify-center transition
-                                        ${
-                                          viewMode === "grid"
-                                            ? "bg-blue-600 text-white"
-                                            : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                        }
+                                        ${viewMode === "grid"
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                    }
                                         border-r border-blue-200`}
                   style={{
                     borderTopLeftRadius: "0.5rem",
@@ -274,11 +291,10 @@ export default function SavedResearchers() {
                 <button
                   onClick={() => setViewMode("list")}
                   className={`px-3 py-2 flex items-center justify-center transition
-                                        ${
-                                          viewMode === "list"
-                                            ? "bg-blue-600 text-white"
-                                            : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                        }`}
+                                        ${viewMode === "list"
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                    }`}
                   style={{
                     borderTopRightRadius: "0.5rem",
                     borderBottomRightRadius: "0.5rem",
@@ -308,8 +324,8 @@ export default function SavedResearchers() {
                   {loading
                     ? "Exporting..."
                     : selectMode
-                    ? `Export Selected (${selectedResearchers.length})`
-                    : "Export All"}
+                      ? `Export Selected (${selectedResearchers.length})`
+                      : "Export All"}
                 </Button>
               </ButtonGroup>
               <Menu
@@ -349,14 +365,13 @@ export default function SavedResearchers() {
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {savedResearchers.map((person, index) => (
+              {savedResearchers.map((person) => (
                 <div
-                  key={index}
-                  className={`relative flex flex-col justify-between border ${
-                    selectedResearchers.includes(person.id)
-                      ? "border-blue-500"
-                      : "border-[#D9D9D9]"
-                  } bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+                  key={person.id}
+                  className={`relative flex flex-col justify-between border ${selectedResearchers.includes(person.id)
+                    ? "border-blue-500"
+                    : "border-[#D9D9D9]"
+                    } bg-white rounded-md p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
                   onClick={() => {
                     if (selectMode) {
                       toggleSelectResearcher(person.id);
@@ -388,9 +403,14 @@ export default function SavedResearchers() {
 
                         <p className="font-bold text-md">{person.name}</p>
                       </div>
-                      <p className="text-[#6A6A6A] text-sm">
-                        {person.institution}
+                      {person.institution.map((inst, idx) => (
+                        <p key={idx} className="text-[#6A6A6A] text-sm">
+                        {inst}
                       </p>
+                      ))}
+                      {/* <p className="text-[#6A6A6A] text-sm">
+                        {person.institution}
+                      </p> */}
                     </div>
 
                     <div className="mb-2">
@@ -408,9 +428,15 @@ export default function SavedResearchers() {
                       </div>
                     </div>
 
-                    <div className="text-xs bg-[#4D8BC5] text-white px-3 py-1 rounded-md w-fit">
+                    {person.fields.map((field, idx) => (
+                      <div
+                        key={idx} className="text-xs bg-[#4D8BC5] text-white px-3 py-1 rounded-md w-fit">
+                        {field}
+                      </div>
+                    ))}
+                    {/* <div className="text-xs bg-[#4D8BC5] text-white px-3 py-1 rounded-md w-fit">
                       {person.field}
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}
@@ -482,19 +508,20 @@ export default function SavedResearchers() {
                 <div className="w-12 text-center"></div>
               </div>
               {/* Data rows */}
-              {sortedResearchers.map((person, index) => (
+              {sortedResearchers.map((person) => (
                 <div
-                  key={index}
-                  className={`flex items-center border ${
-                    selectedResearchers.includes(person.id)
-                      ? "border-blue-500"
-                      : "border-[#D9D9D9]"
-                  } bg-white rounded-md px-4 py-2 shadow-sm hover:shadow-md transition-all cursor-pointer text-md`}
+                  key={person.id}
+                  className={`flex items-center border ${selectedResearchers.includes(person.id)
+                    ? "border-blue-500"
+                    : "border-[#D9D9D9]"
+                    } bg-white rounded-md px-4 py-2 shadow-sm hover:shadow-md transition-all cursor-pointer text-md`}
                   onClick={() => {
                     if (selectMode) {
                       toggleSelectResearcher(person.id);
-                    } else if (person.slug) {
-                      navigate(`/researcher-profile/${person.slug}`);
+                    } else {
+                      // prefer slug when available, fall back to id
+                      const slugOrId = person.slug || person.id;
+                      navigate(`/researcher-profile/${slugOrId}`);
                     }
                   }}
                 >

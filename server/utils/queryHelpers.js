@@ -63,11 +63,33 @@ function parseMultiOr(input) {
 //==============================
 // Text helpers
 //==============================
-/** Safe case-insensitive regex from user text (supports quoted phrase). */
-function toSafeRegex(s) {
-  const raw = String(s ?? "").replace(/^"|"$/g, "");
-  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(escaped, "i");
+/** exact string escaper (keeps the "old" behavior for callers that expect an escaped pattern string) */
+function escapeRegex(input = "") {
+  return String(input ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+//** make the string input localized to put in the input */
+function foldString(s = "") {
+  try {
+    return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  } catch (e) {
+    return (s || "").toLowerCase();
+  }
+}
+
+/** 
+ * Safe regex builder / pattern helper.
+ * - By default returns a RegExp with case-insensitive flag.
+ * - { asString: true } returns the escaped pattern string (without flags).
+ * - { anchor: true } prefixes '^' to the pattern.
+ */
+function toSafeRegex(input, opts = {}) {
+  const { asString = false, flags = "i", anchor = false } = opts;
+  const raw = String(input ?? "").replace(/^"|"$/g, "");
+  const escaped = escapeRegex(raw);
+  const pattern = (anchor ? "^" : "") + escaped;
+  if (asString) return pattern;
+  return new RegExp(pattern, flags);
 }
 
 /** Quote a phrase for OpenAlex search= (keeps spaces intact) */
@@ -96,6 +118,19 @@ function chooseOp(specificOp, globalOp, defaultOp = "eq") {
   const pick = (v) => (allow.includes(String(v || "").toLowerCase()) ? String(v).toLowerCase() : null);
   return pick(specificOp) || pick(globalOp) || defaultOp;
 }
+
+// Helper to build numeric conditions
+const buildComparison = (filter) => {
+  const { operator, value } = filter;
+  switch (operator) {
+    case ">": return { $gt: value };
+    case ">=": return { $gte: value };
+    case "<": return { $lt: value };
+    case "<=": return { $lte: value };
+    case "=": return value;
+    default: return value;
+  }
+};
 
 /** Mongo: build numeric metric condition; skip only when truly missing/blank/NaN. */
 function buildMetricCond(path, op, value) {
@@ -156,12 +191,15 @@ module.exports = {
   parseMultiOr,
 
   // text
+  escapeRegex,
+  foldString,
   toSafeRegex,
   quotePhrase,
   buildSearchStringFromPhrases,
 
   // operators & metrics
   chooseOp,
+  buildComparison,
   buildMetricCond,              // Mongo
   buildExternalMetricCond,      // OpenAlex
 
