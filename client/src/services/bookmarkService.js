@@ -11,10 +11,10 @@ export const getBookmarks = async () => {
 };
 
 // Add bookmark(s) for researcher profile(s)
-export const addBookmarks = async (researcherProfileIds) => {
+export const addBookmarks = async (researcherIds) => {
   try {
     const response = await api.post("/api/bookmarks", {
-      researcherProfileIds,
+      researcherIds,
     });
     return response.data;
   } catch (error) {

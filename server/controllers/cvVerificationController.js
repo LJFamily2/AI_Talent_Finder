@@ -30,6 +30,15 @@ const {
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
+
+//=============================================================================
+// MODULE EXPORTS
+//=============================================================================
+
+module.exports = {
+  verifyCV,
+};
+
 //=============================================================================
 // MAIN CV VERIFICATION FUNCTION
 //=============================================================================
@@ -49,20 +58,24 @@ const { extractTextFromPDF } = require("../utils/pdfUtils");
  * @returns {Promise<Object>} Comprehensive verification results
  */
 
-const verifyCV = async (file, prioritySource) => {
-  const processTimes = {};
-  const startAll = Date.now();
+async function verifyCV(file, prioritySource) {
   let cvText = "";
   try {
     // Parse PDF to text (with OCR fallback)
-    const startParse = Date.now();
+    console.log("[CV Verification] Starting PDF text extraction...");
+    const pdfStartTime = Date.now();
     cvText = await extractTextFromPDF(file.path);
-    processTimes.parsePDF = Date.now() - startParse;
+    const pdfEndTime = Date.now();
+    console.log(
+      `[CV Verification] PDF text extraction completed in ${
+        pdfEndTime - pdfStartTime
+      }ms`
+    );
+
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
     // Initialize Google AI model
-    const startModel = Date.now();
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-lite-preview-06-17",
@@ -72,226 +85,51 @@ const verifyCV = async (file, prioritySource) => {
         maxOutputTokens: 4096,
       },
     });
-    processTimes.initModel = Date.now() - startModel;
 
     // Extract candidate name using AI
-    const startName = Date.now();
+    console.log("[CV Verification] Starting candidate name extraction...");
+    const nameStartTime = Date.now();
     const candidateName = await extractCandidateNameWithAI(model, cvText);
-    processTimes.extractName = Date.now() - startName;
+    const nameEndTime = Date.now();
+    console.log(
+      `[CV Verification] Candidate name extraction completed in ${
+        nameEndTime - nameStartTime
+      }ms`
+    );
 
     // Extract publications using AI
-    const startPubs = Date.now();
+    console.log("[CV Verification] Starting publications extraction...");
+    const pubStartTime = Date.now();
     const publications = await extractPublicationsFromCV(model, cvText);
-    processTimes.extractPublications = Date.now() - startPubs;
+    const pubEndTime = Date.now();
+    console.log(
+      `[CV Verification] Publications extraction completed in ${
+        pubEndTime - pubStartTime
+      }ms`
+    );
 
     if (!Array.isArray(publications)) {
       throw new Error("Invalid publications array format");
     }
 
     // Verify each publication with both Google Scholar and Scopus
-    const startVerify = Date.now();
-    const verificationResults = await Promise.all(
-      publications.map(async (pub) => {
-        const [scholarResult, scopusResult, openAlexResult] = await Promise.all(
-          [
-            verifyWithGoogleScholar(pub.title, pub.doi, candidateName),
-            verifyWithScopus(pub.title, pub.doi, candidateName),
-            verifyWithOpenAlex(pub.title, pub.doi, candidateName),
-          ]
-        );
-
-        // Combine authors from all three sources
-        let allAuthors = [];
-        let hasAuthorMatch = false;
-
-        // Get authors from Google Scholar
-        if (scholarResult.details?.extractedAuthors) {
-          allAuthors.push(...scholarResult.details.extractedAuthors);
-        }
-        // Get authors from Scopus
-        if (scopusResult.details?.extractedAuthors) {
-          allAuthors.push(...scopusResult.details.extractedAuthors);
-        }
-        // Get authors from OpenAlex
-        if (openAlexResult.details?.extractedAuthors) {
-          allAuthors.push(...openAlexResult.details.extractedAuthors);
-        }
-
-        // Remove duplicates and clean author names
-        allAuthors = [...new Set(allAuthors)].filter(Boolean);
-
-        // Check author match
-        if (candidateName && allAuthors.length > 0) {
-          hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
-        }
-
-        // Get best available link
-        const scholarLink = scholarResult.details?.link;
-        let scopusLink = scopusResult.details?.["prism:doi"]
-          ? `https://doi.org/${scopusResult.details["prism:doi"]}`
-          : undefined;
-        const openAlexLink =
-          openAlexResult.details?.doi || openAlexResult.details?.id;
-        const fallbackLink = createGoogleScholarSearchUrl(pub.title);
-
-        // Return detailed verification result for this publication
-        return {
-          publication: {
-            title: pub.title?.trim() || "",
-            doi: pub.doi?.trim() || null,
-            fullText: pub.publication?.trim() || "",
-          },
-          verification: {
-            google_scholar: {
-              status: scholarResult.status,
-              details: scholarResult.details,
-            },
-            scopus: {
-              status: scopusResult.status,
-              // details: scopusResult.details,
-            },
-            openalex: {
-              status: openAlexResult.status,
-              // details: openAlexResult.details,
-            },
-            displayData: {
-              publication: pub.publication || "Unable to verify",
-              title:
-                scholarResult.details?.title ||
-                scopusResult.details?.["dc:title"] ||
-                openAlexResult.details?.title ||
-                "Unable to verify",
-              author: (() => {
-                // Try Google Scholar author info first
-                if (scholarResult.details?.publication_info?.summary) {
-                  return scholarResult.details.publication_info.summary
-                    .split("-")[0]
-                    .trim();
-                }
-                if (scholarResult.details?.publication_info?.authors) {
-                  return scholarResult.details.publication_info.authors
-                    .map((a) => a.name)
-                    .join(", ");
-                }
-                // Then try Scopus author info
-                if (scopusResult.details?.["dc:creator"]) {
-                  return scopusResult.details["dc:creator"];
-                }
-                // Then try OpenAlex author info
-                if (openAlexResult.details?.extractedAuthors?.length) {
-                  return openAlexResult.details.extractedAuthors.join(", ");
-                }
-                return "Unable to verify";
-              })(),
-              type: (() => {
-                const type =
-                  openAlexResult.details?.type ||
-                  scholarResult.details?.type ||
-                  scopusResult.details?.subtypeDescription ||
-                  "Not specified";
-                return typeof type === "string" ? type.toLowerCase() : type;
-              })(),
-              year: (() => {
-                const currentYear = new Date().getFullYear();
-
-                // Try OpenAlex year first (usually most reliable)
-                if (openAlexResult.details?.publication_year) {
-                  const year =
-                    openAlexResult.details.publication_year.toString();
-                  if (
-                    parseInt(year) >= 1700 &&
-                    parseInt(year) <= currentYear + 1
-                  ) {
-                    return year;
-                  }
-                }
-
-                // Try Scopus coverDate first as it's usually more reliable
-                const scopusDate = scopusResult.details?.["prism:coverDate"];
-                if (scopusDate) {
-                  const year = scopusDate.substring(0, 4);
-                  if (
-                    parseInt(year) >= 1700 &&
-                    parseInt(year) <= currentYear + 1
-                  ) {
-                    return year;
-                  }
-                }
-
-                // Then try Google Scholar summary
-                const summary =
-                  scholarResult.details?.publication_info?.summary;
-                if (summary) {
-                  const match = summary.match(/[,-]?\s*(\d{4})\b/);
-                  const year = match?.[1];
-                  if (
-                    year &&
-                    parseInt(year) >= 1700 &&
-                    parseInt(year) <= currentYear + 1
-                  ) {
-                    return year;
-                  }
-                }
-
-                return "Unable to verify";
-              })(),
-              citedBy: (() => {
-                // Get citation counts from both sources
-                const scholarCitations = parseInt(
-                  scholarResult.details?.inline_links?.cited_by?.total || "0"
-                );
-                const scopusCitations = parseInt(
-                  scopusResult.details?.["citedby-count"] || "0"
-                );
-
-                // Return the higher citation count
-                return Math.max(scholarCitations, scopusCitations).toString();
-              })(),
-              link: (() => {
-                // Try to get any link in order of preference
-                if (scopusLink) return scopusLink;
-                if (openAlexLink) return openAlexLink;
-                if (scholarLink) return scholarLink;
-                return fallbackLink || "No link available";
-              })(),
-              status: (() => {
-                // If any source shows verified with author match
-                if (
-                  scholarResult.status === "verified" ||
-                  scopusResult.status === "verified" ||
-                  openAlexResult.status === "verified"
-                ) {
-                  return "verified";
-                }
-                // If any source shows verified but not same author
-                if (
-                  scholarResult.status ===
-                    "verified but not same author name" ||
-                  scopusResult.status === "verified but not same author name" ||
-                  openAlexResult.status === "verified but not same author name"
-                ) {
-                  return "verified but not same author name";
-                }
-                // If none are verified
-                return "not verified";
-              })(),
-            },
-          },
-          authorVerification: {
-            hasAuthorMatch: hasAuthorMatch,
-            authorIds: {
-              google_scholar: scholarResult.details?.authorId || null,
-              scopus: scopusResult.details?.authorId || null,
-              openalex: openAlexResult.details?.authorId || null,
-            },
-          },
-        };
-      })
+    console.log(
+      `[CV Verification] Starting verification of ${publications.length} publications...`
     );
-    processTimes.verifyPublications = Date.now() - startVerify;
+    const verificationStartTime = Date.now();
+    const verificationResults = await Promise.all(
+      publications.map((pub) =>
+        processPublicationVerification(pub, candidateName)
+      )
+    );
+    const verificationEndTime = Date.now();
+    console.log(
+      `[CV Verification] Publication verification completed in ${
+        verificationEndTime - verificationStartTime
+      }ms`
+    );
 
     // Aggregate author details from multiple sources
-    const startAggregate = Date.now();
     // Find publications with author matches and collect IDs
     const allAuthorIds = {
       google_scholar: null,
@@ -324,11 +162,20 @@ const verifyCV = async (file, prioritySource) => {
     if (Object.values(allAuthorIds).some((id) => id)) {
       try {
         // Use the aggregator to get comprehensive author details
+        console.log("[CV Verification] Starting author details aggregation...");
+        const aggregationStartTime = Date.now();
         const rawAuthorDetails = await aggregateAuthorDetails(
           allAuthorIds,
           candidateName,
           prioritySource
         );
+        const aggregationEndTime = Date.now();
+        console.log(
+          `[CV Verification] Author details aggregation completed in ${
+            aggregationEndTime - aggregationStartTime
+          }ms`
+        );
+
         if (rawAuthorDetails) {
           // Transform the result to match the expected structure
           aggregatedAuthorDetails = {
@@ -349,11 +196,6 @@ const verifyCV = async (file, prioritySource) => {
         console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
       }
     }
-    processTimes.aggregateAuthors = Date.now() - startAggregate;
-
-    processTimes.total = Date.now() - startAll;
-    // console.log("[CV Verification] Process timing (ms):", processTimes);
-
     return {
       success: true,
       candidateName: candidateName,
@@ -374,14 +216,346 @@ const verifyCV = async (file, prioritySource) => {
       ).length,
       results: verificationResults,
       authorDetails: aggregatedAuthorDetails,
-      timings: processTimes,
     };
   } catch (error) {
     console.error("[CV Verification] Error:", error);
     throw error;
   }
+}
+
+//=============================================================================
+// HELPER FUNCTIONS FOR DISPLAY DATA EXTRACTION
+//=============================================================================
+
+/**
+ * Extract author information from verification results
+ * @param {Object} scholarResult - Google Scholar verification result
+ * @param {Object} scopusResult - Scopus verification result
+ * @param {Object} openAlexResult - OpenAlex verification result
+ * @returns {string} Author information or fallback message
+ */
+const extractAuthorInfo = (scholarResult, scopusResult, openAlexResult) => {
+  // Try Google Scholar author info first
+  if (scholarResult.details?.publication_info?.summary) {
+    return scholarResult.details.publication_info.summary.split("-")[0].trim();
+  }
+  if (scholarResult.details?.publication_info?.authors) {
+    return scholarResult.details.publication_info.authors
+      .map((a) => a.name)
+      .join(", ");
+  }
+  // Then try Scopus author info
+  if (scopusResult.details?.["dc:creator"]) {
+    return scopusResult.details["dc:creator"];
+  }
+  // Then try OpenAlex author info
+  if (openAlexResult.details?.extractedAuthors?.length) {
+    return openAlexResult.details.extractedAuthors.join(", ");
+  }
+  return "Unable to verify";
 };
 
-module.exports = {
-  verifyCV,
+/**
+ * Extract publication type from verification results
+ * @param {Object} scholarResult - Google Scholar verification result
+ * @param {Object} scopusResult - Scopus verification result
+ * @param {Object} openAlexResult - OpenAlex verification result
+ * @returns {string} Publication type
+ */
+const extractPublicationType = (
+  scholarResult,
+  scopusResult,
+  openAlexResult
+) => {
+  const type =
+    openAlexResult.details?.type ||
+    scholarResult.details?.type ||
+    scopusResult.details?.subtypeDescription ||
+    "Not specified";
+  return typeof type === "string" ? type.toLowerCase() : type;
+};
+
+/**
+ * Extract publication year from verification results
+ * @param {Object} scholarResult - Google Scholar verification result
+ * @param {Object} scopusResult - Scopus verification result
+ * @param {Object} openAlexResult - OpenAlex verification result
+ * @returns {string} Publication year or fallback message
+ */
+const extractPublicationYear = (
+  scholarResult,
+  scopusResult,
+  openAlexResult
+) => {
+  const currentYear = new Date().getFullYear();
+
+  // Try OpenAlex year first (usually most reliable)
+  if (openAlexResult.details?.publication_year) {
+    const year = openAlexResult.details.publication_year.toString();
+    if (parseInt(year) >= 1700 && parseInt(year) <= currentYear + 1) {
+      return year;
+    }
+  }
+
+  // Try Scopus coverDate first as it's usually more reliable
+  const scopusDate = scopusResult.details?.["prism:coverDate"];
+  if (scopusDate) {
+    const year = scopusDate.substring(0, 4);
+    if (parseInt(year) >= 1700 && parseInt(year) <= currentYear + 1) {
+      return year;
+    }
+  }
+
+  // Then try Google Scholar summary
+  const summary = scholarResult.details?.publication_info?.summary;
+  if (summary) {
+    const match = summary.match(/[,-]?\s*(\d{4})\b/);
+    const year = match?.[1];
+    if (year && parseInt(year) >= 1700 && parseInt(year) <= currentYear + 1) {
+      return year;
+    }
+  }
+
+  return "Unable to verify";
+};
+
+/**
+ * Extract citation count from verification results
+ * @param {Object} scholarResult - Google Scholar verification result
+ * @param {Object} scopusResult - Scopus verification result
+ * @returns {string} Citation count
+ */
+const extractCitationCount = (scholarResult, scopusResult) => {
+  // Get citation counts from both sources
+  const scholarCitations = parseInt(
+    scholarResult.details?.inline_links?.cited_by?.total || "0"
+  );
+  const scopusCitations = parseInt(
+    scopusResult.details?.["citedby-count"] || "0"
+  );
+
+  // Return the higher citation count
+  return Math.max(scholarCitations, scopusCitations).toString();
+};
+
+/**
+ * Extract best available link from verification results
+ * @param {string} scholarLink - Google Scholar link
+ * @param {string} scopusLink - Scopus link
+ * @param {string} openAlexLink - OpenAlex link
+ * @param {string} fallbackLink - Fallback search link
+ * @returns {string} Best available link
+ */
+const extractBestLink = (
+  scholarLink,
+  scopusLink,
+  openAlexLink,
+  fallbackLink
+) => {
+  if (scopusLink) return scopusLink;
+  if (openAlexLink) return openAlexLink;
+  if (scholarLink) return scholarLink;
+  return fallbackLink || "No link available";
+};
+
+/**
+ * Determine verification status from multiple sources
+ * @param {Object} scholarResult - Google Scholar verification result
+ * @param {Object} scopusResult - Scopus verification result
+ * @param {Object} openAlexResult - OpenAlex verification result
+ * @returns {string} Overall verification status
+ */
+const determineVerificationStatus = (
+  scholarResult,
+  scopusResult,
+  openAlexResult
+) => {
+  // If any source shows verified with author match
+  if (
+    scholarResult.status === "verified" ||
+    scopusResult.status === "verified" ||
+    openAlexResult.status === "verified"
+  ) {
+    return "verified";
+  }
+  // If any source shows verified but not same author
+  if (
+    scholarResult.status === "verified but not same author name" ||
+    scopusResult.status === "verified but not same author name" ||
+    openAlexResult.status === "verified but not same author name"
+  ) {
+    return "verified but not same author name";
+  }
+  // If none are verified
+  return "not verified";
+};
+
+/**
+ * Process a single publication through verification pipeline
+ * @param {Object} pub - Publication object with title, doi, etc.
+ * @param {string} candidateName - Name of the candidate
+ * @returns {Promise<Object>} Verification result for the publication
+ */
+const processPublicationVerification = async (pub, candidateName) => {
+  console.log(
+    `[Publication Verification] Starting verification for: "${pub.title}"`
+  );
+  const overallStartTime = Date.now();
+
+  const scholarStartTime = Date.now();
+  const scopusStartTime = Date.now();
+  const openAlexStartTime = Date.now();
+
+  const [scholarResult, scopusResult, openAlexResult] = await Promise.all([
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithGoogleScholar(
+        pub.title,
+        pub.doi,
+        candidateName
+      );
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] Google Scholar verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithScopus(pub.title, pub.doi, candidateName);
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] Scopus verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+    (async () => {
+      const start = Date.now();
+      const result = await verifyWithOpenAlex(
+        pub.title,
+        pub.doi,
+        candidateName
+      );
+      const end = Date.now();
+      console.log(
+        `[Publication Verification] OpenAlex verification completed in ${
+          end - start
+        }ms for: "${pub.title}"`
+      );
+      return result;
+    })(),
+  ]);
+
+  const overallEndTime = Date.now();
+  console.log(
+    `[Publication Verification] Overall verification completed in ${
+      overallEndTime - overallStartTime
+    }ms for: "${pub.title}"`
+  );
+
+  // Combine authors from all three sources
+  let allAuthors = [];
+  let hasAuthorMatch = false;
+
+  // Create a mock scholarResult to maintain compatibility
+  // const scholarResult = {
+  //   status: "not verified",
+  //   details: null,
+  // };
+
+  // Get authors from Google Scholar
+  if (scholarResult.details?.extractedAuthors) {
+    allAuthors.push(...scholarResult.details.extractedAuthors);
+  }
+  // Get authors from Scopus
+  if (scopusResult.details?.extractedAuthors) {
+    allAuthors.push(...scopusResult.details.extractedAuthors);
+  }
+  // Get authors from OpenAlex
+  if (openAlexResult.details?.extractedAuthors) {
+    allAuthors.push(...openAlexResult.details.extractedAuthors);
+  }
+
+  // Remove duplicates and clean author names
+  allAuthors = [...new Set(allAuthors)].filter(Boolean);
+
+  // Check author match
+  if (candidateName && allAuthors.length > 0) {
+    hasAuthorMatch = checkAuthorNameMatch(candidateName, allAuthors);
+  }
+
+  // Get best available link
+  const scholarLink = scholarResult.details?.link;
+  let scopusLink = scopusResult.details?.["prism:doi"]
+    ? `https://doi.org/${scopusResult.details["prism:doi"]}`
+    : undefined;
+  const openAlexLink =
+    openAlexResult.details?.doi || openAlexResult.details?.id;
+  const fallbackLink = createGoogleScholarSearchUrl(pub.title);
+
+  // Return detailed verification result for this publication
+  return {
+    publication: {
+      title: pub.title?.trim() || "",
+      doi: pub.doi?.trim() || null,
+      fullText: pub.publication?.trim() || "",
+    },
+    verification: {
+      google_scholar: {
+        status: scholarResult.status,
+        details: scholarResult.details,
+      },
+      scopus: {
+        status: scopusResult.status,
+        details: scopusResult.details,
+      },
+      openalex: {
+        status: openAlexResult.status,
+        details: openAlexResult.details,
+      },
+      displayData: {
+        publication: pub.publication || "Unable to verify",
+        title:
+          scholarResult.details?.title ||
+          scopusResult.details?.["dc:title"] ||
+          openAlexResult.details?.title ||
+          "Unable to verify",
+        author: extractAuthorInfo(scholarResult, scopusResult, openAlexResult),
+        type: extractPublicationType(
+          scholarResult,
+          scopusResult,
+          openAlexResult
+        ),
+        year: extractPublicationYear(
+          scholarResult,
+          scopusResult,
+          openAlexResult
+        ),
+        citedBy: extractCitationCount(scholarResult, scopusResult),
+        link: extractBestLink(
+          scholarLink,
+          scopusLink,
+          openAlexLink,
+          fallbackLink
+        ),
+        status: determineVerificationStatus(
+          scholarResult,
+          scopusResult,
+          openAlexResult
+        ),
+      },
+    },
+    authorVerification: {
+      hasAuthorMatch: hasAuthorMatch,
+      authorIds: {
+        google_scholar: scholarResult.details?.authorId || null,
+        scopus: scopusResult.details?.authorId || null,
+        openalex: openAlexResult.details?.authorId || null,
+      },
+    },
+  };
 };

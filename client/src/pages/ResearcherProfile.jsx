@@ -3,15 +3,26 @@ import { useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { Chip, Button, CircularProgress } from "@mui/material";
+import {
+  Chip,
+  Button,
+  ButtonGroup,
+  Menu,
+  MenuItem,
+  CircularProgress,
+  Skeleton,
+  Stack,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import {
   getResearcherProfile,
   getResearcherWorks,
   exportResearcherProfile,
 } from "../services/api";
-
+import { exportResearcherById } from "../services/pdfExportService";
 export default function ResearcherProfile() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [researcher, setResearcher] = useState(null);
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,14 +33,18 @@ export default function ResearcherProfile() {
   const [totalWorks, setTotalWorks] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Dropdown state for export button
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
   // Function to fetch works for a specific page
   const fetchWorksPage = useCallback(
     async (page) => {
-      if (!id) return;
+      if (!slug) return;
 
       setWorksLoading(true);
       try {
-        const worksData = await getResearcherWorks(id, page, worksPerPage);
+        const worksData = await getResearcherWorks(slug, page, worksPerPage);
         setWorks(worksData.results || []);
         setTotalWorks(worksData.meta?.count || 0);
         setTotalPages(worksData.meta?.total_pages || 0);
@@ -40,16 +55,33 @@ export default function ResearcherProfile() {
         setWorksLoading(false);
       }
     },
-    [id, worksPerPage]
+    [slug, worksPerPage]
   );
 
-  const handleExport = async () => {
+  const handleExportMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const getExportFileName = () => {
+    const safeName = (researcher?.basic_info?.name || "researcher")
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_]/g, "");
+    const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    return `${safeName}_profile_${dateStr}`;
+  };
+
+  const handleExportXLSX = async () => {
+    handleExportMenuClose();
     try {
-      const blob = await exportResearcherProfile(id);
+      const blob = await exportResearcherProfile(slug);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `researcher_profile_${id}.xlsx`;
+      a.download = `${getExportFileName()}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -60,20 +92,24 @@ export default function ResearcherProfile() {
     }
   };
 
+  const handleExportPDF = async () => {
+    handleExportMenuClose();
+    try {
+      await exportResearcherById(slug);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("Failed to export PDF. Please try again.");
+    }
+  };
+
   useEffect(() => {
     const fetchResearcherData = async () => {
-      if (!id) return;
+      if (!slug) return;
 
       try {
         setLoading(true);
-        const researcherData = await getResearcherProfile(id);
+        const researcherData = await getResearcherProfile(slug);
         setResearcher(researcherData);
-
-        // Fetch works data if we have an OpenAlex ID
-        if (id) {
-          // Fetch first page of works
-          await fetchWorksPage(1);
-        }
       } catch (error) {
         console.error("Error fetching researcher:", error);
         setError(error.message);
@@ -83,21 +119,59 @@ export default function ResearcherProfile() {
     };
 
     fetchResearcherData();
-  }, [id, fetchWorksPage]);
+  }, [slug]);
+
+  // Fetch works when researcher is loaded or page changes
+  useEffect(() => {
+    if (researcher) {
+      fetchWorksPage(currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, researcher]);
 
   // Effect to fetch works when page changes
   useEffect(() => {
-    if (researcher && id) {
+    if (researcher && slug) {
       fetchWorksPage(currentPage);
     }
-  }, [currentPage, researcher, id, fetchWorksPage]);
+  }, [currentPage, researcher, slug, fetchWorksPage]);
 
   if (loading) {
     return (
       <div className="bg-gray-100 min-h-screen">
         <Header />
-        <div className="flex justify-center items-center h-64">
-          <CircularProgress />
+        <div className="mx-10 mt-4 px-4">
+          {/* Profile skeleton */}
+          <div className="bg-white p-4 rounded-md shadow space-y-4 mb-6">
+            <Skeleton variant="text" width={220} height={40} />
+            <Skeleton variant="text" width={120} />
+            <Skeleton variant="rectangular" width="100%" height={24} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <div>
+                <Skeleton variant="text" width={180} />
+                <Skeleton variant="text" width={120} />
+                <Skeleton variant="text" width={100} />
+              </div>
+              <div>
+                <Skeleton variant="text" width={180} />
+                <Skeleton variant="text" width={120} />
+                <Skeleton variant="text" width={100} />
+              </div>
+            </div>
+          </div>
+          {/* Works skeleton */}
+          <div className="bg-white p-4 rounded-md shadow">
+            <Skeleton variant="text" width={180} height={32} />
+            {[...Array(5)].map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                width="100%"
+                height={32}
+                className="mb-2"
+              />
+            ))}
+          </div>
         </div>
         <Footer />
       </div>
@@ -138,7 +212,8 @@ export default function ResearcherProfile() {
       total_citations = 0,
       total_works = 0,
     } = {},
-    research_areas: { fields = [], topics = [] } = {},
+    // support either nested fields.topics shape or legacy topics array
+    research_areas: { fields = [], topics: legacyTopics = [] } = {},
     citation_trends: { counts_by_year = [] } = {},
     current_affiliation: {
       institution: currentInst = "",
@@ -147,14 +222,44 @@ export default function ResearcherProfile() {
     current_affiliations = [],
   } = researcher;
 
+  // derive topics from fields if present, otherwise fall back to legacy topics
+  let topics = [];
+  if (Array.isArray(fields) && fields.length > 0) {
+    for (const fld of fields) {
+      if (Array.isArray(fld.topics)) {
+        for (const t of fld.topics) {
+          // keep only display_name for previous UI; include field name if needed
+          topics.push({
+            display_name: t.display_name || t.name || "",
+            field: fld.display_name || "",
+          });
+        }
+      }
+    }
+  } else if (Array.isArray(legacyTopics) && legacyTopics.length > 0) {
+    topics = legacyTopics.map((t) =>
+      typeof t === "string" ? { display_name: t } : { display_name: t.display_name || t.name || "" }
+    );
+  }
+
+  const currentAffiliations =
+    Array.isArray(researcher.current_affiliations) &&
+      researcher.current_affiliations.length > 0
+      ? researcher.current_affiliations
+      : [];
+
   const pastAffiliations = affiliations.filter(
     (aff) =>
       aff.institution?.display_name !== (currentInstDisplayName || currentInst)
   );
 
-  const citationYears = counts_by_year.map((d) => d.year).reverse();
+  const citationYears = counts_by_year
+    .map((d) => String(d.year).replace(/,/g, ""))
+    .reverse();
   const citationCounts = counts_by_year.map((d) => d.cited_by_count).reverse();
-  const workYears = counts_by_year.map((d) => d.year).reverse();
+  const workYears = counts_by_year
+    .map((d) => String(d.year).replace(/,/g, ""))
+    .reverse();
   const workCounts = counts_by_year.map((d) => d.works_count).reverse();
 
   // Format works data from OpenAlex API (removed slice to show all works)
@@ -192,79 +297,105 @@ export default function ResearcherProfile() {
   return (
     <div className="bg-gray-100 min-h-screen">
       <Header />
-      <div className="mx-10 mt-4 px-4 flex justify-between items-center">
-        <button
-          onClick={() => window.history.back()}
-          className="text-blue-600 hover:underline text-sm"
-        >
-          ← Back
-        </button>
+      {/* Back Btn & Export Btn */}
+      <div className="mx-10 mt-5 px-4 flex justify-between items-center">
+        <Stack direction="row" spacing={2}>
+          <Button
+            size="sm"
+            variant="text"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => window.history.back()}
+          >
+            Back
+          </Button>
+        </Stack>
 
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={handleExport}
+        <ButtonGroup variant="contained" color="primary">
+          <Button
+            onClick={handleExportMenuClick}
+            endIcon={<ArrowDropDownIcon />}
+            aria-controls={open ? "export-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? "true" : undefined}
+          >
+            Export Profile
+          </Button>
+        </ButtonGroup>
+        <Menu
+          id="export-menu"
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleExportMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
         >
-          Export Profile
-        </Button>
+          <MenuItem onClick={handleExportXLSX}>Export as XLSX</MenuItem>
+          <MenuItem onClick={handleExportPDF}>Export as PDF</MenuItem>
+        </Menu>
       </div>
 
+      {/* Profile Section */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 mx-10">
         {/* LEFT Column (8 cols) */}
         <div className="md:col-span-8 space-y-4">
           {/* Researcher Info Card */}
           <div className="bg-white p-4 rounded-md shadow space-y-4 self-start">
-            {/* Top: Name */}
-            <div className="flex items-center space-x-4">
-              <div>
-                <h2 className="text-xl font-semibold">{name}</h2>
-                <p className="text-sm text-gray-600">Researcher Profile</p>
-              </div>
+            {/* Top: Name + ORCID */}
+            <div className="flex flex-col space-y-2">
+              <h2 className="text-2xl font-semibold">{name}</h2>
+              {orcid && (
+                <p className="text-md">
+                  <span className="">ORCID:</span>{" "}
+                  <a
+                    href={orcid}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 underline text-md hover:text-blue-600"
+                  >
+                    {orcid}
+                  </a>
+                </p>
+              )}
             </div>
 
             {/* Line break */}
             <hr className="my-5 border-gray-300" />
 
-            {/* Bottom: 2-column layout: Left = ORCID + Affils, Right = Research Areas */}
+            {/* Bottom: 2-column layout: Left = Affils, Right = Research Areas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left column: ORCID + Affiliations */}
-              <div className="space-y-4 pr-4">
-                {orcid && (
-                  <p className="text-md">
-                    <span className="font-semibold">ORCID:</span>{" "}
-                    <a
-                      href={`https://orcid.org/${orcid}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      {orcid}
-                    </a>
-                  </p>
-                )}
-
+              {/* Left column: Affiliations */}
+              <div className="space-y-10 pr-4">
                 <div>
                   <h3 className="font-semibold text-gray-700">
-                    Current Affiliations
+                    {currentAffiliations.length == 1
+                      ? "Current Affiliation"
+                      : "Current Affiliations"}
                   </h3>
-                  {current_affiliations.length > 0 ? (
-                    <ul className="list-disc list-inside text-sm text-gray-700">
-                      {current_affiliations.map((aff, i) => (
-                        <li key={i}>{aff.display_name}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm">{currentInstDisplayName || currentInst || "N/A"}</p>
-                  )}
+                  <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
+                    {currentAffiliations.length > 0 ? (
+                      currentAffiliations.map((aff, i) => (
+                        <li key={i}>{aff.display_name || "N/A"}</li>
+                      ))
+                    ) : (
+                      <li>N/A</li>
+                    )}
+                  </ul>
                 </div>
 
                 {pastAffiliations.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-gray-700">
-                      Past Affiliations
+                      {pastAffiliations.length == 1
+                        ? "Past Affiliation"
+                        : "Past Affiliations"}
                     </h3>
-                    <ul className="list-disc list-inside text-sm text-gray-700">
+                    <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
                       {pastAffiliations.map((aff, i) => (
                         <li key={i}>{aff.institution?.display_name}</li>
                       ))}
@@ -274,10 +405,10 @@ export default function ResearcherProfile() {
               </div>
 
               {/* Right column: Research Areas, with left border */}
-              <div className="space-y-4 border-t md:border-t-0 md:border-l md:pl-6 border-gray-300">
+              <div className="space-y-10 border-t md:border-t-0 md:border-l md:pl-6 border-gray-300">
                 {fields.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-sm mb-2">Fields</h3>
+                    <h3 className="font-semibold mb-2">Fields</h3>
                     <div className="flex flex-wrap gap-2">
                       {fields.map((field, i) => (
                         <Chip
@@ -294,15 +425,15 @@ export default function ResearcherProfile() {
 
                 {topics.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-sm mb-2">Topics</h3>
-                    <div className="space-y-1">
+                    <h3 className="font-semibold mb-2">Topics</h3>
+                    <div className="space-y-2">
                       {topics.map((topic, i) => (
                         <div
                           key={i}
-                          className="flex justify-between text-sm text-gray-700"
+                          className="flex justify-between text-sm text-gray-700 border-b"
                         >
                           <span>{topic.display_name}</span>
-                          <span>{topic.count}</span>
+                          {/* <span>{topic.count}</span> */}
                         </div>
                       ))}
                     </div>
@@ -458,8 +589,8 @@ export default function ResearcherProfile() {
             <h2 className="text-xl font-semibold">Research Metrics</h2>
 
             <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-              <div>Total Works: {total_works}</div>
-              <div>Total Citations: {total_citations}</div>
+              <div>Total Works: {total_works.toLocaleString()}</div>
+              <div>Total Citations: {total_citations.toLocaleString()}</div>
             </div>
 
             <table className="w-full text-sm text-left mt-2">
@@ -472,11 +603,11 @@ export default function ResearcherProfile() {
               <tbody>
                 <tr>
                   <td className="py-1 px-2">h-index</td>
-                  <td className="py-1 px-2">{h_index}</td>
+                  <td className="py-1 px-2">{h_index.toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td className="py-1 px-2">i10-index</td>
-                  <td className="py-1 px-2">{i10_index}</td>
+                  <td className="py-1 px-2">{i10_index.toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td className="py-1 px-2">2-Year Mean Citedness</td>
@@ -494,7 +625,7 @@ export default function ResearcherProfile() {
               <h3 className="text-md font-semibold mb-2">Works Per Year</h3>
               <BarChart
                 xAxis={[{ scaleType: "band", data: workYears }]}
-                series={[{ data: workCounts, label: "Works" }]}
+                series={[{ data: workCounts }]}
                 height={250}
               />
             </div>
@@ -506,14 +637,13 @@ export default function ResearcherProfile() {
               <h3 className="text-md font-semibold mb-2">Citations Per Year</h3>
               <BarChart
                 xAxis={[{ scaleType: "band", data: citationYears }]}
-                series={[{ data: citationCounts, label: "Citations" }]}
+                series={[{ data: citationCounts }]}
                 height={250}
               />
             </div>
           )}
         </div>
       </div>
-
       <Footer />
     </div>
   );

@@ -13,9 +13,16 @@
 const fs = require("fs");
 const path = require("path");
 const { SimpleHeaderClassifier } = require("./simpleHeaderClassifier");
+const {
+  DataSplitter,
+  MetricsCalculator,
+  MLFileUtils,
+  ML_CONFIG,
+  PATHS,
+} = require("../utils/headerFilterUtils");
 
-const TRAINING_DIR = path.join(__dirname, "../ml");
-const MODEL_DIR = path.join(__dirname, "../models");
+const TRAINING_DIR = PATHS.TRAINING_DIR;
+const MODEL_DIR = PATHS.MODEL_DIR;
 const MODEL_PATH = path.join(MODEL_DIR, "header_classifier.json");
 
 /**
@@ -54,43 +61,6 @@ function trainTestSplit(data, testRatio = 0.2) {
 }
 
 /**
- * Find optimal threshold for different objectives
- * @param {Array} thresholds - Array of threshold values
- * @param {Array} precisions - Array of precision values
- * @param {Array} recalls - Array of recall values
- * @returns {Object} Optimal thresholds for different metrics
- */
-function findOptimalThresholds(thresholds, precisions, recalls) {
-  let bestF1Threshold = 0;
-  let bestF1 = 0;
-  let precisionThreshold95 = null;
-
-  for (let i = 0; i < thresholds.length; i++) {
-    const precision = precisions[i];
-    const recall = recalls[i];
-    const f1 =
-      precision + recall > 0
-        ? (2 * precision * recall) / (precision + recall)
-        : 0;
-
-    if (f1 > bestF1) {
-      bestF1 = f1;
-      bestF1Threshold = thresholds[i];
-    }
-
-    if (precision >= 95 && precisionThreshold95 === null) {
-      precisionThreshold95 = thresholds[i];
-    }
-  }
-
-  return {
-    optimalF1Threshold: bestF1Threshold,
-    optimalF1Score: bestF1,
-    precisionThreshold95: precisionThreshold95,
-  };
-}
-
-/**
  * Evaluate model performance with detailed metrics
  */
 async function evaluateModelMetrics() {
@@ -109,11 +79,12 @@ async function evaluateModelMetrics() {
       return;
     }
 
-    const allData = JSON.parse(fs.readFileSync(trainingDataPath));
+    const allData = MLFileUtils.loadJsonFile(trainingDataPath, []);
     console.log(`📊 Loaded ${allData.length} total examples`);
 
     // Create train/test split
-    const { trainData, testData } = trainTestSplit(allData, 0.4);
+    const { trainData, validationData: testData } =
+      DataSplitter.stratifiedSplit(allData, 0.4);
     console.log(
       `🔄 Split: ${trainData.length} training, ${testData.length} testing`
     );
@@ -170,7 +141,7 @@ async function evaluateModelMetrics() {
       classifier.threshold = originalThreshold; // Restore original threshold
     }
 
-    const optimalThresholds = findOptimalThresholds(
+    const optimalThresholds = MetricsCalculator.findOptimalThresholds(
       thresholds,
       precisions,
       recalls
@@ -337,7 +308,7 @@ async function quickMetricsCheck() {
       return;
     }
 
-    const data = JSON.parse(fs.readFileSync(trainingDataPath));
+    const data = MLFileUtils.loadJsonFile(trainingDataPath, []);
     const testData = data.slice(0, 200); // Quick test on subset
 
     const classifier = new SimpleHeaderClassifier();
@@ -357,19 +328,12 @@ async function quickMetricsCheck() {
 }
 
 // Command line interface
-if (require.main === module) {
+(async () => {
   const args = process.argv.slice(2);
 
   if (args.includes("--quick")) {
-    quickMetricsCheck();
+    await quickMetricsCheck();
   } else {
-    evaluateModelMetrics();
+    await evaluateModelMetrics();
   }
-}
-
-module.exports = {
-  evaluateModelMetrics,
-  quickMetricsCheck,
-  trainTestSplit,
-  findOptimalThresholds,
-};
+})();

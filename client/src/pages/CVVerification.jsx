@@ -22,7 +22,7 @@ export default function CVVerification() {
     const [filterStatus, setFilterStatus] = useState('All')
 
     const [page, setPage] = useState(1)
-    const itemsPerPage = 3
+    const itemsPerPage = 10
 
     // Navigation and state logic
     const location = useLocation();

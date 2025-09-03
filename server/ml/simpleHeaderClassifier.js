@@ -1,14 +1,28 @@
 /**
  * Simple Header Classifier
  *
- * A lightweight rule-based classifier that learns from training data
+ * A lightweight rule-based classifier that learns from training data.
+ * Refactored to use shared utilities for better maintainability.
  */
 
 const fs = require("fs");
 const path = require("path");
+const {
+  DataSplitter,
+  DatasetBalancer,
+  FeatureExtractor,
+  MetricsCalculator,
+  MLFileUtils,
+  PATHS,
+} = require("../utils/headerFilterUtils");
 
 class SimpleHeaderClassifier {
   constructor() {
+    // Configurable threshold search range
+    this.thresholdMin = -3;
+    this.thresholdMax = 3;
+    this.thresholdStep = 0.1;
+
     this.rules = {
       isAllUpperCase: { weight: 0 },
       containsYear: { weight: 0 },
@@ -29,11 +43,7 @@ class SimpleHeaderClassifier {
    */
   loadKnownHeaders() {
     try {
-      const headersPath = path.join(__dirname, "../ml/detected_headers.json");
-      this.knownHeaders = JSON.parse(fs.readFileSync(headersPath));
-      console.log(
-        `Loaded ${this.knownHeaders.length} known publication headers`
-      );
+      this.knownHeaders = MLFileUtils.loadJsonFile(PATHS.DETECTED_HEADERS, []);
     } catch (error) {
       console.warn("Could not load detected headers:", error);
       this.knownHeaders = [];
@@ -44,19 +54,28 @@ class SimpleHeaderClassifier {
    * Train the classifier using labeled data
    */
   train(trainingData) {
-    // Balance the dataset to address class imbalance
-    const balancedData = this.balanceDataset(trainingData);
-    // Stratified split for threshold learning
-    const { trainData, validationData } = this.stratifiedSplit(
-      balancedData,
-      0.2
+    // FIRST: Split raw data before any processing to ensure unbiased validation
+    const { trainData: rawTrainData, validationData } =
+      DataSplitter.stratifiedSplit(
+        trainingData, // Use original unbalanced data
+        0.2
+      );
+
+    // THEN: Balance only the training portion
+    const balancedTrainData = DatasetBalancer.balanceDataset(rawTrainData);
+
+    const headerExamples = balancedTrainData.filter((item) => item.isHeader);
+    const nonHeaderExamples = balancedTrainData.filter(
+      (item) => !item.isHeader
     );
 
-    const headerExamples = trainData.filter((item) => item.isHeader);
-    const nonHeaderExamples = trainData.filter((item) => !item.isHeader);
-
     console.log(
-      `Headers: ${headerExamples.length}, Non-headers: ${nonHeaderExamples.length}`
+      `Training - Headers: ${headerExamples.length}, Non-headers: ${nonHeaderExamples.length}`
+    );
+    console.log(
+      `Validation - Headers: ${
+        validationData.filter((item) => item.isHeader).length
+      }, Non-headers: ${validationData.filter((item) => !item.isHeader).length}`
     );
 
     // Calculate weights based on feature prevalence in headers vs non-headers
@@ -103,57 +122,24 @@ class SimpleHeaderClassifier {
   }
 
   /**
-   * Balance the dataset by undersampling non-headers
-   */
-  balanceDataset(data) {
-    const headers = data.filter((item) => item.isHeader);
-    const nonHeaders = data.filter((item) => !item.isHeader);
-    // Undersample non-headers to 3x headers (or all if less)
-    const targetSize = Math.min(headers.length * 3, nonHeaders.length);
-    const shuffledNonHeaders = nonHeaders.sort(() => Math.random() - 0.5);
-    const balancedNonHeaders = shuffledNonHeaders.slice(0, targetSize);
-    return [...headers, ...balancedNonHeaders].sort(() => Math.random() - 0.5);
-  }
-
-  /**
-   * Stratified split for train/validation
-   */
-  stratifiedSplit(data, valRatio = 0.2) {
-    const headers = data.filter((item) => item.isHeader);
-    const nonHeaders = data.filter((item) => !item.isHeader);
-    const valHeadersCount = Math.floor(headers.length * valRatio);
-    const valNonHeadersCount = Math.floor(nonHeaders.length * valRatio);
-    const shuffledHeaders = headers.sort(() => Math.random() - 0.5);
-    const shuffledNonHeaders = nonHeaders.sort(() => Math.random() - 0.5);
-    const validationData = [
-      ...shuffledHeaders.slice(0, valHeadersCount),
-      ...shuffledNonHeaders.slice(0, valNonHeadersCount),
-    ];
-    const trainData = [
-      ...shuffledHeaders.slice(valHeadersCount),
-      ...shuffledNonHeaders.slice(valNonHeadersCount),
-    ];
-    return { trainData, validationData };
-  }
-
-  /**
    * Find optimal threshold using validation data
    */
   findOptimalThreshold(validationData) {
     let bestThreshold = 0;
     let bestF1 = 0;
 
-    // Test different thresholds
-    for (let threshold = -3; threshold <= 3; threshold += 0.1) {
+    // Test different thresholds using configurable range
+    for (let threshold = this.thresholdMin; threshold <= this.thresholdMax; threshold += this.thresholdStep) {
       let truePositives = 0;
       let falsePositives = 0;
       let falseNegatives = 0;
 
       validationData.forEach((example, index) => {
-        const features = this.extractFeatures(
+        const features = FeatureExtractor.extractFeatures(
           example.text,
           index,
-          validationData.length
+          validationData.length,
+          this.knownHeaders
         );
         let score = 0;
 
@@ -224,75 +210,10 @@ class SimpleHeaderClassifier {
         return features.hasColon;
       case "matchesPublicationPattern":
         return features.matchesPublicationPattern;
-      
-        default:
+
+      default:
         return false;
     }
-  }
-
-  /**
-   * Extract features from a line
-   */
-  extractFeatures(line, lineIndex, totalLines) {
-    // Add text to features for use in evaluateFeature
-    const keywords = [
-      "publication",
-      "paper",
-      "article",
-      "journal",
-      "conference",
-      "book",
-      "chapter",
-      "research",
-      "scholarly",
-      "academic",
-      "peer",
-      "reviewed",
-      "proceedings",
-      "manuscript",
-      "thesis",
-      "patent",
-      "report",
-      "working paper",
-      "magazine",
-      "editorial",
-      "commentary",
-      "talk",
-      "panel",
-      "seminar",
-      "presentation",
-      "poster",
-      "abstract",
-      "dissertation",
-      "monograph",
-      "volume",
-      "issue",
-      "newsletter",
-      "review",
-      "case study",
-      "white paper",
-      "policy",
-      "book chapter",
-      "newspaper",
-      "non-academic",
-      "selected",
-      "invited",
-    ];
-    return {
-      text: line,
-      isAllUpperCase:
-        line.replace(/[^A-Za-z]/g, "").length > 0 &&
-        line.replace(/[^A-Za-z]/g, "") ===
-          line.replace(/[^A-Za-z]/g, "").toUpperCase(),
-      containsYear: /\b(19|20)\d{2}\b/.test(line),
-      length: line.length,
-      positionRatio: totalLines > 1 ? lineIndex / (totalLines - 1) : 0,
-      wordCount: line.split(/\s+/).filter(Boolean).length,
-      hasColon: line.includes(":"),
-      matchesPublicationPattern: this.knownHeaders.some(
-        (header) => line.trim().toLowerCase() === header.trim().toLowerCase()
-      ),
-    };
   }
 
   /**
@@ -303,7 +224,12 @@ class SimpleHeaderClassifier {
       throw new Error("Classifier not trained yet");
     }
 
-    const features = this.extractFeatures(line, lineIndex, totalLines);
+    const features = FeatureExtractor.extractFeatures(
+      line,
+      lineIndex,
+      totalLines,
+      this.knownHeaders
+    );
     let score = 0;
 
     Object.keys(this.rules).forEach((feature) => {
@@ -330,14 +256,18 @@ class SimpleHeaderClassifier {
       trained: true,
     };
 
-    fs.writeFileSync(modelPath, JSON.stringify(modelData, null, 2));
+    MLFileUtils.saveJsonFile(modelPath, modelData);
   }
 
   /**
    * Load a trained model
    */
   load(modelPath) {
-    const modelData = JSON.parse(fs.readFileSync(modelPath));
+    const modelData = MLFileUtils.loadJsonFile(modelPath);
+    if (!modelData) {
+      throw new Error(`Could not load model from ${modelPath}`);
+    }
+
     this.rules = modelData.rules;
     this.threshold = modelData.threshold || 0;
     this.trained = modelData.trained;
@@ -359,15 +289,9 @@ class SimpleHeaderClassifier {
     let trueNegatives = 0;
     let falseNegatives = 0;
 
-    const predictions = [];
-    const actualLabels = [];
-
     testData.forEach((example, index) => {
       const predicted = this.predict(example.text, index, totalLines);
       const actual = example.isHeader;
-
-      predictions.push(predicted);
-      actualLabels.push(actual);
 
       if (predicted && actual) {
         truePositives++;
@@ -380,37 +304,12 @@ class SimpleHeaderClassifier {
       }
     });
 
-    // Calculate metrics
-    const accuracy = (truePositives + trueNegatives) / testData.length;
-    const precision =
-      truePositives > 0 ? truePositives / (truePositives + falsePositives) : 0;
-    const recall =
-      truePositives > 0 ? truePositives / (truePositives + falseNegatives) : 0;
-    const f1Score =
-      precision + recall > 0
-        ? (2 * precision * recall) / (precision + recall)
-        : 0;
-
-    // Support metrics
-    const support = {
-      positive: truePositives + falseNegatives,
-      negative: trueNegatives + falsePositives,
-      total: testData.length,
-    };
-
-    return {
-      accuracy: Math.round(accuracy * 10000) / 100,
-      precision: Math.round(precision * 10000) / 100,
-      recall: Math.round(recall * 10000) / 100,
-      f1Score: Math.round(f1Score * 10000) / 100,
-      confusionMatrix: {
-        truePositives,
-        falsePositives,
-        trueNegatives,
-        falseNegatives,
-      },
-      support,
-    };
+    return MetricsCalculator.calculateMetrics(
+      truePositives,
+      falsePositives,
+      trueNegatives,
+      falseNegatives
+    );
   }
 
   /**
@@ -445,24 +344,16 @@ class SimpleHeaderClassifier {
     }
 
     // Calculate mean and standard deviation
-    const calculateStats = (values) => {
-      const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-      const variance =
-        values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-        values.length;
-      const stdDev = Math.sqrt(variance);
-      return {
-        mean: Math.round(mean * 100) / 100,
-        stdDev: Math.round(stdDev * 100) / 100,
-      };
-    };
-
     return {
       folds,
-      accuracy: calculateStats(results.map((r) => r.accuracy)),
-      precision: calculateStats(results.map((r) => r.precision)),
-      recall: calculateStats(results.map((r) => r.recall)),
-      f1Score: calculateStats(results.map((r) => r.f1Score)),
+      accuracy: MetricsCalculator.calculateStats(
+        results.map((r) => r.accuracy)
+      ),
+      precision: MetricsCalculator.calculateStats(
+        results.map((r) => r.precision)
+      ),
+      recall: MetricsCalculator.calculateStats(results.map((r) => r.recall)),
+      f1Score: MetricsCalculator.calculateStats(results.map((r) => r.f1Score)),
       individualFolds: results,
     };
   }

@@ -1,32 +1,38 @@
 const excel = require("exceljs");
-const researcherProfile = require("../models/researcherProfileModel");
+const Researcher = require("../models/Researcher");
+const Field = require("../models/Field");
+const mongoose = require("mongoose");
 
 const exportResearchersToExcel = async (req, res) => {
   try {
     const { researcherIds } = req.body;
+    let researchers = [];
 
-    // Validate researcherIds
-    if (
-      !researcherIds ||
-      !Array.isArray(researcherIds) ||
-      researcherIds.length === 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide an array of researcher IDs",
-      });
-    }
-
-    // Fetch researchers data
-    const researchers = await researcherProfile.find({
-      _id: { $in: researcherIds },
-    });
-
-    if (!researchers || researchers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No researchers found",
-      });
+    if (Array.isArray(researcherIds) && researcherIds.length > 0) {
+      // Use a single $or query for both ObjectId and slug
+      const orQuery = researcherIds.map((id) =>
+        mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { slug: id }
+      );
+      researchers = await Researcher.find({ $or: orQuery })
+        .populate("last_known_affiliations")
+        .populate({
+          path: "topics",
+          populate: {
+            path: "field_id",
+            select: "display_name",
+            model: Field,
+          },
+        })
+        .populate({
+          path: "affiliations.institution",
+          select: "display_name ror country_code",
+        });
+      if (!researchers || researchers.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No researchers found",
+        });
+      }
     }
 
     // Create workbook and worksheet
@@ -43,34 +49,26 @@ const exportResearchersToExcel = async (req, res) => {
       "",
       "",
       "", // D1-G1 (will be merged)
-      "Research Areas", // H1
+      "Affiliations", // H1
       "", // I1 (will be merged)
-      "Current Affiliation", // J1
-      "",
-      "",
-      "", // K1-M1 (will be merged)
-      "Affiliations", // N1
-      "",
-      "",
-      "",
-      "", // O1-R1 (will be merged)
+      "Fields", // J1
+      "", // K1 (will be merged)
     ];
 
     // Merge Level 1 headers
     worksheet.mergeCells("C1:G1"); // Research Metrics
-    worksheet.mergeCells("H1:I1"); // Research Areas
-    worksheet.mergeCells("J1:M1"); // Current Affiliation
-    worksheet.mergeCells("N1:R1"); // Affiliations
+    worksheet.mergeCells("H1:I1"); // Affiliations
+    worksheet.mergeCells("J1:K1"); // Fields
 
     // Style the Level 1 headers
-    ["A1", "B1", "C1", "H1", "J1", "N1"].forEach((cell) => {
+    ["A1", "B1", "C1", "H1", "J1"].forEach((cell) => {
       worksheet.getCell(cell).style = {
-        font: { bold: true, size: 12 },
+        font: { bold: true, size: 12, color: { argb: "FFFFFFFF" } },
         alignment: { horizontal: "center", vertical: "middle" },
         fill: {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "FFE0E0E0" },
+          fgColor: { argb: "FF16365C" },
         },
       };
     });
@@ -85,50 +83,26 @@ const exportResearchersToExcel = async (req, res) => {
       "2-Year Mean Citedness", // E2
       "Total Citations", // F2
       "Total Works", // G2
-      "Fields", // H2
-      "Topics", // I2
-      "Institution", // J2
-      "Display Name", // K2
-      "ROR", // L2
-      "Country Code", // M2
-      "Display Name", // N2
-      "ROR", // O2
-      "ID", // P2
-      "Country Code", // Q2
-      "Years", // R2
+      "Institution Name", // H2
+      "Years", // I2
+      "Field Name", // J2
+      "Topics", // K2
     ];
 
     // Style the Level 2 headers
-    [
-      "A2",
-      "B2",
-      "C2",
-      "D2",
-      "E2",
-      "F2",
-      "G2",
-      "H2",
-      "I2",
-      "J2",
-      "K2",
-      "L2",
-      "M2",
-      "N2",
-      "O2",
-      "P2",
-      "Q2",
-      "R2",
-    ].forEach((cell) => {
-      worksheet.getCell(cell).style = {
-        font: { bold: true },
-        alignment: { horizontal: "center", vertical: "middle" },
-        fill: {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFF0F0F0" },
-        },
-      };
-    });
+    ["A2", "B2", "C2", "D2", "E2", "F2", "G2", "H2", "I2", "J2", "K2"].forEach(
+      (cell) => {
+        worksheet.getCell(cell).style = {
+          font: { bold: true, color: { argb: "FFFFFFFF" } },
+          alignment: { horizontal: "center", vertical: "middle" },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFF0000" },
+          },
+        };
+      }
+    );
 
     // Define columns with widths
     worksheet.columns = [
@@ -139,32 +113,60 @@ const exportResearchersToExcel = async (req, res) => {
       { key: "meanCitedness", width: 20 },
       { key: "totalCitations", width: 15 },
       { key: "totalWorks", width: 15 },
-      { key: "researchFields", width: 30 }, // Research Areas
-      { key: "researchTopics", width: 30 },
-      { key: "currentInstitution", width: 30 }, // Current Affiliation
-      { key: "currentDisplayName", width: 30 },
-      { key: "currentRor", width: 20 },
-      { key: "currentCountryCode", width: 15 },
-      { key: "affiliation_display_name", width: 30 }, // Affiliations
-      { key: "affiliation_ror", width: 20 },
-      { key: "affiliation_id", width: 20 },
-      { key: "affiliation_country_code", width: 15 },
+      { key: "affiliation_institution_name", width: 30 }, // Affiliations - Institution Name
       { key: "affiliation_years", width: 15 },
+      { key: "fieldName", width: 30 }, // Fields - Field Name
+      { key: "topics", width: 50 }, // Fields - Topics (comma-separated)
     ];
 
     // Add researcher data starting from row 3
     let currentRow = 3;
 
     researchers.forEach((researcher) => {
-      // Process research fields and topics
-      const fields = researcher.research_areas?.fields || [];
-      const topics = researcher.research_areas?.topics || [];
-      const affiliations = researcher.basic_info?.affiliations || [];
+      // Process topics and group them by field
+      const topics = researcher.topics || [];
+      const affiliations = researcher.affiliations || [];
+
+      // Group topics by field but keep each topic as individual entry
+      const fieldGroups = {};
+      topics.forEach((topic) => {
+        const fieldName = topic.field_id?.display_name || "Unknown Field";
+        const topicName = topic.display_name || "";
+
+        if (!fieldGroups[fieldName]) {
+          fieldGroups[fieldName] = [];
+        }
+        if (topicName) {
+          fieldGroups[fieldName].push(topicName);
+        }
+      });
+
+      // Create individual entries for each topic, but keep track of field grouping
+      const fieldEntries = [];
+      Object.entries(fieldGroups).forEach(([fieldName, topicsList]) => {
+        topicsList.forEach((topicName, index) => {
+          fieldEntries.push({
+            fieldName: index === 0 ? fieldName : "", // Only show field name on first topic of each field
+            topics: topicName, // Each topic gets its own row
+            isFirstInField: index === 0, // Flag to identify first topic in field
+            fieldGroupName: fieldName, // Keep original field name for merging
+          });
+        });
+      });
+
+      // If no topics, show empty entry
+      if (fieldEntries.length === 0) {
+        fieldEntries.push({
+          fieldName: "",
+          topics: "",
+          isFirstInField: true,
+          fieldGroupName: "",
+        });
+      }
 
       // Find the maximum array length to determine how many rows this researcher needs
       const maxArrayLength = Math.max(
-        fields.length || 1,
-        topics.length || 1,
+        fieldEntries.length || 1,
         affiliations.length || 1
       );
 
@@ -172,12 +174,17 @@ const exportResearchersToExcel = async (req, res) => {
 
       // Add rows for each array element
       for (let i = 0; i < maxArrayLength; i++) {
-        const field = fields[i]?.display_name || "";
-        const topic = topics[i]?.display_name || "";
+        const fieldEntry = fieldEntries[i] || {};
         const affiliation = affiliations[i] || {};
 
+        // Handle populated institution data
+        const institutionName =
+          affiliation?.institution?.display_name ||
+          affiliation?.institution ||
+          "";
+
         worksheet.addRow({
-          name: i === 0 ? researcher.basic_info?.name || "" : "",
+          name: i === 0 ? researcher.name || "" : "",
           orcid: i === 0 ? researcher.identifiers?.orcid || "" : "",
           hIndex: i === 0 ? researcher.research_metrics?.h_index || "" : "",
           i10Index: i === 0 ? researcher.research_metrics?.i10_index || "" : "",
@@ -189,22 +196,10 @@ const exportResearchersToExcel = async (req, res) => {
             i === 0 ? researcher.research_metrics?.total_citations || "" : "",
           totalWorks:
             i === 0 ? researcher.research_metrics?.total_works || "" : "",
-          researchFields: field,
-          researchTopics: topic,
-          currentInstitution:
-            i === 0 ? researcher.current_affiliation?.institution || "" : "",
-          currentDisplayName:
-            i === 0 ? researcher.current_affiliation?.display_name || "" : "",
-          currentRor: i === 0 ? researcher.current_affiliation?.ror || "" : "",
-          currentCountryCode:
-            i === 0 ? researcher.current_affiliation?.country_code || "" : "",
-          affiliation_display_name:
-            affiliation?.institution?.display_name || "",
-          affiliation_ror: affiliation?.institution?.ror || "",
-          affiliation_id: affiliation?.institution?.id || "",
-          affiliation_country_code:
-            affiliation?.institution?.country_code || "",
+          affiliation_institution_name: institutionName,
           affiliation_years: affiliation?.years?.join(", ") || "",
+          fieldName: fieldEntry.fieldGroupName || "", // Use fieldGroupName for proper merging
+          topics: fieldEntry.topics || "",
         });
         currentRow++;
       }
@@ -214,7 +209,7 @@ const exportResearchersToExcel = async (req, res) => {
       // Merge cells for single-value fields (non-array fields)
       if (maxArrayLength > 1) {
         // Merge Name
-        if (researcher.basic_info?.name) {
+        if (researcher.name) {
           worksheet.mergeCells(`A${startRow}:A${endRow}`);
         }
 
@@ -242,32 +237,65 @@ const exportResearchersToExcel = async (req, res) => {
           worksheet.mergeCells(`G${startRow}:G${endRow}`);
         }
 
-        // Merge Current Affiliation
-        if (researcher.current_affiliation?.institution) {
-          worksheet.mergeCells(`J${startRow}:J${endRow}`);
+        // Merge field names for topics within the same field
+        let fieldMergeStart = startRow;
+        let currentFieldName = "";
+
+        for (let rowIndex = 0; rowIndex < fieldEntries.length; rowIndex++) {
+          const entry = fieldEntries[rowIndex];
+          const currentRowNum = startRow + rowIndex;
+
+          if (entry.fieldGroupName !== currentFieldName) {
+            // End previous field merge if needed
+            if (currentFieldName && fieldMergeStart < currentRowNum - 1) {
+              worksheet.mergeCells(`J${fieldMergeStart}:J${currentRowNum - 1}`);
+            }
+            // Start new field merge
+            fieldMergeStart = currentRowNum;
+            currentFieldName = entry.fieldGroupName;
+          }
         }
-        if (researcher.current_affiliation?.display_name) {
-          worksheet.mergeCells(`K${startRow}:K${endRow}`);
-        }
-        if (researcher.current_affiliation?.ror) {
-          worksheet.mergeCells(`L${startRow}:L${endRow}`);
-        }
-        if (researcher.current_affiliation?.country_code) {
-          worksheet.mergeCells(`M${startRow}:M${endRow}`);
+
+        // Handle the last field merge
+        if (currentFieldName && fieldMergeStart < endRow) {
+          worksheet.mergeCells(`J${fieldMergeStart}:J${endRow}`);
         }
       }
     });
 
     // Set column styles
     worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
         cell.border = {
           top: { style: "thin", color: { argb: "FF000000" } },
           left: { style: "thin", color: { argb: "FF000000" } },
           bottom: { style: "thin", color: { argb: "FF000000" } },
           right: { style: "thin", color: { argb: "FF000000" } },
         };
+
+        // Apply background colors to data rows (rowNumber >= 3)
+        if (rowNumber >= 3) {
+          if (colNumber === 1) {
+            // Name column (A) - #daeef3
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFDAEEF3" },
+            };
+          } else if (colNumber === 8 || colNumber === 9) {
+            // Affiliation columns (H, I) - Institution Name and Years - #ddd9c4
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFDDD9C4" },
+            };
+          }
+        }
       });
     });
 
