@@ -7,7 +7,7 @@
 
 import { API_BASE_URL as CONFIG_API_BASE_URL } from "../config/api";
 // fall back to env var if config export is not available
-const API_BASE_URL = CONFIG_API_BASE_URL || import.meta.env.BACKEND_URL || "";
+const API_BASE_URL = CONFIG_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || "";
 
 /**
  * Generic function to make API requests
