@@ -1,47 +1,105 @@
+// utils/pdfUtils.js
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
-const Tesseract = require("tesseract.js");
-const pdf = require("pdf-poppler");
-const path = require("path");
+const pdfjsLib = require("pdfjs-dist");
+const { createWorker } = require("tesseract.js");
+const { createCanvas } = require("canvas");
 
-// Utility function to extract text from PDF (native or OCR fallback)
 async function extractTextFromPDF(filePath) {
-  const pdfBuffer = fs.readFileSync(filePath);
-  let cvText = "";
+  console.log("[CV Verification] Starting PDF text extraction...");
+
+  // 1. Try with pdf-parse first (fast path)
   try {
-    const parsedData = await pdfParse(pdfBuffer);
-    cvText = parsedData.text;
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(dataBuffer);
+
+    if (pdfData.text && pdfData.text.trim().length > 30) {
+      return pdfData.text;
+    } else {
+      console.log(
+        "[CV Verification] pdf-parse returned little text, falling back to OCR..."
+      );
+    }
   } catch (err) {
-    cvText = "";
-  }
-  if (!cvText || cvText.trim().length < 10) {
     console.warn(
-      "[CV Verification] pdf-parse returned empty or too short text, attempting OCR fallback..."
+      "[CV Verification] pdf-parse failed, falling back to OCR...",
+      err
     );
-    const outputDir = path.join(__dirname, "../temp_images_ocr");
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
-    await pdf.convert(filePath, {
-      format: "jpeg",
-      out_dir: outputDir,
-      out_prefix: "page",
-      page: null,
-    });
-    const files = fs.readdirSync(outputDir).filter((f) => f.endsWith(".jpg"));
-    for (const imageFile of files) {
+    try {
+      fs.unlinkSync(filePath);
+      console.warn(`[CV Verification] File removed due to error: ${filePath}`);
+    } catch (removeErr) {
+      console.error(
+        `[CV Verification] Failed to remove file: ${filePath}`,
+        removeErr
+      );
+    }
+    throw err;
+  }
+
+  // 2. Fallback OCR using pdfjs-dist + one persistent tesseract worker
+  try {
+    const data = new Uint8Array(fs.readFileSync(filePath));
+    const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+
+    const worker = await createWorker("eng");
+    let ocrResults = [];
+
+    // Process pages in parallel (limit concurrency for memory)
+    const concurrency = 2; // tune this based on CPU cores
+    const pageNumbers = Array.from(
+      { length: pdfDoc.numPages },
+      (_, i) => i + 1
+    );
+
+    async function processPage(pageNum) {
+      console.log(`[CV Verification] OCR processing page ${pageNum}`);
+
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.5 }); // reduce scale for speed/accuracy tradeoff
+
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext("2d");
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      const imgBuffer = canvas.toBuffer("image/png");
+
       const {
         data: { text },
-      } = await Tesseract.recognize(path.join(outputDir, imageFile), "eng");
-      cvText += text + "\n";
+      } = await worker.recognize(imgBuffer);
+      return text.trim();
     }
-    // Optionally clean up images
-    fs.rmSync(outputDir, { recursive: true, force: true });
-    if (!cvText.trim()) {
-      throw new Error("Unable to extract text from PDF (OCR also failed)");
+
+    // Concurrency control
+    while (pageNumbers.length > 0) {
+      const batch = pageNumbers.splice(0, concurrency);
+      const results = await Promise.all(batch.map(processPage));
+      ocrResults.push(...results);
     }
+
+    await worker.terminate();
+
+    const finalText = ocrResults.join("\n");
+    if (!finalText.trim()) {
+      throw new Error("OCR returned no text");
+    }
+
+    return finalText;
+  } catch (err) {
+    console.error("[CV Verification] OCR failed:", err);
+    try {
+      fs.unlinkSync(filePath);
+      console.warn(`[CV Verification] File removed due to error: ${filePath}`);
+    } catch (removeErr) {
+      console.error(
+        `[CV Verification] Failed to remove file: ${filePath}`,
+        removeErr
+      );
+    }
+    throw new Error(
+      "Error: Failed to extract text from PDF (both pdf-parse & OCR failed)."
+    );
   }
-  return cvText;
 }
 
-module.exports = {
-  extractTextFromPDF,
-};
+module.exports = { extractTextFromPDF };
