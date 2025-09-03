@@ -27,19 +27,28 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
       });
     }
 
-    // Generate a jobId and return it immediately
+    // Generate a jobId for socket communication
     const jobId = uuidv4();
-    res.json({ jobId });
-
-    // Start verification in the background, passing jobId and io
     const io = req.app.get("io");
-    verifyCV(req.file, prioritySource, { jobId, io })
-      .then((result) => {
-        io.to(jobId).emit("complete", { result });
-      })
-      .catch((error) => {
-        io.to(jobId).emit("error", { error: error.message });
-      });
+
+    // Start verification and wait for the result
+    try {
+      const result = await verifyCV(req.file, prioritySource, { jobId, io });
+      // Send both socket event and HTTP response
+      io.to(jobId).emit("complete", { result });
+      res.json({
+        success: true,
+        data: result,
+        message: "CV verification completed successfully",
+      }); // Remove when done testing
+    } catch (error) {
+      io.to(jobId).emit("error", { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "CV verification failed",
+      }); // Remove when done testing
+    }
   } catch (error) {
     res.status(500).json({
       error: "Error processing CV",
