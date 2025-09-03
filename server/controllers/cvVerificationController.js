@@ -440,7 +440,7 @@ const processPublicationVerification = async (pub, candidateName) => {
   );
   const overallStartTime = Date.now();
 
-  const [scholarResult, scopusResult, openAlexResult] = await Promise.all([
+  const [/*scholarResult*/, scopusResult, openAlexResult] = await Promise.all([
     (async () => {
       // The following code is commented out to save Google Scholar credits:
       /*
@@ -501,10 +501,10 @@ const processPublicationVerification = async (pub, candidateName) => {
   let hasAuthorMatch = false;
 
   // Create a mock scholarResult to maintain compatibility
-  // const scholarResult = {
-  //   status: "not verified",
-  //   details: null,
-  // };
+  const scholarResult = {
+    status: "not verified",
+    details: null,
+  };
 
   // Get authors from Google Scholar
   if (scholarResult.details?.extractedAuthors) {

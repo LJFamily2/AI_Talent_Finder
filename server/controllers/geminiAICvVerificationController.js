@@ -22,7 +22,39 @@ const {
 } = require("../utils/aiHelpers");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
+const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
+const {
+  getFilteredHeaders,
+  TextProcessor,
+  PATHS,
+} = require("../utils/headerFilterUtils");
+
+/**
+ * Remove duplicate publications based on title similarity
+ * @param {Array} publications - Array of publication results
+ * @returns {Array} Deduplicated publications
+ */
+function removeDuplicatePublications(publications) {
+  const unique = [];
+  const seen = new Set();
+
+  for (const pub of publications) {
+    const title = pub.verification?.displayData?.title || "";
+    const normalizedTitle = title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .trim();
+
+    if (!seen.has(normalizedTitle) && normalizedTitle.length > 0) {
+      seen.add(normalizedTitle);
+      unique.push(pub);
+    }
+  }
+
+  return unique;
+}
 const axios = require("axios");
+const path = require("path");
 
 //=============================================================================
 // MODULE EXPORTS
@@ -31,6 +63,40 @@ const axios = require("axios");
 module.exports = {
   verifyCVWithAI,
 };
+
+//=============================================================================
+// ML MODEL INITIALIZATION
+//=============================================================================
+
+/**
+ * Initialize and load the header classifier ML model
+ * @returns {Object|null} Trained header classifier or null if loading fails
+ */
+function initializeHeaderClassifier() {
+  try {
+    const classifier = new SimpleHeaderClassifier();
+    const modelPath = path.join(__dirname, "../ml/header_classifier.json");
+
+    if (fs.existsSync(modelPath)) {
+      classifier.load(modelPath);
+      console.log(
+        "[Gemini CV Verification] Header classifier model loaded successfully"
+      );
+      return classifier;
+    } else {
+      console.warn(
+        "[Gemini CV Verification] Header classifier model not found, using fallback"
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      "[Gemini CV Verification] Error loading header classifier:",
+      error
+    );
+    return null;
+  }
+}
 
 //=============================================================================
 // MAIN AI CV VERIFICATION FUNCTION
@@ -65,7 +131,7 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
       generationConfig: {
         temperature: 0.0,
         topP: 0.0,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8096,
       },
     });
 
@@ -410,18 +476,49 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  */
 async function processLargeCVWithChunking(model, cvText, candidateName) {
   try {
-    console.log("[AI CV Verification] Using ML model for large CV processing");
+    console.log(
+      "[Gemini CV Verification] Using ML model for large CV processing"
+    );
 
-    // Extract publications using the existing chunked approach
+    // Initialize ML header classifier
+    const headerClassifier = initializeHeaderClassifier();
+
+    if (headerClassifier && headerClassifier.trained) {
+      // Use ML model to identify publication sections
+      const publicationSections = extractPublicationSectionsWithML(
+        cvText,
+        headerClassifier
+      );
+
+      if (publicationSections.length > 0) {
+        console.log(
+          `[Gemini CV Verification] Found ${publicationSections.length} publication sections using ML model`
+        );
+
+        // Process ALL publication sections in a single batch request
+        const allResults = await processBatchedPublicationSectionsWithAI(
+          model,
+          publicationSections,
+          candidateName
+        );
+
+        return removeDuplicatePublications(allResults);
+      }
+    }
+
+    // Fallback to existing chunked approach if ML model fails
+    console.log(
+      "[Gemini CV Verification] Falling back to traditional chunked processing"
+    );
     const rawPublications = await extractPublicationsFromCV(model, cvText);
 
     if (!Array.isArray(rawPublications)) {
-      console.warn("No publications extracted from large CV");
+      console.warn("Invalid publications data received from AI");
       return [];
     }
 
     console.log(
-      `[AI CV Verification] Extracted ${rawPublications.length} publications from large CV`
+      `[Gemini CV Verification] Extracted ${rawPublications.length} publications from large CV`
     );
 
     // Process each publication with AI verification in batches to avoid rate limits
@@ -663,6 +760,277 @@ async function fallbackPublicationExtraction(model, cvText, candidateName) {
       "Fallback publication extraction also failed:",
       fallbackError
     );
+    return [];
+  }
+}
+
+//=============================================================================
+// ML-BASED PUBLICATION SECTION EXTRACTION
+//=============================================================================
+
+/**
+ * Extract publication sections using ML header classifier
+ * @param {string} cvText - Full CV text content
+ * @param {Object} headerClassifier - Trained ML header classifier
+ * @returns {Array} Array of publication sections with content
+ */
+function extractPublicationSectionsWithML(cvText, headerClassifier) {
+  const lines = cvText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  // Use ML model to detect all headers
+  const allHeaders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    try {
+      const isHeader = headerClassifier.predict(line, i, lines.length);
+      if (isHeader) {
+        allHeaders.push({
+          text: line,
+          lineNumber: i + 1,
+          index: i,
+        });
+      }
+    } catch (error) {
+      // Skip if prediction fails for this line
+      continue;
+    }
+  }
+
+  // Filter headers to focus on publication-related sections
+  const publicationHeaders = getFilteredHeaders(
+    allHeaders,
+    headerClassifier,
+    lines
+  );
+
+  console.log(
+    `[Gemini CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
+  );
+
+  // Extract content for each publication section
+  const publicationSections = [];
+  for (let i = 0; i < publicationHeaders.length; i++) {
+    const header = publicationHeaders[i];
+    const nextHeader = publicationHeaders[i + 1];
+
+    let sectionEnd;
+    if (nextHeader) {
+      sectionEnd = nextHeader.index;
+    } else {
+      sectionEnd = lines.length;
+    }
+
+    const sectionContent = lines.slice(header.index + 1, sectionEnd).join("\n");
+
+    if (sectionContent.trim().length > 0) {
+      publicationSections.push({
+        header: header.text,
+        content: sectionContent,
+        startIndex: header.index,
+        endIndex: sectionEnd,
+      });
+    }
+  }
+
+  return publicationSections;
+}
+
+/**
+ * Process all publication sections with AI verification in a single batched request
+ * This reduces API calls by combining all sections into one request
+ * @param {Object} model - Google AI model instance
+ * @param {Array} publicationSections - Array of publication section objects
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Array of verified publications from all sections
+ */
+async function processBatchedPublicationSectionsWithAI(
+  model,
+  publicationSections,
+  candidateName
+) {
+  if (!publicationSections || publicationSections.length === 0) {
+    return [];
+  }
+
+  console.log(
+    `[Gemini CV Verification] Processing ${publicationSections.length} publication sections in a single batch request`
+  );
+
+  // Combine all publication sections into a single prompt
+  const sectionsText = publicationSections
+    .map(
+      (section, index) =>
+        `SECTION ${index + 1} - ${section.header}:\n${section.content}`
+    )
+    .join("\n\n---\n\n");
+
+  const batchedPrompt = `
+You are an expert at analyzing academic publication sections. Extract ALL publications from ALL sections below and verify each one online.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+
+ALL PUBLICATION SECTIONS:
+${sectionsText}
+
+Extract ALL publications from ALL sections above. For each publication found (whether verified online or not), provide the following JSON format:
+
+{
+  "allPublications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV",
+        "sectionHeader": "which section this came from"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "publication link or null",
+        "citationCount": "number or 0"
+      }
+    }
+  ]
+}
+
+EXTRACTION AND VERIFICATION GUIDELINES:
+1. Extract ALL publications from ALL sections (journal articles, conference papers, book chapters, etc.)
+2. For each publication, determine if it likely exists online (isOnline: true/false)
+3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
+5. For unverified publications, set isOnline: false, link: null, citationCount: 0
+6. Estimate citation counts only for verified publications
+7. IMPORTANT: Include ALL publications found in ALL sections, not just verified ones
+
+IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
+
+  try {
+    const result = await model.generateContent(batchedPrompt);
+    const response = await result.response;
+    const verificationText = cleanJSONResponse(response.text());
+
+    console.log(
+      `[Gemini CV Verification] Batch response length: ${verificationText.length} characters`
+    );
+
+    const verificationData = JSON.parse(verificationText);
+    const allPublications = verificationData.allPublications || [];
+
+    console.log(
+      `[Gemini CV Verification] Extracted ${allPublications.length} publications from batched processing`
+    );
+
+    // Transform to expected format using helper function
+    return allPublications.map((item) => {
+      return transformPublicationResult(
+        item.publication,
+        item.verification,
+        item.publication
+      );
+    });
+  } catch (error) {
+    console.error("Error in batched publication sections processing:", error);
+
+    // Fallback to individual processing if batch fails
+    console.log(
+      "[Gemini CV Verification] Falling back to individual section processing"
+    );
+    const allResults = [];
+
+    for (const section of publicationSections) {
+      try {
+        const sectionResults = await processPublicationSectionWithAI(
+          model,
+          section,
+          candidateName
+        );
+        allResults.push(...sectionResults);
+      } catch (error) {
+        console.error("Error processing publication section:", error);
+        // Continue with other sections
+      }
+    }
+
+    return allResults;
+  }
+}
+
+/**
+ * Process a publication section with AI verification
+ * @param {Object} model - Google AI model instance
+ * @param {Object} section - Publication section object
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processPublicationSectionWithAI(model, section, candidateName) {
+  const sectionPrompt = `
+You are an expert at analyzing academic publication sections. Extract ALL publications from this CV section and verify each one.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+SECTION HEADER: ${section.header}
+
+SECTION CONTENT:
+${section.content}
+
+Extract ALL publications from this section. For each publication found, provide the following JSON format:
+
+{
+  "publications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV section"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "publication link or null",
+        "citationCount": "number or 0"
+      }
+    }
+  ]
+}
+
+GUIDELINES:
+1. Extract ALL publications from this section only
+2. Determine if each publication likely exists online
+3. Check if candidate name appears in author list
+4. Provide links when possible (DOI preferred)
+5. Estimate citation count for verified publications
+
+IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
+
+  try {
+    const result = await model.generateContent(sectionPrompt);
+    const response = await result.response;
+    const verificationText = cleanJSONResponse(response.text());
+
+    const verificationData = JSON.parse(verificationText);
+    const publications = verificationData.publications || [];
+
+    // Transform to expected format
+    return publications.map((item) => {
+      return transformPublicationResult(
+        item.publication,
+        item.verification,
+        item.publication
+      );
+    });
+  } catch (error) {
+    console.error("Error processing publication section with AI:", error);
     return [];
   }
 }
