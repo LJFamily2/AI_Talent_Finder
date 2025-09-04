@@ -321,12 +321,15 @@ const extractPublicationType = (
   openAlexResult,
   pubmedResult
 ) => {
+  // Fallback to other sources, but use pubmedResult.details?.pubTypes instead of .source
   const type =
     openAlexResult.details?.type ||
     scholarResult.details?.type ||
     scopusResult.details?.subtypeDescription ||
-    pubmedResult.details?.source ||
-    "Not specified";
+    (pubmedResult.details?.pubTypes
+      ? pubmedResult.details.pubTypes.join(" | ")
+      : undefined) ||
+    "article";
   return typeof type === "string" ? type.toLowerCase() : type;
 };
 
