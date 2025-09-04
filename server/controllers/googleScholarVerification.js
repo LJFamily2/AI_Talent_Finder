@@ -133,19 +133,26 @@ const verifyWithGoogleScholar = async (
  * @private
  */
 const searchGoogleScholar = async (title, maxResults) => {
-  const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
-  const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
-    title
-  )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
+  try {
+    const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
+    const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
+      title
+    )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
 
-  const { data: scholarResult } = await axios.get(scholarApiUrl);
-  const organicResults =
-    scholarResult?.organic_results || scholarResult?.items || [];
+    const { data: scholarResult } = await axios.get(scholarApiUrl);
+    const organicResults =
+      scholarResult?.organic_results || scholarResult?.items || [];
 
-  return {
-    organicResults,
-    rawResult: scholarResult,
-  };
+    return {
+      organicResults,
+      rawResult: scholarResult,
+    };
+  } catch (err) {
+    return {
+      organicResults: [],
+      rawResult: {},
+    };
+  }
 };
 
 /**

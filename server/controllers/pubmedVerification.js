@@ -179,7 +179,6 @@ const searchPubMed = async (title, maxResults) => {
       retStart: parseInt(eSearchResult.RetStart[0]) || 0,
     };
   } catch (err) {
-    console.error("❌ [PubMed] Search error:", err.message);
     return { idList: [], count: 0 };
   }
 };
@@ -222,7 +221,6 @@ const getPublicationDetails = async (idList) => {
 
     return docSums.map((docSum) => parseDocSum(docSum));
   } catch (err) {
-    console.error("❌ [PubMed] Details retrieval error:", err.message);
     return [];
   }
 };

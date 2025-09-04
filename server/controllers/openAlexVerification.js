@@ -117,7 +117,6 @@ const searchOpenAlex = async (title, maxResults) => {
     const { data: openAlexResult } = await axios.get(openAlexApiUrl);
     return openAlexResult;
   } catch (err) {
-    console.error("❌ [OpenAlex] Search error:", err.message);
     return { results: [] };
   }
 }; 
