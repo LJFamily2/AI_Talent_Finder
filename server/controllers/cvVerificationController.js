@@ -82,7 +82,7 @@ async function verifyCV(file, prioritySource, options = {}) {
     // Initialize Google AI model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash-lite-preview-06-17",
       generationConfig: {
         temperature: 0.0,
         topP: 0.0,
