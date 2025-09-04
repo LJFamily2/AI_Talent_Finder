@@ -1,11 +1,18 @@
-// Normalize a title by removing punctuation and extra spaces
+/**
+ * Normalize a title by removing special characters and standardizing spaces
+ * This function provides a general normalization suitable for academic title matching
+ */
 const normalizeTitle = (str) => {
   if (!str) return "";
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ") // Remove hyphens, commas, and periods
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    str
+      .toLowerCase()
+      // Remove all special characters and convert to spaces
+      .replace(/[^\w\s]/g, "")
+      // Normalize spaces
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 };
 
 const getNGrams = (text, n = 2) => {

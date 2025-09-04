@@ -22,6 +22,10 @@ const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 const xml2js = require("xml2js");
 
+module.exports = {
+  verifyWithPubMed,
+};
+
 //=============================================================================
 // CONFIGURATION AND CONSTANTS
 //=============================================================================
@@ -58,12 +62,12 @@ const PUBMED_SUMMARY_URL =
  *   5
  * );
  */
-const verifyWithPubMed = async (
+async function verifyWithPubMed(
   title,
   doi,
   candidateName = null,
   maxResultsToCheck = 3
-) => {
+) {
   try {
     // Step 1: Search PubMed for the publication
     const searchResults = await searchPubMed(title, maxResultsToCheck);
@@ -111,7 +115,7 @@ const verifyWithPubMed = async (
     console.error("❌ [PubMed] Verification error:", err.message);
     return createPubMedResponse("unable to verify", null, null);
   }
-};
+}
 
 //=============================================================================
 // HELPER FUNCTIONS FOR PUBMED VERIFICATION
@@ -124,18 +128,10 @@ const verifyWithPubMed = async (
  * @private
  */
 const buildProximityQuery = (title) => {
-  // Normalize scientific notation and remove punctuation
-  let normalizedTitle = title
-    .replace(/17b-/gi, "17beta-") // Convert 17b- to 17beta-
-    .replace(/α/g, "alpha") // Convert Greek alpha
-    .replace(/β/g, "beta") // Convert Greek beta
-    .replace(/γ/g, "gamma") // Convert Greek gamma
-    .replace(/δ/g, "delta") // Convert Greek delta
-    .replace(/[^\w\s-]/g, "") // Remove punctuation except hyphens
-    .toLowerCase();
+  // Use the enhanced normalizeTitle function from textUtils
+  let normalizedTitle = normalizeTitle(title);
 
-  const words = normalizedTitle.split(/\s+/);
-  return `"${words.join(" ")}"[Title:~10]`;
+  return `${normalizedTitle}[Title:~10]`;
 };
 
 /**
@@ -154,6 +150,7 @@ const searchPubMed = async (title, maxResults) => {
     let searchUrl = `${PUBMED_SEARCH_URL}?term=${encodeURIComponent(
       proximityQuery
     )}&retmax=${maxResults}`;
+    
     if (apiKey) {
       searchUrl += `&api_key=${apiKey}`;
     }
@@ -243,6 +240,7 @@ const parseDocSum = (docSum) => {
     issue: null,
     pages: null,
     pmid: null,
+    pubTypes: [],
   };
 
   if (docSum.Item && Array.isArray(docSum.Item)) {
@@ -279,6 +277,12 @@ const parseDocSum = (docSum) => {
           break;
         case "Pages":
           publication.pages = content;
+          break;
+        case "PubTypeList":
+          if (item.Item && Array.isArray(item.Item)) {
+            publication.pubTypes =
+              item.Item[0] && item.Item[0]._ ? [item.Item[0]._] : [];
+          }
           break;
       }
     });
@@ -371,6 +375,7 @@ const buildPublicationDetails = (publication, authorInfo) => {
     volume: publication.volume,
     issue: publication.issue,
     pages: publication.pages,
+    pubTypes: publication.pubTypes,
     extractedAuthors: authorInfo.extractedAuthors,
     hasAuthorMatch: authorInfo.hasAuthorMatch,
     authorId: authorInfo.authorId,
@@ -395,8 +400,4 @@ const createPubMedResponse = (status, details, rawData) => {
     details,
     rawData: rawData,
   };
-};
-
-module.exports = {
-  verifyWithPubMed,
 };
