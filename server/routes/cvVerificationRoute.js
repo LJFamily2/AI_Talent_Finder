@@ -17,12 +17,18 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
     // Get priority source from request body, default to 'scopus'
     const prioritySource = req.body.prioritySource || "scopus";
     // Validate priority source
-    const validSources = ["googleScholar", "scopus", "openalex", "pubmed"];
+    const validSources = [
+      "googleScholar",
+      "scopus",
+      "openalex",
+      "pubmed",
+      "crossref",
+    ];
     if (!validSources.includes(prioritySource)) {
       return res.status(400).json({
         error: "Invalid priority source",
         message:
-          "Priority source must be one of: googleScholar, scopus, openalex, pubmed",
+          "Priority source must be one of: googleScholar, scopus, openalex, pubmed, crossref",
         providedValue: prioritySource,
       });
     }
