@@ -25,12 +25,20 @@ async function getInstitutionsFilter(req, res) {
             const terms = qfold.split(/\s+/).filter(Boolean);
 
             // 1) Primary: full-name prefix matches (high priority)
-            const primaryLimit = Math.min(limit, 10); // tune: how many priority results to return
+            const primaryLimit = Math.min(limit, 10); // tuneable
             const primaryRegex = toSafeRegex(qfold, { anchor: true, flags: "" });
-            const primaryDocs = await Institution.find({ display_name_folded: { $regex: primaryRegex } })
+            let primaryDocs = await Institution.find({ display_name_folded: { $regex: primaryRegex } })
                 .limit(primaryLimit)
-                .select("_id display_name")
+                .select("_id display_name display_name_folded")
                 .lean();
+
+            // sort primary results by: earliest match (indexOf), then shorter name
+            primaryDocs.sort((a, b) => {
+                const ai = a.display_name_folded.indexOf(qfold);
+                const bi = b.display_name_folded.indexOf(qfold);
+                if (ai !== bi) return ai - bi;
+                return a.display_name.length - b.display_name.length;
+            });
 
             const primaryIds = primaryDocs.map(d => d._id);
 
@@ -46,6 +54,9 @@ async function getInstitutionsFilter(req, res) {
                     .lean();
                 results = results.concat(tokenDocs);
             }
+
+            // strip fold field if present
+            results = results.map(r => ({ _id: r._id, display_name: r.display_name }));
 
             return res.json({ institutions: results });
         }
