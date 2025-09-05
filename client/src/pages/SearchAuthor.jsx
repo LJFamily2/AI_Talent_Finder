@@ -20,7 +20,7 @@ export default function SearchAuthor() {
 
     try {
       // Step 1: Fetch author data
-      const res = await axios.get(`http://localhost:5000/api/author/search-author?name=${encodeURIComponent(query)}`);
+      const res = await axios.get(`http://localhost:8000/api/author/search-author?name=${encodeURIComponent(query)}`);
       const fetchedProfile = res.data.profile;
       const fetchedPublications = res.data.publications;
 
@@ -28,7 +28,7 @@ export default function SearchAuthor() {
       setPublications(fetchedPublications);
 
       // Step 2: Save data to MongoDB
-      const saveRes = await axios.post("http://localhost:5000/api/author/save-profile", {
+      const saveRes = await axios.post("http://localhost:8000/api/author/save-profile", {
         profile: fetchedProfile,
         publications: fetchedPublications,
       });
