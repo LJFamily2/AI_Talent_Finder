@@ -10,26 +10,33 @@
  * - Return results in the same format as traditional verification
  *
  * @module grokAiCvVerification
- * @author AI Talent Finder Team
+ * @author SwangLee
  * @version 1.0.0
  */
 
 const fs = require("fs");
 const OpenAI = require("openai");
-const {
-  extractCandidateNameWithAI,
-  extractPublicationsFromCV,
-} = require("../utils/aiHelpers");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
-const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
 const {
-  getFilteredHeaders,
-  TextProcessor,
-  PATHS,
-} = require("../utils/headerFilterUtils");
+  initializeHeaderClassifier,
+} = require("../utils/headerClassifierUtils");
 const axios = require("axios");
 const path = require("path");
+
+//=============================================================================
+// CONSTANTS
+//=============================================================================
+
+const MAX_CHUNK_SIZE = 8000;
+const MAX_COMBINED_SIZE = 8000;
+
+//=============================================================================
+// ML MODEL INITIALIZATION
+//=============================================================================
+
+// Initialize the header classifier
+const headerClassifier = initializeHeaderClassifier("Grok CV Verification");
 
 //=============================================================================
 // MODULE EXPORTS
@@ -38,41 +45,6 @@ const path = require("path");
 module.exports = {
   verifyCVWithGrok,
 };
-
-//=============================================================================
-// ML MODEL INITIALIZATION
-//=============================================================================
-
-/**
- * Initialize and load the header classifier ML model
- * @returns {Object|null} Trained header classifier or null if loading fails
- */
-function initializeHeaderClassifier() {
-  try {
-    const classifier = new SimpleHeaderClassifier();
-    const modelPath = path.join(__dirname, "../ml/header_classifier.json");
-
-    if (fs.existsSync(modelPath)) {
-      classifier.load(modelPath);
-      console.log(
-        "[Grok CV Verification] Header classifier model loaded successfully"
-      );
-      return classifier;
-    } else {
-      console.warn("[Grok CV Verification] Header classifier model not found");
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      "[Grok CV Verification] Error loading header classifier:",
-      error
-    );
-    return null;
-  }
-}
-
-// Initialize the header classifier
-const headerClassifier = initializeHeaderClassifier();
 
 //=============================================================================
 // MAIN GROK CV VERIFICATION FUNCTION
@@ -240,8 +212,6 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @returns {Promise<Array>} Verification results array
  */
 async function processFullCVWithGrok(grokClient, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 12000; // Grok can handle decent sized chunks
-
   try {
     if (cvText.length <= MAX_CHUNK_SIZE) {
       console.log(
@@ -390,8 +360,6 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  * @returns {Promise<Array>} Verification results array
  */
 async function processLargeCVWithChunking(grokClient, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 12000;
-
   try {
     // First try ML-based section detection if classifier is available
     if (headerClassifier) {
@@ -508,7 +476,6 @@ Return format: {"publications": ["title1", "title2", ...]}`;
  * @returns {Promise<Array>} Array of verified publications from all chunks
  */
 async function processBatchedChunksWithGrok(grokClient, chunks, candidateName) {
-  const MAX_COMBINED_SIZE = 20000; // Conservative limit for combined chunks
   const batchedChunks = [];
 
   // Group chunks into batches that fit within token limits
@@ -888,21 +855,13 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
   const allHeaders = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (headerClassifier.isHeader(line)) {
+    if (headerClassifier.predict(line, i, lines.length)) {
       allHeaders.push({
         text: line,
         lineIndex: i,
-        classification: headerClassifier.classifyHeader(line),
       });
     }
   }
-
-  // Filter headers to focus on publication-related sections
-  const publicationHeaders = getFilteredHeaders(
-    allHeaders,
-    headerClassifier,
-    lines
-  );
 
   console.log(
     `[Grok CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
@@ -910,9 +869,9 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
 
   // Extract content for each publication section
   const publicationSections = [];
-  for (let i = 0; i < publicationHeaders.length; i++) {
-    const currentHeader = publicationHeaders[i];
-    const nextHeader = publicationHeaders[i + 1];
+  for (let i = 0; i < allHeaders.length; i++) {
+    const currentHeader = allHeaders[i];
+    const nextHeader = allHeaders[i + 1];
 
     const startLine = currentHeader.lineIndex + 1;
     const endLine = nextHeader ? nextHeader.lineIndex : lines.length;
@@ -1056,7 +1015,7 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  * @param {number} maxSize - Maximum chunk size
  * @returns {Array} Array of text chunks
  */
-function chunkCVText(cvText, maxSize = 12000) {
+function chunkCVText(cvText, maxSize = MAX_CHUNK_SIZE) {
   const chunks = [];
   let currentIndex = 0;
 

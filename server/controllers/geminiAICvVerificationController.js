@@ -10,10 +10,11 @@
  * - Return results in the same format as traditional verification
  *
  * @module aiCvVerification
- * @author AI Talent Finder Team
+ * @author SwangLee
  * @version 2.0.0
  */
 
+//======================== CONSTANTS & IMPORTS ========================
 const fs = require("fs");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {
@@ -22,109 +23,23 @@ const {
 } = require("../utils/aiHelpers");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
-const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
+const { getFilteredHeaders } = require("../utils/headerFilterUtils");
 const {
-  getFilteredHeaders,
-  TextProcessor,
-  PATHS,
-} = require("../utils/headerFilterUtils");
-
-/**
- * Remove duplicate publications based on title similarity
- * @param {Array} publications - Array of publication results
- * @returns {Array} Deduplicated publications
- */
-function removeDuplicatePublications(publications) {
-  const unique = [];
-  const seen = new Set();
-
-  for (const pub of publications) {
-    const title = pub.verification?.displayData?.title || "";
-    const normalizedTitle = title
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "")
-      .trim();
-
-    if (!seen.has(normalizedTitle) && normalizedTitle.length > 0) {
-      seen.add(normalizedTitle);
-      unique.push(pub);
-    }
-  }
-
-  return unique;
-}
+  initializeHeaderClassifier,
+} = require("../utils/headerClassifierUtils");
 const axios = require("axios");
-const path = require("path");
 
-//=============================================================================
-// MODULE EXPORTS
-//=============================================================================
+const MAX_CHUNK_SIZE = 8000;
 
+//======================== MAIN FUNCTION ========================
 module.exports = {
   verifyCVWithAI,
 };
 
-//=============================================================================
-// ML MODEL INITIALIZATION
-//=============================================================================
-
-/**
- * Initialize and load the header classifier ML model
- * @returns {Object|null} Trained header classifier or null if loading fails
- */
-function initializeHeaderClassifier() {
-  try {
-    const classifier = new SimpleHeaderClassifier();
-    const modelPath = path.join(__dirname, "../ml/header_classifier.json");
-
-    if (fs.existsSync(modelPath)) {
-      classifier.load(modelPath);
-      console.log(
-        "[Gemini CV Verification] Header classifier model loaded successfully"
-      );
-      return classifier;
-    } else {
-      console.warn(
-        "[Gemini CV Verification] Header classifier model not found, using fallback"
-      );
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      "[Gemini CV Verification] Error loading header classifier:",
-      error
-    );
-    return null;
-  }
-}
-
-//=============================================================================
-// MAIN AI CV VERIFICATION FUNCTION
-//=============================================================================
-
-/**
- * Main function for AI-based academic CV verification
- *
- * Processes a CV file through AI-powered verification pipeline:
- * 1. Parse PDF to extract text content
- * 2. Extract candidate name using AI
- * 3. Extract publications using AI
- * 4. Verify each publication exists online using AI
- * 5. Match candidate name against publication authors
- * 6. Generate verification report in traditional format
- *
- * @param {Object} file - Uploaded CV file object with path property
- * @param {string} prioritySource - Priority source for verification (optional)
- * @returns {Promise<Object>} Verification results in traditional format
- */
 async function verifyCVWithAI(file, prioritySource = "ai") {
   let cvText = "";
-
   try {
-    // Parse PDF to text (with OCR fallback)
     cvText = await extractTextFromPDF(file.path);
-
-    // Initialize Google AI model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-lite-preview-06-17",
@@ -134,27 +49,19 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
         maxOutputTokens: 8096,
       },
     });
-
-    // Extract candidate name using AI
     const candidateName = await extractCandidateNameWithAI(model, cvText);
-
-    // Process CV and verify publications with AI
     const verificationResults = await processFullCVWithAI(
       model,
       cvText,
       candidateName
     );
-
-    // Get author profile using APIs from sources instead of AI
     const authorProfile = await getAuthorProfileFromAPIs(
       candidateName,
       verificationResults
     );
-
-    // Return results in traditional format
     return {
       success: true,
-      candidateName: candidateName,
+      candidateName,
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
@@ -177,7 +84,6 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
     console.error("[AI CV Verification] Error:", error);
     throw error;
   } finally {
-    // Clean up uploaded file in finally block to ensure it always happens
     if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
@@ -279,9 +185,6 @@ async function searchAuthorInAPIs(candidateName) {
       authorIds.openalex = openAlexId;
     }
 
-    // Can add Google Scholar and Scopus searches here if needed
-    // For now, focus on OpenAlex as it's most comprehensive
-
     return authorIds;
   } catch (error) {
     console.error("Error searching author in APIs:", error);
@@ -374,8 +277,6 @@ function createBasicAuthorProfile(candidateName, verificationResults) {
  * @returns {Promise<Array>} Verification results array
  */
 async function processFullCVWithAI(model, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 8000;
-
   try {
     // Check if CV is too large and needs chunking
     if (cvText.length > MAX_CHUNK_SIZE) {
@@ -505,49 +406,6 @@ async function processLargeCVWithChunking(model, cvText, candidateName) {
         return removeDuplicatePublications(allResults);
       }
     }
-
-    // Fallback to existing chunked approach if ML model fails
-    console.log(
-      "[Gemini CV Verification] Falling back to traditional chunked processing"
-    );
-    const rawPublications = await extractPublicationsFromCV(model, cvText);
-
-    if (!Array.isArray(rawPublications)) {
-      console.warn("Invalid publications data received from AI");
-      return [];
-    }
-
-    console.log(
-      `[Gemini CV Verification] Extracted ${rawPublications.length} publications from large CV`
-    );
-
-    // Process each publication with AI verification in batches to avoid rate limits
-    const batchSize = 5; // Process 5 publications at a time
-    const allResults = [];
-
-    for (let i = 0; i < rawPublications.length; i += batchSize) {
-      const batch = rawPublications.slice(i, i + batchSize);
-      console.log(
-        `[AI CV Verification] Processing batch ${
-          Math.floor(i / batchSize) + 1
-        } of ${Math.ceil(rawPublications.length / batchSize)}`
-      );
-
-      const batchResults = await Promise.all(
-        batch.map((pub) =>
-          verifyIndividualPublication(model, pub, candidateName)
-        )
-      );
-
-      allResults.push(...batchResults);
-
-      // Add small delay between batches to avoid rate limiting
-      if (i + batchSize < rawPublications.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
-      }
-    }
-
-    return allResults.filter(Boolean); // Remove any null results
   } catch (error) {
     console.error("Error in large CV chunked processing:", error);
     throw error;

@@ -10,89 +10,48 @@
  * - Return results in the same format as traditional verification
  *
  * @module chatGPTAiCvVerification
- * @author AI Talent Finder Team
+ * @author SwangLee
  * @version 1.0.0
  */
 
+//======================== CONSTANTS & IMPORTS ========================
 const fs = require("fs");
 const OpenAI = require("openai");
-const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
 const { getFilteredHeaders } = require("../utils/headerFilterUtils");
 const {
-  extractCandidateNameWithAI,
-  extractPublicationsFromCV,
-} = require("../utils/aiHelpers");
+  initializeHeaderClassifier,
+} = require("../utils/headerClassifierUtils");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const axios = require("axios");
-const path = require("path");
 
-//=============================================================================
-// MODULE EXPORTS
-//=============================================================================
+const MAX_CHUNK_SIZE = 8000;
 
+//======================== MAIN FUNCTION ========================
 module.exports = {
   verifyCVWithChatGPT,
 };
 
-//=============================================================================
-// ML MODEL INITIALIZATION
-//=============================================================================
-
-// Use shared ML initialization function
-const headerClassifier = initializeHeaderClassifier("ChatGPT CV Verification");
-
-//=============================================================================
-// MAIN CHATGPT CV VERIFICATION FUNCTION
-//=============================================================================
-
-/**
- * Main function for ChatGPT-based academic CV verification
- *
- * Processes a CV file through ChatGPT-powered verification pipeline:
- * 1. Parse PDF to extract text content
- * 2. Extract candidate name using ChatGPT
- * 3. Extract publications using ChatGPT
- * 4. Verify each publication exists online using ChatGPT
- * 5. Match candidate name against publication authors
- * 6. Generate verification report in traditional format
- *
- * @param {Object} file - Uploaded CV file object with path property
- * @param {string} prioritySource - Priority source for verification (optional)
- * @returns {Promise<Object>} Verification results in traditional format
- */
 async function verifyCVWithChatGPT(file, prioritySource = "chatgpt") {
   let cvText = "";
-
   try {
-    // Parse PDF to text (with OCR fallback)
     cvText = await extractTextFromPDF(file.path);
-
-    // Initialize OpenAI client
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY,
     });
-
-    // Extract candidate name using ChatGPT
     const candidateName = await extractCandidateNameWithChatGPT(openai, cvText);
-
-    // Process CV and verify publications with ChatGPT
     const verificationResults = await processFullCVWithChatGPT(
       openai,
       cvText,
       candidateName
     );
-
-    // Get author profile using APIs from sources instead of AI
     const authorProfile = await getAuthorProfileFromAPIs(
       candidateName,
       verificationResults
     );
-
-    // Return results in traditional format
     return {
       success: true,
-      candidateName: candidateName,
+      candidateName,
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
@@ -115,7 +74,6 @@ async function verifyCVWithChatGPT(file, prioritySource = "chatgpt") {
     console.error("[ChatGPT CV Verification] Error:", error);
     throw error;
   } finally {
-    // Clean up uploaded file in finally block to ensure it always happens
     if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
@@ -184,8 +142,6 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @returns {Promise<Array>} Verification results array
  */
 async function processFullCVWithChatGPT(openai, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 8000;
-
   try {
     // Check if CV is too large and needs chunking
     if (cvText.length > MAX_CHUNK_SIZE) {
@@ -307,15 +263,15 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  * @returns {Promise<Array>} Verification results array
  */
 async function processLargeCVWithChunking(openai, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 8000;
-
   try {
     console.log(
       "[ChatGPT CV Verification] Using ML model for large CV processing"
     );
 
     // Initialize ML header classifier
-    const headerClassifier = initializeHeaderClassifier();
+    const headerClassifier = initializeHeaderClassifier(
+      "ChatGPT CV Verification"
+    );
 
     if (headerClassifier && headerClassifier.trained) {
       // Use ML model to identify publication sections
@@ -827,22 +783,12 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
     }
   }
 
-  // Filter headers to focus on publication-related sections
-  const publicationHeaders = getFilteredHeaders(
-    allHeaders,
-    headerClassifier,
-    lines
-  );
-
-  console.log(
-    `[ChatGPT CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
-  );
 
   // Extract content for each publication section
   const publicationSections = [];
-  for (let i = 0; i < publicationHeaders.length; i++) {
-    const header = publicationHeaders[i];
-    const nextHeader = publicationHeaders[i + 1];
+  for (let i = 0; i < allHeaders.length; i++) {
+    const header = allHeaders[i];
+    const nextHeader = allHeaders[i + 1];
 
     let sectionEnd;
     if (nextHeader) {
@@ -1099,39 +1045,8 @@ IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
 }
 
 //=============================================================================
-// ML MODEL INITIALIZATION AND UTILITIES
+// ML MODEL UTILITIES
 //=============================================================================
-
-/**
- * Initialize and load the header classifier ML model
- * @param {string} controllerName - Name of the controller for logging
- * @returns {Object|null} Trained header classifier or null if loading fails
- */
-function initializeHeaderClassifier(controllerName = "AI CV Verification") {
-  try {
-    const classifier = new SimpleHeaderClassifier();
-    const modelPath = path.join(__dirname, "../ml/header_classifier.json");
-
-    if (fs.existsSync(modelPath)) {
-      classifier.load(modelPath);
-      console.log(
-        `[${controllerName}] Header classifier model loaded successfully`
-      );
-      return classifier;
-    } else {
-      console.warn(
-        `[${controllerName}] Header classifier model not found, using fallback`
-      );
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      `[${controllerName}] Error loading header classifier:`,
-      error
-    );
-    return null;
-  }
-}
 
 /**
  * Extract publication sections using ML header classifier
