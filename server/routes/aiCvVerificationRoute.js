@@ -22,6 +22,9 @@ const {
 const {
   verifyCVWithClaude,
 } = require("../controllers/claudeAICvVerificationController");
+const {
+  verifyCVWithGrok,
+} = require("../controllers/grokAICvVerificationController");
 
 const router = express.Router();
 
@@ -81,71 +84,64 @@ const upload = multer({
  * @returns {Array} results - Detailed verification of each publication
  * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
-router.post(
-  "/gemini-ai-verify-cv",
-  upload.single("cv"),
-  async (req, res) => {
-    try {
-      // Validate file upload
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: "No CV file uploaded. Please upload a PDF file.",
-        });
-      }
-
-      // Extract priority source from request body
-      const prioritySource = req.body.prioritySource;
-
-      // Log verification attempt
-      console.log(
-        `[AI CV Verification] Starting verification for file: ${req.file.filename}`
-      );
-      console.log(`[AI CV Verification] Priority source: ${prioritySource}`);
-
-      // Perform AI-based CV verification
-      const verificationResult = await verifyCVWithAI(req.file, prioritySource);
-
-      // Log successful verification
-      console.log(`[AI CV Verification] Completed successfully`);
-      console.log(
-        `[AI CV Verification] Candidate: ${verificationResult.candidateName}`
-      );
-      console.log(
-        `[AI CV Verification] Publications analyzed: ${verificationResult.total}`
-      );
-      console.log(
-        `[AI CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
-      );
-
-      // Return verification results
-      res.json(verificationResult);
-    } catch (error) {
-      console.error("[AI CV Verification] Error:", error);
-
-      // Clean up uploaded file if it exists
-      if (req.file && req.file.path) {
-        try {
-          const fs = require("fs");
-          fs.unlinkSync(req.file.path);
-        } catch (cleanupError) {
-          console.error(
-            "[AI CV Verification] File cleanup error:",
-            cleanupError
-          );
-        }
-      }
-
-      // Return error response
-      res.status(500).json({
+router.post("/gemini-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  try {
+    // Validate file upload
+    if (!req.file) {
+      return res.status(400).json({
         success: false,
-        error: "CV verification failed. Please try again.",
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: "No CV file uploaded. Please upload a PDF file.",
       });
     }
+
+    // Extract priority source from request body
+    const prioritySource = req.body.prioritySource;
+
+    // Log verification attempt
+    console.log(
+      `[AI CV Verification] Starting verification for file: ${req.file.filename}`
+    );
+    console.log(`[AI CV Verification] Priority source: ${prioritySource}`);
+
+    // Perform AI-based CV verification
+    const verificationResult = await verifyCVWithAI(req.file, prioritySource);
+
+    // Log successful verification
+    console.log(`[AI CV Verification] Completed successfully`);
+    console.log(
+      `[AI CV Verification] Candidate: ${verificationResult.candidateName}`
+    );
+    console.log(
+      `[AI CV Verification] Publications analyzed: ${verificationResult.total}`
+    );
+    console.log(
+      `[AI CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
+    );
+
+    // Return verification results
+    res.json(verificationResult);
+  } catch (error) {
+    console.error("[AI CV Verification] Error:", error);
+
+    // Clean up uploaded file if it exists
+    if (req.file && req.file.path) {
+      try {
+        const fs = require("fs");
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error("[AI CV Verification] File cleanup error:", cleanupError);
+      }
+    }
+
+    // Return error response
+    res.status(500).json({
+      success: false,
+      error: "CV verification failed. Please try again.",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
-);
+});
 
 /**
  * POST /api/chatgpt-ai-verify-cv
@@ -165,76 +161,70 @@ router.post(
  * @returns {Array} results - Detailed verification of each publication
  * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
-router.post(
-  "/chatgpt-ai-verify-cv",
-  upload.single("cv"),
-  async (req, res) => {
-    try {
-      // Validate file upload
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: "No CV file uploaded. Please upload a PDF file.",
-        });
-      }
-
-      // Extract priority source from request body
-      const prioritySource = req.body.prioritySource;
-
-      // Log verification attempt
-      console.log(
-        `[ChatGPT CV Verification] Starting verification for file: ${req.file.filename}`
-      );
-      console.log(
-        `[ChatGPT CV Verification] Priority source: ${prioritySource}`
-      );
-
-      // Perform ChatGPT-based CV verification
-      const verificationResult = await verifyCVWithChatGPT(
-        req.file,
-        prioritySource
-      );
-
-      // Log successful verification
-      console.log(`[ChatGPT CV Verification] Completed successfully`);
-      console.log(
-        `[ChatGPT CV Verification] Candidate: ${verificationResult.candidateName}`
-      );
-      console.log(
-        `[ChatGPT CV Verification] Publications analyzed: ${verificationResult.total}`
-      );
-      console.log(
-        `[ChatGPT CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
-      );
-
-      // Return verification results
-      res.json(verificationResult);
-    } catch (error) {
-      console.error("[ChatGPT CV Verification] Error:", error);
-
-      // Clean up uploaded file if it exists
-      if (req.file && req.file.path) {
-        try {
-          const fs = require("fs");
-          fs.unlinkSync(req.file.path);
-        } catch (cleanupError) {
-          console.error(
-            "[ChatGPT CV Verification] File cleanup error:",
-            cleanupError
-          );
-        }
-      }
-
-      // Return error response
-      res.status(500).json({
+router.post("/chatgpt-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  try {
+    // Validate file upload
+    if (!req.file) {
+      return res.status(400).json({
         success: false,
-        error: "CV verification failed. Please try again.",
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: "No CV file uploaded. Please upload a PDF file.",
       });
     }
+
+    // Extract priority source from request body
+    const prioritySource = req.body.prioritySource;
+
+    // Log verification attempt
+    console.log(
+      `[ChatGPT CV Verification] Starting verification for file: ${req.file.filename}`
+    );
+    console.log(`[ChatGPT CV Verification] Priority source: ${prioritySource}`);
+
+    // Perform ChatGPT-based CV verification
+    const verificationResult = await verifyCVWithChatGPT(
+      req.file,
+      prioritySource
+    );
+
+    // Log successful verification
+    console.log(`[ChatGPT CV Verification] Completed successfully`);
+    console.log(
+      `[ChatGPT CV Verification] Candidate: ${verificationResult.candidateName}`
+    );
+    console.log(
+      `[ChatGPT CV Verification] Publications analyzed: ${verificationResult.total}`
+    );
+    console.log(
+      `[ChatGPT CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
+    );
+
+    // Return verification results
+    res.json(verificationResult);
+  } catch (error) {
+    console.error("[ChatGPT CV Verification] Error:", error);
+
+    // Clean up uploaded file if it exists
+    if (req.file && req.file.path) {
+      try {
+        const fs = require("fs");
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error(
+          "[ChatGPT CV Verification] File cleanup error:",
+          cleanupError
+        );
+      }
+    }
+
+    // Return error response
+    res.status(500).json({
+      success: false,
+      error: "CV verification failed. Please try again.",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
-);
+});
 
 /**
  * POST /api/claude-ai-verify-cv
@@ -254,76 +244,150 @@ router.post(
  * @returns {Array} results - Detailed verification of each publication
  * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
-router.post(
-  "/claude-ai-verify-cv",
-  upload.single("cv"),
-  async (req, res) => {
-    try {
-      // Validate file upload
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: "No CV file uploaded. Please upload a PDF file.",
-        });
-      }
-
-      // Extract priority source from request body
-      const prioritySource = req.body.prioritySource;
-
-      // Log verification attempt
-      console.log(
-        `[Claude CV Verification] Starting verification for file: ${req.file.filename}`
-      );
-      console.log(
-        `[Claude CV Verification] Priority source: ${prioritySource}`
-      );
-
-      // Perform Claude-based CV verification
-      const verificationResult = await verifyCVWithClaude(
-        req.file,
-        prioritySource
-      );
-
-      // Log successful verification
-      console.log(`[Claude CV Verification] Completed successfully`);
-      console.log(
-        `[Claude CV Verification] Candidate: ${verificationResult.candidateName}`
-      );
-      console.log(
-        `[Claude CV Verification] Publications analyzed: ${verificationResult.total}`
-      );
-      console.log(
-        `[Claude CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
-      );
-
-      // Return verification results
-      res.json(verificationResult);
-    } catch (error) {
-      console.error("[Claude CV Verification] Error:", error);
-
-      // Clean up uploaded file if it exists
-      if (req.file && req.file.path) {
-        try {
-          const fs = require("fs");
-          fs.unlinkSync(req.file.path);
-        } catch (cleanupError) {
-          console.error(
-            "[Claude CV Verification] File cleanup error:",
-            cleanupError
-          );
-        }
-      }
-
-      // Return error response
-      res.status(500).json({
+router.post("/claude-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  try {
+    // Validate file upload
+    if (!req.file) {
+      return res.status(400).json({
         success: false,
-        error: "CV verification failed. Please try again.",
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: "No CV file uploaded. Please upload a PDF file.",
       });
     }
+
+    // Extract priority source from request body
+    const prioritySource = req.body.prioritySource;
+
+    // Log verification attempt
+    console.log(
+      `[Claude CV Verification] Starting verification for file: ${req.file.filename}`
+    );
+    console.log(`[Claude CV Verification] Priority source: ${prioritySource}`);
+
+    // Perform Claude-based CV verification
+    const verificationResult = await verifyCVWithClaude(
+      req.file,
+      prioritySource
+    );
+
+    // Log successful verification
+    console.log(`[Claude CV Verification] Completed successfully`);
+    console.log(
+      `[Claude CV Verification] Candidate: ${verificationResult.candidateName}`
+    );
+    console.log(
+      `[Claude CV Verification] Publications analyzed: ${verificationResult.total}`
+    );
+    console.log(
+      `[Claude CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
+    );
+
+    // Return verification results
+    res.json(verificationResult);
+  } catch (error) {
+    console.error("[Claude CV Verification] Error:", error);
+
+    // Clean up uploaded file if it exists
+    if (req.file && req.file.path) {
+      try {
+        const fs = require("fs");
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error(
+          "[Claude CV Verification] File cleanup error:",
+          cleanupError
+        );
+      }
+    }
+
+    // Return error response
+    res.status(500).json({
+      success: false,
+      error: "CV verification failed. Please try again.",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
-);
+});
+
+/**
+ * POST /api/grok-ai-verify-cv
+ *
+ * Main endpoint for Grok AI-based CV verification
+ *
+ * @body {File} cv - PDF file of the CV to be verified
+ * @body {string} [prioritySource] - Priority source for analysis (default: "grok")
+ *
+ * @returns {Object} Verification results in traditional format
+ * @returns {boolean} success - Whether verification was successful
+ * @returns {string} candidateName - Extracted candidate name
+ * @returns {number} total - Total number of publications found
+ * @returns {number} verifiedPublications - Number of verified publications
+ * @returns {number} verifiedWithAuthorMatch - Number of verified publications with author match
+ * @returns {number} verifiedButDifferentAuthor - Number of verified publications but different author
+ * @returns {Array} results - Detailed verification of each publication
+ * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
+ */
+router.post("/grok-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  try {
+    // Validate file upload
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: "No CV file uploaded. Please upload a PDF file.",
+      });
+    }
+
+    // Extract priority source from request body
+    const prioritySource = req.body.prioritySource;
+
+    // Log verification attempt
+    console.log(
+      `[Grok CV Verification] Starting verification for file: ${req.file.filename}`
+    );
+    console.log(`[Grok CV Verification] Priority source: ${prioritySource}`);
+
+    // Perform Grok AI-based CV verification
+    const verificationResult = await verifyCVWithGrok(req.file, prioritySource);
+
+    // Log successful verification
+    console.log(`[Grok CV Verification] Completed successfully`);
+    console.log(
+      `[Grok CV Verification] Candidate: ${verificationResult.candidateName}`
+    );
+    console.log(
+      `[Grok CV Verification] Publications analyzed: ${verificationResult.total}`
+    );
+    console.log(
+      `[Grok CV Verification] Verified publications: ${verificationResult.verifiedPublications}`
+    );
+
+    // Return verification results
+    res.json(verificationResult);
+  } catch (error) {
+    console.error("[Grok CV Verification] Error:", error);
+
+    // Clean up uploaded file if it exists
+    if (req.file && req.file.path) {
+      try {
+        const fs = require("fs");
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error(
+          "[Grok CV Verification] File cleanup error:",
+          cleanupError
+        );
+      }
+    }
+
+    // Return error response
+    res.status(500).json({
+      success: false,
+      error: "CV verification failed. Please try again.",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
 
 //=============================================================================
 // ERROR HANDLING MIDDLEWARE
