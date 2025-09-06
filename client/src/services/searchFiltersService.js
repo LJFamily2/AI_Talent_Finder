@@ -36,6 +36,44 @@ export async function listInstitutions(offset = 0, limit = 50) {
     }
 }
 
+// load a single field (by offset) with all its topics
+// options: { offset }
+// GET /api/search-filters/fields/one?offset=0
+export async function loadFieldWithAllTopics({ offset = 0 } = {}) {
+    try {
+        const res = await api.get("/api/search-filters/fields/one", { params: { offset } });
+        // res.data: { field: { _id, display_name, topics: [...], topics_count }, done }
+        return res.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+}
+
+// new: load list of all fields (small ~26 docs)
+export async function loadAllFields() {
+    try {
+        const res = await api.get("/api/search-filters/fields");
+        // response: { fields: [{ _id, display_name }, ...] }
+        return res.data.fields || [];
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+}
+
+// new: load topics for a field (fieldId can be "null" for uncategorized)
+// params: fieldId, offset, limit, q
+export async function loadTopicsForField(fieldId, offset = 0, limit = 1000, q = "") {
+    try {
+        const res = await api.get(`/api/search-filters/fields/${fieldId}/topics`, {
+            params: { offset, limit, q }
+        });
+        // response: { topics: [...], total: N }
+        return res.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+}
+
 // ====== Get search parameters
 export function buildFilterPayload({
     selectedInstitutions = [],

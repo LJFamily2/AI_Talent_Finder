@@ -28,7 +28,9 @@ import {
     searchResearchers,
     // loadCountriesFilter,
     searchInstitutions,
-    listInstitutions
+    listInstitutions,
+    loadAllFields,
+    loadTopicsForField,
 } from '@/services/searchFiltersService';
 
 function SearchInterface() {
@@ -236,8 +238,15 @@ function SearchInterface() {
         ) : null;
     }
 
-    function FieldModal({ open, onClose, fields, selected, onSelect, search, onSearch }) {
+    // REPLACED FieldModal: load all fields once, lazy-load topics per-field on expand
+    function FieldModal({ open, onClose, selected, onSelect, search, onSearch }) {
         const modalRef = useRef(null);
+        const [fields, setFields] = useState([]); // [{ _id, display_name }]
+        const [loadingFields, setLoadingFields] = useState(false);
+        const [topicsMap, setTopicsMap] = useState({}); // { fieldIdKey: { topics: [], total } }
+        const [loadingTopics, setLoadingTopics] = useState({}); // { fieldIdKey: boolean }
+        const [expandedSet, setExpandedSet] = useState(new Set()); // store fieldId keys that are expanded
+
         useEffect(() => {
             function handleClickOutside(event) {
                 if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -247,33 +256,131 @@ function SearchInterface() {
             if (open) document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }, [onClose, open]);
-        const filtered = fields.filter(f => f.toLowerCase().includes(search.toLowerCase()));
+
+        // load all fields once when modal opens
+        useEffect(() => {
+            if (!open) return;
+            setFields([]);
+            setTopicsMap({});
+            setExpandedSet(new Set());
+            setLoadingFields(true);
+            loadAllFields()
+                .then(list => setFields(list))
+                .catch(err => console.error("loadAllFields error:", err))
+                .finally(() => setLoadingFields(false));
+        }, [open]);
+
+        function toggleField(fieldName) {
+            onSelect(fieldName);
+        }
+
+        // toggle topic selection using a synthetic key "Field > Topic"
+        function toggleTopic(fieldName, topicName) {
+            const key = `${fieldName} > ${topicName}`;
+            onSelect(key);
+        }
+
+        function toggleExpand(field) {
+            const fieldIdKey = field._id ? String(field._id) : `null`;
+            setExpandedSet(prev => {
+                const next = new Set(prev);
+                if (next.has(fieldIdKey)) next.delete(fieldIdKey);
+                else next.add(fieldIdKey);
+                return next;
+            });
+
+            // if topics not loaded yet, fetch them
+            if (!topicsMap[fieldIdKey]) {
+                setLoadingTopics(prev => ({ ...prev, [fieldIdKey]: true }));
+                const fetchId = field._id ? field._id : "null";
+                loadTopicsForField(fetchId, 0, 5000, "") // limit large enough to pull all topics for that field
+                    .then(res => {
+                        setTopicsMap(prev => ({ ...prev, [fieldIdKey]: { topics: res.topics || [], total: res.total || 0 } }));
+                    })
+                    .catch(err => {
+                        console.error("loadTopicsForField error:", err);
+                        setTopicsMap(prev => ({ ...prev, [fieldIdKey]: { topics: [], total: 0 } }));
+                    })
+                    .finally(() => setLoadingTopics(prev => ({ ...prev, [fieldIdKey]: false })));
+            }
+        }
+
         return open ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
                 <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
                     <button className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
                     <input
                         type="text"
-                        placeholder="Search fields"
+                        placeholder="Search fields or topics"
                         className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
                         value={search}
                         onChange={e => onSearch(e.target.value)}
                     />
-                    <div className="text-gray-500 text-sm mb-2">All fields ({fields.length})</div>
+                    <div className="text-gray-500 text-sm mb-2">Fields ({fields.length})</div>
                     <div className="border-b mb-2"></div>
                     <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
-                        {filtered.map((field, idx) => (
-                            <label key={field} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.includes(field)}
-                                    onChange={() => onSelect(field)}
-                                    className="w-5 h-5 accent-[#E60028]"
-                                />
-                                <span>{field}</span>
-                            </label>
-                        ))}
-                        {filtered.length === 0 && <div className="text-gray-400 text-center py-8">No fields found</div>}
+                        {loadingFields && <div className="text-center py-4 text-gray-500">Loading fields…</div>}
+                        {!loadingFields && fields.map((f, fi) => {
+                            const fieldIdKey = f._id ? String(f._id) : `null`;
+                            const fieldSelected = selected.includes(f.display_name);
+                            const isExpanded = expandedSet.has(fieldIdKey);
+                            const topicEntry = topicsMap[fieldIdKey];
+                            return (
+                                <div key={fieldIdKey} className="py-2 px-2 border-b last:border-b-0">
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={fieldSelected}
+                                                onChange={() => toggleField(f.display_name)}
+                                                className="w-5 h-5 accent-[#E60028]"
+                                            />
+                                            <span className="font-medium">{f.display_name}</span>
+                                            <span className="text-sm text-gray-400 ml-2">({
+                                                // prefer server-provided count from loadAllFields,
+                                                // fallback to already-loaded topics total, otherwise show '...'
+                                                f.topics_count !== undefined && f.topics_count !== null
+                                                    ? f.topics_count
+                                                    : (topicEntry ? topicEntry.total : '...')
+                                            })</span>
+                                        </label>
+                                        <button
+                                            className="text-sm text-gray-600 hover:text-gray-800 px-2 py-1"
+                                            onClick={() => toggleExpand(f)}
+                                            aria-expanded={isExpanded}
+                                            aria-controls={`topics_${fieldIdKey}`}
+                                        >
+                                            <span style={{ display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>▸</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Collapsible topics */}
+                                    <div id={`topics_${fieldIdKey}`} className={`ml-8 mt-2 flex flex-col gap-1 transition-all ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                        {isExpanded ? (
+                                            loadingTopics[fieldIdKey] ? (
+                                                <div className="text-sm text-gray-500">Loading topics…</div>
+                                            ) : (Array.isArray(topicEntry?.topics) && topicEntry.topics.length ? topicEntry.topics.map((t, ti) => {
+                                                const topicKey = `${f.display_name} > ${t.display_name}`;
+                                                const topicChecked = selected.includes(topicKey);
+                                                return (
+                                                    <label key={`${String(t._id)}_${ti}`} className={`flex items-center gap-3 text-sm ${fieldSelected ? 'opacity-50' : ''}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={topicChecked}
+                                                            disabled={fieldSelected}
+                                                            onChange={() => toggleTopic(f.display_name, t.display_name)}
+                                                            className="w-4 h-4 accent-[#E60028]"
+                                                        />
+                                                        <span>{t.display_name}</span>
+                                                    </label>
+                                                );
+                                            }) : <div className="text-sm text-gray-400">No topics</div>)
+                                        ) : null}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {!loadingFields && fields.length === 0 && <div className="text-gray-400 text-center py-8">No fields found</div>}
                     </div>
                 </div>
             </div>
@@ -686,7 +793,6 @@ function SearchInterface() {
                                             ×
                                         </button>
                                         {inst.display_name}
-                                        {console.log(inst)}
                                     </div>
                                 ))}
                             </div>
@@ -849,8 +955,10 @@ function SearchInterface() {
                 fields={FIELD_LIST}
                 selected={selectedFields}
                 onSelect={field => {
+                    // toggle selection (field is a string or synthetic topic key)
                     setSelectedFields(sel => sel.includes(field) ? sel.filter(f => f !== field) : [...sel, field]);
-                    setShowFieldModal(false);
+                    // keep modal open for multi-select; if you want to close after selecting uncomment next line:
+                    // setShowFieldModal(false);
                 }}
                 search={fieldSearch}
                 onSearch={setFieldSearch}
