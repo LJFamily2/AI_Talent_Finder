@@ -24,7 +24,7 @@ const {
 } = require("../utils/headerClassifierUtils");
 const axios = require("axios");
 
-const MAX_CHUNK_SIZE = 8000;
+const MAX_CHUNK_SIZE = 5000;
 
 //=============================================================================
 // MODULE EXPORTS
@@ -113,7 +113,6 @@ async function verifyCVWithClaude(file, prioritySource = "claude") {
     if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
-        console.log("[Claude CV Verification] File cleaned up");
       } catch (cleanupError) {
         console.warn(
           "[Claude CV Verification] File cleanup failed:",
@@ -176,9 +175,6 @@ async function processFullCVWithClaude(anthropic, cvText, candidateName) {
   try {
     // Check if CV is too large and needs chunking
     if (cvText.length > MAX_CHUNK_SIZE) {
-      console.log(
-        `[Claude CV Verification] Large CV detected (${cvText.length} chars), using chunked processing`
-      );
       return await processLargeCVWithChunking(anthropic, cvText, candidateName);
     }
 
@@ -243,7 +239,7 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
+      max_tokens: 16384,
       temperature: 0,
       messages: [
         {
@@ -253,36 +249,34 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
       ],
     });
 
-    console.log(
-      "[Claude CV Verification] Raw response length:",
-      response.content[0]?.text?.length
-    );
-    console.log(
-      "[Claude CV Verification] Raw response preview:",
-      response.content[0]?.text?.substring(0, 500)
-    );
-
     const verificationText = cleanJSONResponse(response.content[0]?.text);
 
     let verificationData;
     try {
       verificationData = JSON.parse(verificationText);
     } catch (jsonError) {
-      console.error("JSON parsing failed:", jsonError.message);
-      console.log("Problematic JSON text:", verificationText);
+      console.error(
+        `[Claude CV Verification] JSON Parse Error: ${jsonError.message}`
+      );
 
-      // Try to recover by attempting to fix incomplete JSON
-      const recoveredData = attemptJSONRecovery(verificationText);
-      if (recoveredData) {
-        verificationData = recoveredData;
-        console.log(
-          "[Claude CV Verification] Successfully recovered from malformed JSON"
+      // Attempt to fix truncated or malformed JSON
+      const fixedText = fixTruncatedJSON(verificationText);
+
+      try {
+        verificationData = JSON.parse(fixedText);
+      } catch (secondError) {
+        console.error(
+          `[Claude CV Verification] Could not fix JSON:`,
+          secondError.message
         );
-      } else {
-        console.log(
-          "[Claude CV Verification] JSON recovery failed, returning empty results"
-        );
-        return [];
+
+        // Try to recover by attempting to fix incomplete JSON
+        const recoveredData = attemptJSONRecovery(verificationText);
+        if (recoveredData) {
+          verificationData = recoveredData;
+        } else {
+          return [];
+        }
       }
     }
 
@@ -330,10 +324,6 @@ async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
       );
 
       if (publicationSections.length > 0) {
-        console.log(
-          `[Claude CV Verification] Found ${publicationSections.length} publication sections using ML model`
-        );
-
         // Process ALL publication sections in a single batch request
         const allResults = await processBatchedPublicationSectionsWithClaude(
           anthropic,
@@ -346,9 +336,6 @@ async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
     }
 
     // Fallback to chunking approach if ML model fails
-    console.log(
-      "[Claude CV Verification] Falling back to traditional chunked processing"
-    );
     const chunks = [];
     let currentIndex = 0;
 
@@ -361,8 +348,6 @@ async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
       chunks.push(chunk);
       currentIndex += MAX_CHUNK_SIZE;
     }
-
-    console.log(`[Claude CV Verification] Processing ${chunks.length} chunks`);
 
     // Process all chunks in parallel for better performance
     const chunkPromises = chunks.map((chunk, i) => {
@@ -383,6 +368,56 @@ async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
     console.error("Error in large CV chunked processing:", error);
     throw error;
   }
+}
+
+//=============================================================================
+// HELPER FUNCTIONS FOR BATCHING
+//=============================================================================
+
+/**
+ * Create batches of section content based on MAX_CHUNK_SIZE
+ * @param {Array} publicationSections - Array of publication section objects
+ * @returns {Array} Array of section content batches
+ */
+function createSectionContentBatches(publicationSections) {
+  const batches = [];
+  let currentBatch = {
+    sections: [],
+    totalSize: 0,
+    combinedContent: "",
+  };
+
+  for (const section of publicationSections) {
+    const sectionSize = section.content.length;
+
+    // If adding this section would exceed MAX_CHUNK_SIZE, start a new batch
+    if (
+      currentBatch.totalSize + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.sections.length > 0
+    ) {
+      batches.push({ ...currentBatch });
+      currentBatch = {
+        sections: [section],
+        totalSize: sectionSize,
+        combinedContent: section.content,
+      };
+    } else {
+      currentBatch.sections.push(section);
+      currentBatch.totalSize += sectionSize;
+      if (currentBatch.combinedContent) {
+        currentBatch.combinedContent += "\n\n---\n\n" + section.content;
+      } else {
+        currentBatch.combinedContent = section.content;
+      }
+    }
+  }
+
+  // Add the last batch if it has any sections
+  if (currentBatch.sections.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
 }
 
 //=============================================================================
@@ -414,7 +449,6 @@ async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
     const authorIds = await searchAuthorInAPIs(candidateName);
 
     if (!authorIds || !Object.values(authorIds).some((id) => id)) {
-      console.log(`No author found in APIs for: ${candidateName}`);
       return createBasicAuthorProfile(candidateName, verificationResults);
     }
 
@@ -476,7 +510,6 @@ async function searchAuthorInAPIs(candidateName) {
     if (openAlexResponse.data?.results?.length > 0) {
       const author = openAlexResponse.data.results[0];
       authorIds.openalex = author.id;
-      console.log(`Found author in OpenAlex: ${author.display_name}`);
     }
   } catch (error) {
     console.error("Error searching OpenAlex:", error.message);
@@ -576,6 +609,46 @@ function transformPublicationResult(
       },
     },
   };
+}
+
+/**
+ * Fix truncated or malformed JSON responses
+ * @param {string} jsonText - The malformed JSON text
+ * @returns {string} Fixed JSON text
+ */
+function fixTruncatedJSON(jsonText) {
+  let fixedText = jsonText;
+
+  // Remove trailing commas before closing brackets/braces
+  fixedText = fixedText.replace(/,(\s*[}\]])/g, "$1");
+
+  // Check if the JSON is truncated (missing closing brackets)
+  const openBraces = (fixedText.match(/\{/g) || []).length;
+  const closeBraces = (fixedText.match(/\}/g) || []).length;
+  const openBrackets = (fixedText.match(/\[/g) || []).length;
+  const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+  // If JSON is truncated, try to complete it
+  if (openBraces > closeBraces || openBrackets > closeBrackets) {
+    // Remove any incomplete object at the end
+    const lastCompleteObjectMatch = fixedText.lastIndexOf("    }");
+    if (lastCompleteObjectMatch !== -1) {
+      fixedText = fixedText.substring(0, lastCompleteObjectMatch + 5);
+    }
+
+    // Add missing closing brackets and braces
+    const missingBrackets = openBrackets - closeBrackets;
+    const missingBraces = openBraces - closeBraces;
+
+    for (let i = 0; i < missingBrackets; i++) {
+      fixedText += "\n  ]";
+    }
+    for (let i = 0; i < missingBraces; i++) {
+      fixedText += "\n}";
+    }
+  }
+
+  return fixedText;
 }
 
 /**
@@ -680,9 +753,6 @@ function attemptJSONRecovery(malformedJson) {
 
           // Try to parse the recovered JSON
           const recovered = JSON.parse(workingJson);
-          console.log(
-            `[Claude CV Verification] Successfully recovered ${matches.length} publications from malformed JSON`
-          );
           return recovered;
         }
       }
@@ -892,8 +962,8 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
 }
 
 /**
- * Process all publication sections with Claude verification in a single batched request
- * This reduces API calls by combining all sections into one request
+ * Process all publication sections with Claude verification using size-based batching
+ * This batches publication sections by MAX_CHUNK_SIZE to reduce API calls while staying within limits
  * @param {Anthropic} anthropic - Anthropic client instance
  * @param {Array} publicationSections - Array of publication section objects
  * @param {string} candidateName - Candidate name
@@ -909,26 +979,64 @@ async function processBatchedPublicationSectionsWithClaude(
   }
 
   console.log(
-    `[Claude CV Verification] Processing ${publicationSections.length} publication sections in a single batch request`
+    `[Claude CV Verification] Processing ${publicationSections.length} publication sections using size-based batching`
   );
 
-  // Combine all publication sections into a single prompt
-  const sectionsText = publicationSections
-    .map(
-      (section, index) =>
-        `SECTION ${index + 1} - ${section.header}:\n${section.content}`
-    )
-    .join("\n\n---\n\n");
+  // Create batches of section content based on MAX_CHUNK_SIZE
+  const batches = createSectionContentBatches(publicationSections);
 
-  const batchedPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from ALL sections below and verify each one online.
+  console.log(
+    `[Claude CV Verification] Created ${batches.length} batches for verification`
+  );
+
+  const allResults = [];
+
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+
+    const batchResults = await processBatchOfSectionContentWithClaude(
+      anthropic,
+      batch,
+      candidateName,
+      i + 1
+    );
+    allResults.push(...batchResults);
+  }
+
+  console.log(
+    `[Claude CV Verification] Completed processing with ${allResults.length} verified publications`
+  );
+  return removeDuplicatePublications(allResults);
+}
+
+/**
+ * Process publication content with Claude verification (handles both single sections and batches)
+ * @param {Anthropic} anthropic - Anthropic client instance
+ * @param {Object|string} content - Batch object with combinedContent or single section content
+ * @param {string} candidateName - Candidate name
+ * @param {number} batchNumber - Batch number for logging
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processBatchOfSectionContentWithClaude(
+  anthropic,
+  content,
+  candidateName,
+  batchNumber = 1
+) {
+  // Handle both batch objects and direct content strings
+  const publicationContent =
+    typeof content === "string" ? content : content.combinedContent;
+
+  const prompt = `
+You are an expert at analyzing academic publication content. Extract ALL publications from the content below and verify each one online.
 
 CANDIDATE NAME: ${candidateName || "Unknown"}
 
-ALL PUBLICATION SECTIONS:
-${sectionsText}
+PUBLICATION CONTENT:
+${publicationContent}
 
-Extract ALL publications from ALL sections above. For each publication found (whether verified online or not), provide the following JSON format:
+Extract ALL publications from the content above. For each publication found (whether verified online or not), provide the following JSON format:
 
 {
   "allPublications": [
@@ -940,8 +1048,7 @@ Extract ALL publications from ALL sections above. For each publication found (wh
         "venue": "journal/conference name", 
         "type": "journal/conference/book chapter/etc",
         "doi": "DOI if available",
-        "fullText": "original text from CV",
-        "sectionHeader": "which section this came from"
+        "fullText": "original text from CV"
       },
       "verification": {
         "isOnline": true/false,
@@ -954,77 +1061,68 @@ Extract ALL publications from ALL sections above. For each publication found (wh
 }
 
 EXTRACTION AND VERIFICATION GUIDELINES:
-1. Extract ALL publications from ALL sections (journal articles, conference papers, book chapters, etc.)
+1. Extract ALL publications from the content (journal articles, conference papers, book chapters, etc.)
 2. For each publication, determine if it likely exists online (isOnline: true/false)
 3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
 4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
 5. For unverified publications, set isOnline: false, link: null, citationCount: 0
 6. Estimate citation counts only for verified publications
-7. IMPORTANT: Include ALL publications found in ALL sections, not just verified ones
+7. IMPORTANT: Include ALL publications found in the content, not just verified ones
 
 IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
 
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 16384,
+    temperature: 0,
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+  });
+
+  const rawResponse = response.content[0]?.text;
+  const verificationText = cleanJSONResponse(rawResponse);
+
+  let verificationData;
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      temperature: 0,
-      max_tokens: 10000,
-      messages: [
-        {
-          role: "user",
-          content: batchedPrompt,
-        },
-      ],
-    });
-
-    const rawResponse = response.content[0]?.text;
-    console.log(
-      `[Claude CV Verification] Batch response length: ${
-        rawResponse?.length || 0
-      } characters`
+    verificationData = JSON.parse(verificationText);
+  } catch (parseError) {
+    console.error(
+      `[Claude CV Verification] JSON Parse Error: ${parseError.message}`
     );
 
-    const verificationText = cleanJSONResponse(rawResponse);
-    const verificationData = JSON.parse(verificationText);
-    const allPublications = verificationData.allPublications || [];
+    // Attempt to fix truncated or malformed JSON
+    const fixedText = fixTruncatedJSON(verificationText);
 
-    console.log(
-      `[Claude CV Verification] Extracted ${allPublications.length} publications from batched processing`
-    );
-
-    // Transform to expected format using helper function
-    return allPublications.map((item) => {
-      return transformPublicationResult(
-        item.publication,
-        item.verification,
-        item.publication
+    try {
+      verificationData = JSON.parse(fixedText);
+    } catch (secondError) {
+      console.error(
+        `[Claude CV Verification] Could not fix JSON:`,
+        secondError.message
       );
-    });
-  } catch (error) {
-    console.error("Error in batched publication sections processing:", error);
-
-    // Fallback to individual processing if batch fails
-    console.log(
-      "[Claude CV Verification] Falling back to individual section processing"
-    );
-    const allResults = [];
-
-    for (const section of publicationSections) {
-      try {
-        const sectionResults = await processPublicationSectionWithClaude(
-          anthropic,
-          section,
-          candidateName
-        );
-        allResults.push(...sectionResults);
-      } catch (error) {
-        console.error("Error processing publication section:", error);
-        // Continue with other sections
-      }
+      throw new Error(
+        `Failed to parse AI response as JSON: ${parseError.message}`
+      );
     }
-
-    return allResults;
   }
+
+  const allPublications = verificationData.allPublications || [];
+
+  console.log(
+    `[Claude CV Verification] Extracted ${allPublications.length} publications from batch ${batchNumber}`
+  );
+
+  return allPublications.map((item) => {
+    return transformPublicationResult(
+      item.publication,
+      item.verification,
+      item.publication
+    );
+  });
 }
 
 /**
@@ -1039,98 +1137,11 @@ async function processPublicationSectionWithClaude(
   section,
   candidateName
 ) {
-  const sectionPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from this CV section and verify each one.
-
-CANDIDATE NAME: ${candidateName || "Unknown"}
-SECTION HEADER: ${section.header}
-
-SECTION CONTENT:
-${section.content}
-
-Extract ALL publications from this section. For each publication found, provide the following JSON format:
-
-{
-  "publications": [
-    {
-      "publication": {
-        "title": "extracted title",
-        "authors": ["list", "of", "authors"],
-        "year": "publication year",
-        "venue": "journal/conference name", 
-        "type": "journal/conference/book chapter/etc",
-        "doi": "DOI if available",
-        "fullText": "original text from CV section"
-      },
-      "verification": {
-        "isOnline": true/false,
-        "hasAuthorMatch": true/false,
-        "link": "publication link or null",
-        "citationCount": "number or 0"
-      }
-    }
-  ]
-}
-
-GUIDELINES:
-1. Extract ALL publications from this section only
-2. Determine if each publication likely exists online
-3. Check if candidate name appears in author list
-4. Provide links when possible (DOI preferred)
-5. Estimate citation count for verified publications
-
-IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
-
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
-      temperature: 0,
-      messages: [
-        {
-          role: "user",
-          content: sectionPrompt,
-        },
-      ],
-    });
-
-    const rawResponse = response.content[0]?.text;
-    console.log(
-      `[Claude] Raw response length: ${rawResponse?.length || 0} characters`
-    );
-
-    const verificationText = cleanJSONResponse(rawResponse);
-    console.log(
-      `[Claude] Cleaned JSON length: ${verificationText.length} characters`
-    );
-
-    try {
-      const verificationData = JSON.parse(verificationText);
-      const publications = verificationData.publications || [];
-
-      console.log(
-        `[Claude] Successfully parsed ${publications.length} publications from section: ${section.header}`
-      );
-
-      // Transform to expected format
-      return publications.map((item) => {
-        return transformPublicationResult(
-          item.publication,
-          item.verification,
-          item.publication
-        );
-      });
-    } catch (parseError) {
-      console.error(`[Claude] JSON Parse Error: ${parseError.message}`);
-      console.error(
-        `[Claude] Problematic JSON: ${verificationText.substring(0, 500)}...`
-      );
-
-      // Return empty array instead of throwing
-      return [];
-    }
-  } catch (error) {
-    console.error("Error processing publication section with Claude:", error);
-    return [];
-  }
+  // Use the unified batch processing function for single sections
+  return await processBatchOfSectionContentWithClaude(
+    anthropic,
+    section.content,
+    candidateName,
+    1
+  );
 }

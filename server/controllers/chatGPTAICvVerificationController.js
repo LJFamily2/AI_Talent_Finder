@@ -24,7 +24,7 @@ const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const axios = require("axios");
 
-const MAX_CHUNK_SIZE = 8000;
+const MAX_CHUNK_SIZE = 5000;
 
 //======================== MAIN FUNCTION ========================
 module.exports = {
@@ -76,7 +76,6 @@ async function verifyCVWithChatGPT(file, prioritySource = "chatgpt") {
     if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
-        console.log("[ChatGPT CV Verification] File cleaned up");
       } catch (cleanupError) {
         console.warn(
           "[ChatGPT CV Verification] File cleanup failed:",
@@ -144,9 +143,6 @@ async function processFullCVWithChatGPT(openai, cvText, candidateName) {
   try {
     // Check if CV is too large and needs chunking
     if (cvText.length > MAX_CHUNK_SIZE) {
-      console.log(
-        `[ChatGPT CV Verification] Large CV detected (${cvText.length} chars), using chunked processing`
-      );
       return await processLargeCVWithChunking(openai, cvText, candidateName);
     }
 
@@ -167,9 +163,6 @@ async function processFullCVWithChatGPT(openai, cvText, candidateName) {
  * @returns {Promise<Array>} Verification results array
  */
 async function processSmallCVDirectly(openai, cvText, candidateName) {
-  console.log(
-    `[ChatGPT CV Verification] Processing small CV for ${candidateName}`
-  );
   const directVerificationPrompt = `
 You are an expert at analyzing academic CV content. Your task is to extract ALL publications from this CV and verify each one online.
 
@@ -228,10 +221,8 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
         },
       ],
 
-      max_completion_tokens: 4000,
+      max_completion_tokens: 16384,
     });
-
-    console.log(response.choices[0]?.message?.content);
 
     const verificationText = cleanJSONResponse(
       response.choices[0]?.message?.content
@@ -524,7 +515,6 @@ async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
     const authorIds = await searchAuthorInAPIs(candidateName);
 
     if (!authorIds || !Object.values(authorIds).some((id) => id)) {
-      console.log(`No author found in APIs for: ${candidateName}`);
       return createBasicAuthorProfile(candidateName, verificationResults);
     }
 
@@ -586,7 +576,6 @@ async function searchAuthorInAPIs(candidateName) {
     if (openAlexResponse.data?.results?.length > 0) {
       const author = openAlexResponse.data.results[0];
       authorIds.openalex = author.id;
-      console.log(`Found author in OpenAlex: ${author.display_name}`);
     }
   } catch (error) {
     console.error("Error searching OpenAlex:", error.message);
@@ -689,6 +678,46 @@ function transformPublicationResult(
 }
 
 /**
+ * Fix truncated or malformed JSON responses from AI
+ * @param {string} jsonText - The malformed JSON text
+ * @returns {string} Fixed JSON text
+ */
+function fixTruncatedJSON(jsonText) {
+  let fixedText = jsonText;
+
+  // Remove trailing commas before closing brackets/braces
+  fixedText = fixedText.replace(/,(\s*[}\]])/g, "$1");
+
+  // Check if the JSON is truncated (missing closing brackets)
+  const openBraces = (fixedText.match(/\{/g) || []).length;
+  const closeBraces = (fixedText.match(/\}/g) || []).length;
+  const openBrackets = (fixedText.match(/\[/g) || []).length;
+  const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+  // If JSON is truncated, try to complete it
+  if (openBraces > closeBraces || openBrackets > closeBrackets) {
+    // Remove any incomplete object at the end
+    const lastCompleteObjectMatch = fixedText.lastIndexOf("    }");
+    if (lastCompleteObjectMatch !== -1) {
+      fixedText = fixedText.substring(0, lastCompleteObjectMatch + 5);
+    }
+
+    // Add missing closing brackets and braces
+    const missingBrackets = openBrackets - closeBrackets;
+    const missingBraces = openBraces - closeBraces;
+
+    for (let i = 0; i < missingBrackets; i++) {
+      fixedText += "\n  ]";
+    }
+    for (let i = 0; i < missingBraces; i++) {
+      fixedText += "\n}";
+    }
+  }
+
+  return fixedText;
+}
+
+/**
  * Clean and extract JSON from AI response
  * @param {string} response - Raw response text
  * @returns {string} Cleaned JSON string
@@ -782,7 +811,6 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
     }
   }
 
-
   // Extract content for each publication section
   const publicationSections = [];
   for (let i = 0; i < allHeaders.length; i++) {
@@ -812,6 +840,52 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
 }
 
 /**
+ * Create batches of section content based on MAX_CHUNK_SIZE
+ * @param {Array} publicationSections - Array of publication section objects
+ * @returns {Array} Array of section content batches
+ */
+function createSectionContentBatches(publicationSections) {
+  const batches = [];
+  let currentBatch = {
+    sections: [],
+    totalSize: 0,
+    combinedContent: "",
+  };
+
+  for (const section of publicationSections) {
+    const sectionSize = section.content.length;
+
+    // If adding this section would exceed MAX_CHUNK_SIZE, start a new batch
+    if (
+      currentBatch.totalSize + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.sections.length > 0
+    ) {
+      batches.push({ ...currentBatch });
+      currentBatch = {
+        sections: [section],
+        totalSize: sectionSize,
+        combinedContent: section.content,
+      };
+    } else {
+      currentBatch.sections.push(section);
+      currentBatch.totalSize += sectionSize;
+      if (currentBatch.combinedContent) {
+        currentBatch.combinedContent += "\n\n---\n\n" + section.content;
+      } else {
+        currentBatch.combinedContent = section.content;
+      }
+    }
+  }
+
+  // Add the last batch if it has any sections
+  if (currentBatch.sections.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
  * Process ALL publication sections in a single batched ChatGPT request
  * This significantly reduces API calls compared to processing each section individually
  * @param {OpenAI} openai - OpenAI client instance
@@ -824,29 +898,66 @@ async function processBatchedPublicationSectionsWithChatGPT(
   publicationSections,
   candidateName
 ) {
+  if (!publicationSections || publicationSections.length === 0) {
+    return [];
+  }
+
   console.log(
-    `[ChatGPT CV Verification] Processing ${publicationSections.length} sections in a single batch request`
+    `[ChatGPT CV Verification] Processing ${publicationSections.length} publication sections using size-based batching`
   );
 
-  // Build combined content for all sections
-  let combinedSectionsText = "";
-  publicationSections.forEach((section, index) => {
-    combinedSectionsText += `\n--- SECTION ${index + 1}: ${
-      section.header
-    } ---\n`;
-    combinedSectionsText += section.content;
-    combinedSectionsText += "\n";
-  });
+  // Create batches of section content based on MAX_CHUNK_SIZE
+  const batches = createSectionContentBatches(publicationSections);
 
-  const batchPrompt = `
-You are an expert at analyzing academic CV content. Extract ALL publications from ALL sections provided below and verify each one online.
+  console.log(
+    `[ChatGPT CV Verification] Created ${batches.length} batches for verification`
+  );
+
+  const allResults = [];
+
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+
+    const batchResults = await processBatchOfSectionContentWithChatGPT(
+      openai,
+      batch,
+      candidateName,
+      i + 1
+    );
+    allResults.push(...batchResults);
+  }
+
+  return removeDuplicatePublications(allResults);
+}
+
+/**
+ * Process publication content with ChatGPT verification (handles both single sections and batches)
+ * @param {OpenAI} openai - OpenAI client instance
+ * @param {Object|string} content - Batch object with combinedContent or single section content
+ * @param {string} candidateName - Candidate name
+ * @param {number} batchNumber - Batch number for logging
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processBatchOfSectionContentWithChatGPT(
+  openai,
+  content,
+  candidateName,
+  batchNumber = 1
+) {
+  // Handle both batch objects and direct content strings
+  const publicationContent =
+    typeof content === "string" ? content : content.combinedContent;
+
+  const prompt = `
+You are an expert at analyzing academic publication content. Extract ALL publications from the content below and verify each one online.
 
 CANDIDATE NAME: ${candidateName || "Unknown"}
 
-CV PUBLICATION SECTIONS:
-${combinedSectionsText}
+PUBLICATION CONTENT:
+${publicationContent}
 
-Extract ALL publications from ALL sections above. For each publication found (from any section), provide the following JSON format:
+Extract ALL publications from the content above. For each publication found (whether verified online or not), provide the following JSON format:
 
 {
   "allPublications": [
@@ -858,8 +969,7 @@ Extract ALL publications from ALL sections above. For each publication found (fr
         "venue": "journal/conference name", 
         "type": "journal/conference/book chapter/etc",
         "doi": "DOI if available",
-        "fullText": "original text from CV",
-        "sectionHeader": "which section this came from"
+        "fullText": "original text from CV"
       },
       "verification": {
         "isOnline": true/false,
@@ -872,80 +982,69 @@ Extract ALL publications from ALL sections above. For each publication found (fr
 }
 
 EXTRACTION AND VERIFICATION GUIDELINES:
-1. Extract ALL publications from ALL sections provided above
+1. Extract ALL publications from the content (journal articles, conference papers, book chapters, etc.)
 2. For each publication, determine if it likely exists online (isOnline: true/false)
 3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
-4. For verified publications, provide links (DOI links preferred, then Google Scholar)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
 5. For unverified publications, set isOnline: false, link: null, citationCount: 0
 6. Estimate citation counts only for verified publications
-7. IMPORTANT: Include ALL publications found in ALL sections, not just verified ones
-8. Include the section header where each publication was found
+7. IMPORTANT: Include ALL publications found in the content, not just verified ones
 
 IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
 
+  const response = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an expert academic CV analyzer and publication verifier.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    max_completion_tokens: 16384,
+  });
+
+  const verificationText = cleanJSONResponse(
+    response.choices[0]?.message?.content
+  );
+
+  let verificationData;
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert academic CV analyzer and publication verifier. Process all sections in a single response.",
-        },
-        {
-          role: "user",
-          content: batchPrompt,
-        },
-      ],
-      max_completion_tokens: 8000,
-    });
-
-    console.log("[ChatGPT CV Verification] Batch processing response received");
-
-    const verificationText = cleanJSONResponse(
-      response.choices[0]?.message?.content
+    verificationData = JSON.parse(verificationText);
+  } catch (parseError) {
+    console.error(
+      `[ChatGPT CV Verification] JSON Parse Error: ${parseError.message}`
     );
 
-    const verificationData = JSON.parse(verificationText);
-    const allPublications = verificationData.allPublications || [];
+    // Attempt to fix truncated or malformed JSON
+    const fixedText = fixTruncatedJSON(verificationText);
 
-    console.log(
-      `[ChatGPT CV Verification] Extracted ${allPublications.length} publications from ${publicationSections.length} sections in single request`
-    );
-
-    // Transform to expected format using helper function
-    return allPublications.map((item) => {
-      return transformPublicationResult(
-        item.publication,
-        item.verification,
-        item.publication
+    try {
+      verificationData = JSON.parse(fixedText);
+    } catch (secondError) {
+      console.error(
+        `[ChatGPT CV Verification] Could not fix JSON:`,
+        secondError.message
       );
-    });
-  } catch (error) {
-    console.error("Error in batch processing publication sections:", error);
-
-    // Fallback: If batch processing fails, fall back to individual processing
-    console.log(
-      "[ChatGPT CV Verification] Batch processing failed, falling back to individual section processing"
-    );
-
-    const allResults = [];
-    for (const section of publicationSections) {
-      try {
-        const sectionResults = await processPublicationSectionWithChatGPT(
-          openai,
-          section,
-          candidateName
-        );
-        allResults.push(...sectionResults);
-      } catch (sectionError) {
-        console.error("Error processing individual section:", sectionError);
-        // Continue with other sections
-      }
+      throw new Error(
+        `Failed to parse AI response as JSON: ${parseError.message}`
+      );
     }
-
-    return allResults;
   }
+
+  const allPublications = verificationData.allPublications || [];
+
+  return allPublications.map((item) => {
+    return transformPublicationResult(
+      item.publication,
+      item.verification,
+      item.publication
+    );
+  });
 }
 
 /**
@@ -960,87 +1059,13 @@ async function processPublicationSectionWithChatGPT(
   section,
   candidateName
 ) {
-  console.log(
-    `[ChatGPT CV Verification] Processing section: ${section.header}`
+  // Use the unified batch processing function for single sections
+  return await processBatchOfSectionContentWithChatGPT(
+    openai,
+    section.content,
+    candidateName,
+    1
   );
-  const sectionPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from this CV section and verify each one.
-
-CANDIDATE NAME: ${candidateName || "Unknown"}
-SECTION HEADER: ${section.header}
-
-SECTION CONTENT:
-${section.content}
-
-Extract ALL publications from this section. For each publication found, provide the following JSON format:
-
-{
-  "publications": [
-    {
-      "publication": {
-        "title": "extracted title",
-        "authors": ["list", "of", "authors"],
-        "year": "publication year",
-        "venue": "journal/conference name", 
-        "type": "journal/conference/book chapter/etc",
-        "doi": "DOI if available",
-        "fullText": "original text from CV section"
-      },
-      "verification": {
-        "isOnline": true/false,
-        "hasAuthorMatch": true/false,
-        "link": "publication link or null",
-        "citationCount": "number or 0"
-      }
-    }
-  ]
-}
-
-GUIDELINES:
-1. Extract ALL publications from this section only
-2. Determine if each publication likely exists online
-3. Check if candidate name appears in author list
-4. Provide links when possible (DOI preferred)
-5. Estimate citation count for verified publications
-
-IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert academic CV analyzer and publication verifier.",
-        },
-        {
-          role: "user",
-          content: sectionPrompt,
-        },
-      ],
-      max_completion_tokens: 8000,
-    });
-
-    console.log(response.choices[0]?.message?.content);
-    const verificationText = cleanJSONResponse(
-      response.choices[0]?.message?.content
-    );
-    const verificationData = JSON.parse(verificationText);
-    const publications = verificationData.publications || [];
-
-    // Transform to expected format
-    return publications.map((item) => {
-      return transformPublicationResult(
-        item.publication,
-        item.verification,
-        item.publication
-      );
-    });
-  } catch (error) {
-    console.error("Error processing publication section with ChatGPT:", error);
-    return [];
-  }
 }
 
 //=============================================================================
@@ -1078,10 +1103,6 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
       continue;
     }
   }
-
-  console.log(
-    `[ChatGPT CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
-  );
 
   // Extract content for each publication section
   const publicationSections = [];

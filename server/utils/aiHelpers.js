@@ -59,7 +59,7 @@ const MAX_CHUNK_SIZE = 8000;
  * Similarity threshold for duplicate publication detection
  * @constant {number}
  */
-const DUPLICATE_SIMILARITY_THRESHOLD = 80;
+const DUPLICATE_SIMILARITY_THRESHOLD = 95;
 
 //=============================================================================
 // CANDIDATE NAME EXTRACTION
@@ -316,9 +316,12 @@ const extractPublicationsFromCV = async (model, cvText) => {
     const isDuplicate = uniquePublications.some((existingPub) => {
       if (!existingPub.title) return false;
 
+
       const similarity = getTitleSimilarity(pub.title, existingPub.title);
       return similarity > DUPLICATE_SIMILARITY_THRESHOLD;
     });
+
+    console.log(isDuplicate, pub.title, "filteredCount:", filteredCount);
     if (!isDuplicate) {
       uniquePublications.push(pub);
     } else {

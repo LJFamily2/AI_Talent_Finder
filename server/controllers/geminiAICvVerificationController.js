@@ -28,7 +28,7 @@ const {
 } = require("../utils/headerClassifierUtils");
 const axios = require("axios");
 
-const MAX_CHUNK_SIZE = 8000;
+const MAX_CHUNK_SIZE = 5000;
 
 //======================== MAIN FUNCTION ========================
 module.exports = {
@@ -45,7 +45,7 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
       generationConfig: {
         temperature: 0.0,
         topP: 0.0,
-        maxOutputTokens: 8096,
+        maxOutputTokens: 16384,
       },
     });
     const candidateName = await extractCandidateNameWithAI(model, cvText);
@@ -289,8 +289,6 @@ async function processFullCVWithAI(model, cvText, candidateName) {
     return await processSmallCVDirectly(model, cvText, candidateName);
   } catch (error) {
     console.error("Error in CV processing:", error);
-    // Fallback: Try to extract publications using the existing AI helper
-    return await fallbackPublicationExtraction(model, cvText, candidateName);
   }
 }
 
@@ -485,6 +483,168 @@ IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
 }
 
 //=============================================================================
+// HELPER FUNCTIONS FOR BATCHING
+//=============================================================================
+
+/**
+ * Create batches of section content based on MAX_CHUNK_SIZE
+ * @param {Array} publicationSections - Array of publication section objects
+ * @returns {Array} Array of section content batches
+ */
+function createSectionContentBatches(publicationSections) {
+  const batches = [];
+  let currentBatch = {
+    sections: [],
+    totalSize: 0,
+    combinedContent: "",
+  };
+
+  for (const section of publicationSections) {
+    const sectionSize = section.content.length;
+
+    // If adding this section would exceed MAX_CHUNK_SIZE, start a new batch
+    if (
+      currentBatch.totalSize + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.sections.length > 0
+    ) {
+      batches.push({ ...currentBatch });
+      currentBatch = {
+        sections: [section],
+        totalSize: sectionSize,
+        combinedContent: section.content,
+      };
+    } else {
+      currentBatch.sections.push(section);
+      currentBatch.totalSize += sectionSize;
+      if (currentBatch.combinedContent) {
+        currentBatch.combinedContent += "\n\n---\n\n" + section.content;
+      } else {
+        currentBatch.combinedContent = section.content;
+      }
+    }
+  }
+
+  // Add the last batch if it has any sections
+  if (currentBatch.sections.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
+ * Process publication content with AI verification (handles both single sections and batches)
+ * @param {Object} model - Google AI model instance
+ * @param {Object|string} content - Batch object with combinedContent or single section content
+ * @param {string} candidateName - Candidate name
+ * @param {number} batchNumber - Batch number for logging
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processBatchOfSectionContent(
+  model,
+  content,
+  candidateName,
+  batchNumber = 1
+) {
+  // Handle both batch objects and direct content strings
+  const publicationContent =
+    typeof content === "string" ? content : content.combinedContent;
+  const sectionsInfo =
+    typeof content === "string"
+      ? "Single section"
+      : content.sections.map((section) => section.header).join(", ");
+
+  console.log(
+    `[Gemini CV Verification] Processing batch ${batchNumber}: ${sectionsInfo}`
+  );
+
+  const prompt = `
+You are an expert at analyzing academic publication content. Extract ALL publications from the content below and verify each one online.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+
+PUBLICATION CONTENT:
+${publicationContent}
+
+Extract ALL publications from the content above. For each publication found (whether verified online or not), provide the following JSON format:
+
+{
+  "allPublications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "publication link or null",
+        "citationCount": "number or 0"
+      }
+    }
+  ]
+}
+
+EXTRACTION AND VERIFICATION GUIDELINES:
+1. Extract ALL publications from the content (journal articles, conference papers, book chapters, etc.)
+2. For each publication, determine if it likely exists online (isOnline: true/false)
+3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
+5. For unverified publications, set isOnline: false, link: null, citationCount: 0
+6. Estimate citation counts only for verified publications
+7. IMPORTANT: Include ALL publications found in the content, not just verified ones
+
+IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const verificationText = cleanJSONResponse(response.text());
+
+  let verificationData;
+  try {
+    verificationData = JSON.parse(verificationText);
+  } catch (parseError) {
+    console.error(
+      `[Gemini CV Verification] JSON Parse Error: ${parseError.message}`
+    );
+
+    // Attempt to fix truncated or malformed JSON
+    const fixedText = fixTruncatedJSON(verificationText);
+
+    try {
+      verificationData = JSON.parse(fixedText);
+      console.log(
+        `[Gemini CV Verification] Successfully recovered from JSON parsing error`
+      );
+    } catch (secondError) {
+      console.error(
+        `[Gemini CV Verification] Could not fix JSON:`,
+        secondError.message
+      );
+    }
+  }
+
+  const allPublications = verificationData.allPublications || [];
+
+  console.log(
+    `[Gemini CV Verification] Extracted ${allPublications.length} publications from batch ${batchNumber}`
+  );
+
+  return allPublications.map((item) => {
+    return transformPublicationResult(
+      item.publication,
+      item.verification,
+      item.publication
+    );
+  });
+}
+
+//=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
 
@@ -551,6 +711,71 @@ function transformPublicationResult(
 }
 
 /**
+ * Remove duplicate publications based on title similarity
+ * @param {Array} publications - Array of publication results
+ * @returns {Array} Deduplicated publications
+ */
+function removeDuplicatePublications(publications) {
+  const unique = [];
+  const seen = new Set();
+
+  for (const pub of publications) {
+    const title = pub.verification?.displayData?.title || "";
+    const normalizedTitle = title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .trim();
+
+    if (!seen.has(normalizedTitle) && normalizedTitle.length > 0) {
+      seen.add(normalizedTitle);
+      unique.push(pub);
+    }
+  }
+
+  return unique;
+}
+
+/**
+ * Fix truncated or malformed JSON responses
+ * @param {string} jsonText - The malformed JSON text
+ * @returns {string} Fixed JSON text
+ */
+function fixTruncatedJSON(jsonText) {
+  let fixedText = jsonText;
+
+  // Remove trailing commas before closing brackets/braces
+  fixedText = fixedText.replace(/,(\s*[}\]])/g, "$1");
+
+  // Check if the JSON is truncated (missing closing brackets)
+  const openBraces = (fixedText.match(/\{/g) || []).length;
+  const closeBraces = (fixedText.match(/\}/g) || []).length;
+  const openBrackets = (fixedText.match(/\[/g) || []).length;
+  const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+  // If JSON is truncated, try to complete it
+  if (openBraces > closeBraces || openBrackets > closeBrackets) {
+    // Remove any incomplete object at the end
+    const lastCompleteObjectMatch = fixedText.lastIndexOf("    }");
+    if (lastCompleteObjectMatch !== -1) {
+      fixedText = fixedText.substring(0, lastCompleteObjectMatch + 5);
+    }
+
+    // Add missing closing brackets and braces
+    const missingBrackets = openBrackets - closeBrackets;
+    const missingBraces = openBraces - closeBraces;
+
+    for (let i = 0; i < missingBrackets; i++) {
+      fixedText += "\n  ]";
+    }
+    for (let i = 0; i < missingBraces; i++) {
+      fixedText += "\n}";
+    }
+  }
+
+  return fixedText;
+}
+
+/**
  * Clean and extract JSON from AI response
  * @param {string} responseText - Raw AI response text
  * @returns {string} Cleaned JSON string
@@ -574,6 +799,12 @@ function cleanJSONResponse(responseText) {
     cleanedText = jsonMatch[0];
   }
 
+  // Remove any trailing text after the closing brace
+  const lastBraceIndex = cleanedText.lastIndexOf("}");
+  if (lastBraceIndex !== -1 && lastBraceIndex < cleanedText.length - 1) {
+    cleanedText = cleanedText.substring(0, lastBraceIndex + 1);
+  }
+
   return cleanedText;
 }
 
@@ -586,39 +817,6 @@ function generateSearchLink(title) {
   if (!title) return "No link available";
   const encodedTitle = encodeURIComponent(title);
   return `https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=${encodedTitle}`;
-}
-
-/**
- * Fallback function to extract publications when direct verification fails
- * @param {Object} model - Google AI model instance
- * @param {string} cvText - Full CV text content
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Array of unverified publications
- */
-async function fallbackPublicationExtraction(model, cvText, candidateName) {
-  try {
-    // Use the existing publication extraction function
-    const rawPublications = await extractPublicationsFromCV(model, cvText);
-
-    if (!Array.isArray(rawPublications)) {
-      return [];
-    }
-
-    // Convert to expected format but mark all as not verified using helper function
-    return rawPublications.map((pub) => {
-      return transformPublicationResult(
-        { title: pub.title || "Unable to extract" },
-        { isOnline: false, hasAuthorMatch: false },
-        pub
-      );
-    });
-  } catch (fallbackError) {
-    console.error(
-      "Fallback publication extraction also failed:",
-      fallbackError
-    );
-    return [];
-  }
 }
 
 //=============================================================================
@@ -656,7 +854,6 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
       continue;
     }
   }
-
 
   // Extract content for each publication section
   const publicationSections = [];
@@ -704,180 +901,38 @@ async function processBatchedPublicationSectionsWithAI(
   }
 
   console.log(
-    `[Gemini CV Verification] Processing ${publicationSections.length} publication sections in a single batch request`
+    `[Gemini CV Verification] Processing ${publicationSections.length} publication sections using size-based batching`
   );
 
-  // Combine all publication sections into a single prompt
-  const sectionsText = publicationSections
-    .map(
-      (section, index) =>
-        `SECTION ${index + 1} - ${section.header}:\n${section.content}`
-    )
-    .join("\n\n---\n\n");
+  // Create batches of section content based on MAX_CHUNK_SIZE
+  const batches = createSectionContentBatches(publicationSections);
 
-  const batchedPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from ALL sections below and verify each one online.
+  console.log(
+    `[Gemini CV Verification] Created ${batches.length} batches for verification`
+  );
 
-CANDIDATE NAME: ${candidateName || "Unknown"}
+  const allResults = [];
 
-ALL PUBLICATION SECTIONS:
-${sectionsText}
-
-Extract ALL publications from ALL sections above. For each publication found (whether verified online or not), provide the following JSON format:
-
-{
-  "allPublications": [
-    {
-      "publication": {
-        "title": "extracted title",
-        "authors": ["list", "of", "authors"],
-        "year": "publication year",
-        "venue": "journal/conference name", 
-        "type": "journal/conference/book chapter/etc",
-        "doi": "DOI if available",
-        "fullText": "original text from CV",
-        "sectionHeader": "which section this came from"
-      },
-      "verification": {
-        "isOnline": true/false,
-        "hasAuthorMatch": true/false,
-        "link": "publication link or null",
-        "citationCount": "number or 0"
-      }
-    }
-  ]
-}
-
-EXTRACTION AND VERIFICATION GUIDELINES:
-1. Extract ALL publications from ALL sections (journal articles, conference papers, book chapters, etc.)
-2. For each publication, determine if it likely exists online (isOnline: true/false)
-3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
-4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
-5. For unverified publications, set isOnline: false, link: null, citationCount: 0
-6. Estimate citation counts only for verified publications
-7. IMPORTANT: Include ALL publications found in ALL sections, not just verified ones
-
-IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
-
-  try {
-    const result = await model.generateContent(batchedPrompt);
-    const response = await result.response;
-    const verificationText = cleanJSONResponse(response.text());
-
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
     console.log(
-      `[Gemini CV Verification] Batch response length: ${verificationText.length} characters`
+      `[Gemini CV Verification] Processing batch ${i + 1}/${
+        batches.length
+      } with ${batch.sections.length} sections (${batch.totalSize} characters)`
     );
 
-    const verificationData = JSON.parse(verificationText);
-    const allPublications = verificationData.allPublications || [];
-
-    console.log(
-      `[Gemini CV Verification] Extracted ${allPublications.length} publications from batched processing`
+    const batchResults = await processBatchOfSectionContent(
+      model,
+      batch,
+      candidateName,
+      i + 1
     );
-
-    // Transform to expected format using helper function
-    return allPublications.map((item) => {
-      return transformPublicationResult(
-        item.publication,
-        item.verification,
-        item.publication
-      );
-    });
-  } catch (error) {
-    console.error("Error in batched publication sections processing:", error);
-
-    // Fallback to individual processing if batch fails
-    console.log(
-      "[Gemini CV Verification] Falling back to individual section processing"
-    );
-    const allResults = [];
-
-    for (const section of publicationSections) {
-      try {
-        const sectionResults = await processPublicationSectionWithAI(
-          model,
-          section,
-          candidateName
-        );
-        allResults.push(...sectionResults);
-      } catch (error) {
-        console.error("Error processing publication section:", error);
-        // Continue with other sections
-      }
-    }
-
-    return allResults;
+    allResults.push(...batchResults);
   }
-}
 
-/**
- * Process a publication section with AI verification
- * @param {Object} model - Google AI model instance
- * @param {Object} section - Publication section object
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Array of verified publications
- */
-async function processPublicationSectionWithAI(model, section, candidateName) {
-  const sectionPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from this CV section and verify each one.
-
-CANDIDATE NAME: ${candidateName || "Unknown"}
-SECTION HEADER: ${section.header}
-
-SECTION CONTENT:
-${section.content}
-
-Extract ALL publications from this section. For each publication found, provide the following JSON format:
-
-{
-  "publications": [
-    {
-      "publication": {
-        "title": "extracted title",
-        "authors": ["list", "of", "authors"],
-        "year": "publication year",
-        "venue": "journal/conference name", 
-        "type": "journal/conference/book chapter/etc",
-        "doi": "DOI if available",
-        "fullText": "original text from CV section"
-      },
-      "verification": {
-        "isOnline": true/false,
-        "hasAuthorMatch": true/false,
-        "link": "publication link or null",
-        "citationCount": "number or 0"
-      }
-    }
-  ]
-}
-
-GUIDELINES:
-1. Extract ALL publications from this section only
-2. Determine if each publication likely exists online
-3. Check if candidate name appears in author list
-4. Provide links when possible (DOI preferred)
-5. Estimate citation count for verified publications
-
-IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
-
-  try {
-    const result = await model.generateContent(sectionPrompt);
-    const response = await result.response;
-    const verificationText = cleanJSONResponse(response.text());
-
-    const verificationData = JSON.parse(verificationText);
-    const publications = verificationData.publications || [];
-
-    // Transform to expected format
-    return publications.map((item) => {
-      return transformPublicationResult(
-        item.publication,
-        item.verification,
-        item.publication
-      );
-    });
-  } catch (error) {
-    console.error("Error processing publication section with AI:", error);
-    return [];
-  }
+  console.log(
+    `[Gemini CV Verification] Completed processing with ${allResults.length} verified publications`
+  );
+  return removeDuplicatePublications(allResults);
 }

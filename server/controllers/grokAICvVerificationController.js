@@ -27,8 +27,7 @@ const axios = require("axios");
 // CONSTANTS
 //=============================================================================
 
-const MAX_CHUNK_SIZE = 8000;
-const MAX_COMBINED_SIZE = 12000;
+const MAX_CHUNK_SIZE = 5000;
 
 //=============================================================================
 // ML MODEL INITIALIZATION
@@ -233,11 +232,6 @@ async function processFullCVWithGrok(grokClient, cvText, candidateName) {
       error
     );
     // Fallback to basic extraction
-    return await fallbackPublicationExtraction(
-      grokClient,
-      cvText,
-      candidateName
-    );
   }
 }
 
@@ -293,7 +287,16 @@ EXTRACTION AND VERIFICATION GUIDELINES:
 6. Estimate citation counts only for verified publications
 7. IMPORTANT: Include ALL publications found in CV, not just verified ones
 
-IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
+
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
 
   try {
     const response = await grokClient.chat.completions.create({
@@ -309,13 +312,20 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
         "X-Title": "AI Talent Finder",
       },
       temperature: 0.0,
-      max_tokens: 4000,
+      max_tokens: 16384,
     });
 
-    const verificationText = cleanJSONResponse(
-      response.choices[0].message.content
-    );
-    const parsedResult = JSON.parse(verificationText);
+    const rawResponse = response.choices[0].message.content;
+
+    // Check if response might be truncated
+    if (response.choices[0].finish_reason === "length") {
+      console.warn(
+        "[Grok CV Verification] Small CV response may be truncated due to token limit"
+      );
+    }
+
+    // Use robust JSON parsing with multiple fallback strategies
+    const parsedResult = robustJSONParse(rawResponse);
 
     if (
       parsedResult.allPublications &&
@@ -328,25 +338,11 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
       return parsedResult.allPublications.map((item) =>
         transformPublicationResult(item.publication, item.verification)
       );
-    } else {
-      console.warn(
-        "[Grok CV Verification] Unexpected response format, using fallback"
-      );
-      return await fallbackPublicationExtraction(
-        grokClient,
-        cvText,
-        candidateName
-      );
     }
   } catch (error) {
     console.error(
       "[Grok CV Verification] Error in processSmallCVDirectly:",
       error
-    );
-    return await fallbackPublicationExtraction(
-      grokClient,
-      cvText,
-      candidateName
     );
   }
 }
@@ -392,77 +388,6 @@ async function processLargeCVWithChunking(grokClient, cvText, candidateName) {
       "[Grok CV Verification] Error in processLargeCVWithChunking:",
       error
     );
-    return await fallbackPublicationExtraction(
-      grokClient,
-      cvText,
-      candidateName
-    );
-  }
-}
-
-/**
- * Fallback publication extraction if direct verification fails
- * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
- * @param {string} cvText - CV text content
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Basic verification results
- */
-async function fallbackPublicationExtraction(
-  grokClient,
-  cvText,
-  candidateName
-) {
-  console.log("[Grok CV Verification] Using fallback publication extraction");
-
-  try {
-    const extractionPrompt = `Extract all publications from this CV. Return a simple JSON array of publication titles only:
-
-CV TEXT:
-${cvText.substring(0, 5000)}
-
-Return format: {"publications": ["title1", "title2", ...]}`;
-
-    const response = await grokClient.chat.completions.create({
-      model: "x-ai/grok-code-fast-1",
-      messages: [
-        {
-          role: "user",
-          content: extractionPrompt,
-        },
-      ],
-      extra_headers: {
-        "HTTP-Referer": "https://talent-finder.com",
-        "X-Title": "AI Talent Finder",
-      },
-      temperature: 0.0,
-      max_tokens: 2000,
-    });
-
-    const result = JSON.parse(
-      cleanJSONResponse(response.choices[0].message.content)
-    );
-
-    if (result.publications && Array.isArray(result.publications)) {
-      return result.publications.map((title) =>
-        transformPublicationResult(
-          { title, authors: [], year: "Unknown" },
-          {
-            isOnline: false,
-            hasAuthorMatch: false,
-            link: null,
-            citationCount: 0,
-          }
-        )
-      );
-    }
-
-    return [];
-  } catch (error) {
-    console.error(
-      "[Grok CV Verification] Error in fallback extraction:",
-      error
-    );
-    return [];
   }
 }
 
@@ -483,7 +408,7 @@ async function processBatchedChunksWithGrok(grokClient, chunks, candidateName) {
 
   for (const chunk of chunks) {
     if (
-      currentSize + chunk.length > MAX_COMBINED_SIZE &&
+      currentSize + chunk.length > MAX_CHUNK_SIZE &&
       currentBatch.length > 0
     ) {
       batchedChunks.push(currentBatch);
@@ -543,7 +468,16 @@ Extract ALL publications from ALL sections above. For each publication found, pr
   ]
 }
 
-IMPORTANT: Return ONLY the JSON object. Start your response with { and end with }.`;
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
+
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
 
     try {
       const response = await grokClient.chat.completions.create({
@@ -559,12 +493,22 @@ IMPORTANT: Return ONLY the JSON object. Start your response with { and end with 
           "X-Title": "AI Talent Finder",
         },
         temperature: 0.0,
-        max_tokens: 4000,
+        max_tokens: 16384,
       });
 
-      const result = JSON.parse(
-        cleanJSONResponse(response.choices[0].message.content)
-      );
+      const rawResponse = response.choices[0].message.content;
+
+      // Check if response might be truncated
+      if (response.choices[0].finish_reason === "length") {
+        console.warn(
+          `[Grok CV Verification] Batch ${
+            i + 1
+          } response may be truncated due to token limit`
+        );
+      }
+
+      // Use robust JSON parsing with multiple fallback strategies
+      const result = robustJSONParse(rawResponse);
 
       if (result.allPublications && Array.isArray(result.allPublications)) {
         const transformedResults = result.allPublications.map((item) =>
@@ -777,6 +721,46 @@ function transformPublicationResult(
 }
 
 /**
+ * Fix truncated or malformed JSON responses from AI
+ * @param {string} jsonText - The malformed JSON text
+ * @returns {string} Fixed JSON text
+ */
+function fixTruncatedJSON(jsonText) {
+  let fixedText = jsonText;
+
+  // Remove trailing commas before closing brackets/braces
+  fixedText = fixedText.replace(/,(\s*[}\]])/g, "$1");
+
+  // Check if the JSON is truncated (missing closing brackets)
+  const openBraces = (fixedText.match(/\{/g) || []).length;
+  const closeBraces = (fixedText.match(/\}/g) || []).length;
+  const openBrackets = (fixedText.match(/\[/g) || []).length;
+  const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+  // If JSON is truncated, try to complete it
+  if (openBraces > closeBraces || openBrackets > closeBrackets) {
+    // Remove any incomplete object at the end
+    const lastCompleteObjectMatch = fixedText.lastIndexOf("    }");
+    if (lastCompleteObjectMatch !== -1) {
+      fixedText = fixedText.substring(0, lastCompleteObjectMatch + 5);
+    }
+
+    // Add missing closing brackets and braces
+    const missingBrackets = openBrackets - closeBrackets;
+    const missingBraces = openBraces - closeBraces;
+
+    for (let i = 0; i < missingBrackets; i++) {
+      fixedText += "\n  ]";
+    }
+    for (let i = 0; i < missingBraces; i++) {
+      fixedText += "\n}";
+    }
+  }
+
+  return fixedText;
+}
+
+/**
  * Clean and extract JSON from AI response
  * @param {string} response - Raw response text
  * @returns {string} Cleaned JSON string
@@ -795,7 +779,117 @@ function cleanJSONResponse(response) {
     cleaned = cleaned.substring(startIndex, lastIndex + 1);
   }
 
+  // Additional cleaning steps for common JSON issues
+  // Remove any trailing commas before closing brackets/braces
+  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+  // Remove any control characters that might break JSON parsing
+  cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, "");
+
   return cleaned.trim();
+}
+
+/**
+ * Attempts to parse JSON with fallback strategies for malformed responses
+ * @param {string} jsonString - String to parse as JSON
+ * @returns {Object} Parsed JSON object or empty structure
+ */
+function robustJSONParse(jsonString) {
+  // First attempt: direct parsing
+  try {
+    return JSON.parse(jsonString);
+  } catch (firstError) {
+    console.log(
+      "[Grok CV Verification] Direct JSON parse failed, trying cleanup..."
+    );
+  }
+
+  // Second attempt: with cleanup
+  try {
+    const cleaned = cleanJSONResponse(jsonString);
+    return JSON.parse(cleaned);
+  } catch (secondError) {
+    console.log(
+      "[Grok CV Verification] Cleaned JSON parse failed, trying regex extraction..."
+    );
+  }
+
+  // Third attempt: extract publications array using regex
+  try {
+    // Look for the allPublications array with better pattern matching
+    const publicationsMatch = jsonString.match(
+      /"allPublications"\s*:\s*\[([\s\S]*?)\](?:\s*\})?/
+    );
+    if (publicationsMatch) {
+      // Try to construct a valid JSON with just the publications array
+      let publicationsContent = publicationsMatch[1].trim();
+
+      // Remove trailing comma if present
+      publicationsContent = publicationsContent.replace(/,\s*$/, "");
+
+      const publicationsArray = `[${publicationsContent}]`;
+
+      try {
+        const parsedArray = JSON.parse(publicationsArray);
+        console.log(
+          `[Grok CV Verification] Successfully extracted ${parsedArray.length} publications using regex`
+        );
+        return { allPublications: parsedArray };
+      } catch (arrayParseError) {
+        console.log(
+          "[Grok CV Verification] Failed to parse extracted publications array:",
+          arrayParseError.message
+        );
+      }
+    }
+  } catch (thirdError) {
+    console.log(
+      "[Grok CV Verification] Regex extraction failed:",
+      thirdError.message
+    );
+  }
+
+  // Fourth attempt: try to recover partial data
+  try {
+    // Look for complete publication objects in the string
+    const publicationObjects = [];
+    // More flexible regex to match publication objects
+    const publicationPattern =
+      /\{\s*"publication"\s*:\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}\s*,\s*"verification"\s*:\s*\{[^{}]*\}\s*\}/g;
+    const publicationMatches = jsonString.matchAll(publicationPattern);
+
+    for (const match of publicationMatches) {
+      try {
+        const pubObj = JSON.parse(match[0]);
+        publicationObjects.push(pubObj);
+      } catch (e) {
+        // Skip malformed individual publications
+        console.log(
+          "[Grok CV Verification] Skipping malformed publication object:",
+          e.message
+        );
+        continue;
+      }
+    }
+
+    if (publicationObjects.length > 0) {
+      console.log(
+        `[Grok CV Verification] Recovered ${publicationObjects.length} publications from partial response`
+      );
+      return { allPublications: publicationObjects };
+    }
+  } catch (fourthError) {
+    console.log(
+      "[Grok CV Verification] Partial recovery failed:",
+      fourthError.message
+    );
+  }
+
+  // If all attempts fail, return empty structure
+  console.warn(
+    "[Grok CV Verification] All JSON parsing attempts failed, returning empty result"
+  );
+  return { allPublications: [] };
 }
 
 /**
@@ -862,10 +956,6 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
     }
   }
 
-  console.log(
-    `[Grok CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
-  );
-
   // Extract content for each publication section
   const publicationSections = [];
   for (let i = 0; i < allHeaders.length; i++) {
@@ -890,6 +980,52 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
 }
 
 /**
+ * Create batches of section content based on MAX_CHUNK_SIZE
+ * @param {Array} publicationSections - Array of publication section objects
+ * @returns {Array} Array of section content batches
+ */
+function createSectionContentBatches(publicationSections) {
+  const batches = [];
+  let currentBatch = {
+    sections: [],
+    totalSize: 0,
+    combinedContent: "",
+  };
+
+  for (const section of publicationSections) {
+    const sectionSize = section.content.length;
+
+    // If adding this section would exceed MAX_CHUNK_SIZE, start a new batch
+    if (
+      currentBatch.totalSize + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.sections.length > 0
+    ) {
+      batches.push({ ...currentBatch });
+      currentBatch = {
+        sections: [section],
+        totalSize: sectionSize,
+        combinedContent: section.content,
+      };
+    } else {
+      currentBatch.sections.push(section);
+      currentBatch.totalSize += sectionSize;
+      if (currentBatch.combinedContent) {
+        currentBatch.combinedContent += "\n\n---\n\n" + section.content;
+      } else {
+        currentBatch.combinedContent = section.content;
+      }
+    }
+  }
+
+  // Add the last batch if it has any sections
+  if (currentBatch.sections.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
  * Process all publication sections with Grok AI verification in a single batched request
  * This reduces API calls by combining all sections into one request
  * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
@@ -907,26 +1043,61 @@ async function processBatchedPublicationSectionsWithGrok(
   }
 
   console.log(
-    `[Grok CV Verification] Processing ${publicationSections.length} publication sections in a single batch request`
+    `[Grok CV Verification] Processing ${publicationSections.length} publication sections using size-based batching`
   );
 
-  // Combine all publication sections into a single prompt
-  const sectionsText = publicationSections
-    .map(
-      (section, index) =>
-        `SECTION ${index + 1} - ${section.header}:\n${section.content}`
-    )
-    .join("\n\n---\n\n");
+  // Create batches of section content based on MAX_CHUNK_SIZE
+  const batches = createSectionContentBatches(publicationSections);
 
-  const batchedPrompt = `
-You are an expert at analyzing academic publication sections. Extract ALL publications from ALL sections below and verify each one online.
+  console.log(
+    `[Grok CV Verification] Created ${batches.length} batches for verification`
+  );
+
+  const allResults = [];
+
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+
+    const batchResults = await processBatchOfSectionContentWithGrok(
+      grokClient,
+      batch,
+      candidateName,
+      i + 1
+    );
+    allResults.push(...batchResults);
+  }
+
+  return removeDuplicatePublications(allResults);
+}
+
+/**
+ * Process publication content with Grok AI verification (handles both single sections and batches)
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {Object|string} content - Batch object with combinedContent or single section content
+ * @param {string} candidateName - Candidate name
+ * @param {number} batchNumber - Batch number for logging
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processBatchOfSectionContentWithGrok(
+  grokClient,
+  content,
+  candidateName,
+  batchNumber = 1
+) {
+  // Handle both batch objects and direct content strings
+  const publicationContent =
+    typeof content === "string" ? content : content.combinedContent;
+
+  const prompt = `
+You are an expert at analyzing academic publication content. Extract ALL publications from the content below and verify each one online.
 
 CANDIDATE NAME: ${candidateName || "Unknown"}
 
-ALL PUBLICATION SECTIONS:
-${sectionsText}
+PUBLICATION CONTENT:
+${publicationContent}
 
-Extract ALL publications from ALL sections above. For each publication found (whether verified online or not), provide the following JSON format:
+Extract ALL publications from the content above. For each publication found (whether verified online or not), provide the following JSON format:
 
 {
   "allPublications": [
@@ -938,8 +1109,7 @@ Extract ALL publications from ALL sections above. For each publication found (wh
         "venue": "journal/conference name", 
         "type": "journal/conference/book chapter/etc",
         "doi": "DOI if available",
-        "fullText": "original text from CV",
-        "sectionHeader": "which section this came from"
+        "fullText": "original text from CV"
       },
       "verification": {
         "isOnline": true/false,
@@ -952,56 +1122,84 @@ Extract ALL publications from ALL sections above. For each publication found (wh
 }
 
 EXTRACTION AND VERIFICATION GUIDELINES:
-1. Extract ALL publications from ALL sections (journal articles, conference papers, book chapters, etc.)
+1. Extract ALL publications from the content (journal articles, conference papers, book chapters, etc.)
 2. For each publication, determine if it likely exists online (isOnline: true/false)
 3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
 4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
 5. For unverified publications, set isOnline: false, link: null, citationCount: 0
 6. Estimate citation counts only for verified publications
-7. IMPORTANT: Include ALL publications found in ALL sections, not just verified ones
+7. IMPORTANT: Include ALL publications found in the content, not just verified ones
 
-IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, explanations, or code blocks. Start your response with { and end with }.`;
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
 
-  try {
-    const response = await grokClient.chat.completions.create({
-      model: "x-ai/grok-code-fast-1",
-      messages: [
-        {
-          role: "user",
-          content: batchedPrompt,
-        },
-      ],
-      extra_headers: {
-        "HTTP-Referer": "https://talent-finder.com",
-        "X-Title": "AI Talent Finder",
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
+
+  const response = await grokClient.chat.completions.create({
+    model: "x-ai/grok-code-fast-1",
+    messages: [
+      {
+        role: "user",
+        content: prompt,
       },
-      temperature: 0.0,
-      max_tokens: 4000,
-    });
+    ],
+    extra_headers: {
+      "HTTP-Referer": "https://talent-finder.com",
+      "X-Title": "AI Talent Finder",
+    },
+    temperature: 0.0,
+    max_tokens: 16384,
+  });
 
-    const result = JSON.parse(
-      cleanJSONResponse(response.choices[0].message.content)
+  const rawResponse = response.choices[0].message.content;
+
+  // Check if response might be truncated
+  if (response.choices[0].finish_reason === "length") {
+    console.warn(
+      `[Grok CV Verification] Batch ${batchNumber} response may be truncated due to token limit`
     );
-
-    if (result.allPublications && Array.isArray(result.allPublications)) {
-      console.log(
-        `[Grok CV Verification] Successfully processed ${result.allPublications.length} publications from batched sections`
-      );
-
-      return result.allPublications.map((item) =>
-        transformPublicationResult(item.publication, item.verification)
-      );
-    } else {
-      console.warn("[Grok CV Verification] Unexpected batched response format");
-      return [];
-    }
-  } catch (error) {
-    console.error(
-      "[Grok CV Verification] Error in batched publication sections processing:",
-      error
-    );
-    return [];
   }
+
+  // Use robust JSON parsing with multiple fallback strategies
+  let parsedResult;
+  try {
+    parsedResult = robustJSONParse(rawResponse);
+  } catch (parseError) {
+    console.error(
+      `[Grok CV Verification] JSON Parse Error in batch ${batchNumber}: ${parseError.message}`
+    );
+
+    // Attempt to fix truncated or malformed JSON
+    const fixedText = fixTruncatedJSON(rawResponse);
+
+    try {
+      parsedResult = JSON.parse(fixedText);
+    } catch (secondError) {
+      console.error(
+        `[Grok CV Verification] Could not fix JSON in batch ${batchNumber}:`,
+        secondError.message
+      );
+      throw new Error(
+        `Failed to parse AI response as JSON: ${parseError.message}`
+      );
+    }
+  }
+
+  const allPublications = parsedResult.allPublications || [];
+
+  return allPublications.map((item) => {
+    return transformPublicationResult(
+      item.publication,
+      item.verification,
+      item.publication
+    );
+  });
 }
 
 //=============================================================================
