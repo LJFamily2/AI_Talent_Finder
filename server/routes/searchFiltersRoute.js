@@ -1,42 +1,42 @@
 // routes/searchFiltersRoute.js
 const express = require('express');
+const crypto = require('crypto')
 const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
-const filtersCtrl = require('../controllers/searchFiltersController'); 
+// const filtersCtrl = require('../controllers/searchFiltersController'); 
+const searchCtrl = require('../controllers/searchFiltersController');
 const authorCtrl  = require('../controllers/authorController');      
+const { getCountriesFilter, getInstitutionsFilter } = require('../controllers/filtersController');
 
 const router = express.Router();
 const SHORT = 900;
 const MEDIUM = 1800;
 const LONG = 3600;
 
-// =================== DB search ===================
-router.get(
+// Helper to generate a cache key from the JSON body
+function generateCacheKey(body) {
+  if (!body || (typeof body === "object" && Object.keys(body).length === 0)) {
+    return "searchResearchers:empty";
+  }
+
+  // Stable stringify that sorts keys recursively so order doesn't change the hash
+  function stableStringify(obj) {
+    if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+    if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+    const keys = Object.keys(obj).sort();
+    return "{" + keys.map(k => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+  }
+
+  const bodyStr = stableStringify(body);
+  return "searchResearchers:" + crypto.createHash("md5").update(bodyStr).digest("hex");
+}
+
+// POST /api/search-researchers
+router.post(
   '/search',
   cacheRedisInsight(MEDIUM, req => {
-    const { id } = req.query;
-    const filterParams = [
-      'name','country','topic','hindex','i10index',
-      'op','op_hindex','op_i10',
-      'identifier','affiliation','year_from','year_to'
-    ];
-
-    if (id) {
-      const idOnly = String(id).split('/').pop();
-      return ['researcherProfiles', idOnly];
-    }
-
-    const key = ['searchLists'];
-    filterParams.forEach(k => {
-      if (req.query[k]) {
-        const raw = req.query[k];
-        const val = typeof raw === 'string' ? raw.toLowerCase() : raw;
-        key.push(`${k}=${val}`);
-      }
-    });
-    key.push(`page=${req.query.page || 1}`, `limit=${req.query.limit || 20}`);
-    return key;
+    return generateCacheKey(req.body);
   }),
-  filtersCtrl.searchFilters
+  searchCtrl.searchResearchers
 );
 
 // =================== OpenAlex search ===================
@@ -68,5 +68,13 @@ router.get(
   }),
   authorCtrl.searchOpenalexFilters   
 );
+
+//========================
+// build filters functions
+//========================
+
+router.get("/countries", getCountriesFilter);
+router.get("/institutions", getInstitutionsFilter);
+
 
 module.exports = router;
