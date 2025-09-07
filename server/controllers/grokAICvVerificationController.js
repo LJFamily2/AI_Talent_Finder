@@ -22,14 +22,13 @@ const {
   initializeHeaderClassifier,
 } = require("../utils/headerClassifierUtils");
 const axios = require("axios");
-const path = require("path");
 
 //=============================================================================
 // CONSTANTS
 //=============================================================================
 
 const MAX_CHUNK_SIZE = 8000;
-const MAX_COMBINED_SIZE = 8000;
+const MAX_COMBINED_SIZE = 12000;
 
 //=============================================================================
 // ML MODEL INITIALIZATION

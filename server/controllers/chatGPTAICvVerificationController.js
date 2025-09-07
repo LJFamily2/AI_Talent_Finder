@@ -17,7 +17,6 @@
 //======================== CONSTANTS & IMPORTS ========================
 const fs = require("fs");
 const OpenAI = require("openai");
-const { getFilteredHeaders } = require("../utils/headerFilterUtils");
 const {
   initializeHeaderClassifier,
 } = require("../utils/headerClassifierUtils");
@@ -1080,22 +1079,15 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
     }
   }
 
-  // Filter headers to focus on publication-related sections
-  const publicationHeaders = getFilteredHeaders(
-    allHeaders,
-    headerClassifier,
-    lines
-  );
-
   console.log(
     `[ChatGPT CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
   );
 
   // Extract content for each publication section
   const publicationSections = [];
-  for (let i = 0; i < publicationHeaders.length; i++) {
-    const header = publicationHeaders[i];
-    const nextHeader = publicationHeaders[i + 1];
+  for (let i = 0; i < allHeaders.length; i++) {
+    const header = allHeaders[i];
+    const nextHeader = allHeaders[i + 1];
 
     let sectionEnd;
     if (nextHeader) {

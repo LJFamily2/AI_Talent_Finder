@@ -10,68 +10,31 @@
  * - Return results in the same format as traditional verification
  *
  * @module claudeAiCvVerification
- * @author AI Talent Finder Team
+ * @author SwangLee
  * @version 1.0.0
  */
 
+//======================== CONSTANTS & CONFIG ========================
 const fs = require("fs");
 const Anthropic = require("@anthropic-ai/sdk");
-const {
-  extractCandidateNameWithAI,
-  extractPublicationsFromCV,
-} = require("../utils/aiHelpers");
 const { extractTextFromPDF } = require("../utils/pdfUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
-const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
 const {
-  getFilteredHeaders,
-  TextProcessor,
-  PATHS,
-} = require("../utils/headerFilterUtils");
+  initializeHeaderClassifier,
+} = require("../utils/headerClassifierUtils");
 const axios = require("axios");
-const path = require("path");
+
+const MAX_CHUNK_SIZE = 8000;
 
 //=============================================================================
 // MODULE EXPORTS
 //=============================================================================
 
+//======================== MAIN FUNCTION ========================
+
 module.exports = {
   verifyCVWithClaude,
 };
-
-//=============================================================================
-// ML MODEL INITIALIZATION
-//=============================================================================
-
-/**
- * Initialize and load the header classifier ML model
- * @returns {Object|null} Trained header classifier or null if loading fails
- */
-function initializeHeaderClassifier() {
-  try {
-    const classifier = new SimpleHeaderClassifier();
-    const modelPath = path.join(__dirname, "../ml/header_classifier.json");
-
-    if (fs.existsSync(modelPath)) {
-      classifier.load(modelPath);
-      console.log(
-        "[Claude CV Verification] Header classifier model loaded successfully"
-      );
-      return classifier;
-    } else {
-      console.warn(
-        "[Claude CV Verification] Header classifier model not found, using fallback"
-      );
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      "[Claude CV Verification] Error loading header classifier:",
-      error
-    );
-    return null;
-  }
-}
 
 //=============================================================================
 // MAIN CLAUDE CV VERIFICATION FUNCTION
@@ -94,55 +57,27 @@ function initializeHeaderClassifier() {
  */
 async function verifyCVWithClaude(file, prioritySource = "claude") {
   let cvText = "";
-
   try {
-    // Parse PDF to text (with OCR fallback)
     cvText = await extractTextFromPDF(file.path);
-
-    // Initialize Anthropic Claude client
     const anthropic = new Anthropic({
       apiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
     });
-
-    // Extract candidate name using Claude
     const candidateName = await extractCandidateNameWithClaude(
       anthropic,
       cvText
     );
-
-    // Process CV and verify publications with Claude
     const verificationResults = await processFullCVWithClaude(
       anthropic,
       cvText,
       candidateName
     );
-
-    // Log verification results summary
-    console.log(`[Claude CV Verification] Candidate: ${candidateName}`);
-    console.log(
-      `[Claude CV Verification] Publications analyzed: ${verificationResults.length}`
-    );
-    console.log(
-      `[Claude CV Verification] Verified publications: ${
-        verificationResults.filter(
-          (r) =>
-            r.verification.displayData.status === "verified" ||
-            r.verification.displayData.status ===
-              "verified but not same author name"
-        ).length
-      }`
-    );
-
-    // Get author profile using APIs from sources instead of AI
     const authorProfile = await getAuthorProfileFromAPIs(
       candidateName,
       verificationResults
     );
-
-    // Return results in traditional format
     return {
       success: true,
-      candidateName: candidateName,
+      candidateName,
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
@@ -163,8 +98,6 @@ async function verifyCVWithClaude(file, prioritySource = "claude") {
     };
   } catch (error) {
     console.error("[Claude CV Verification] Error:", error);
-
-    // Return a graceful error response instead of throwing
     return {
       success: false,
       error: error.message,
@@ -177,7 +110,6 @@ async function verifyCVWithClaude(file, prioritySource = "claude") {
       authorDetails: null,
     };
   } finally {
-    // Clean up uploaded file in finally block to ensure it always happens
     if (file && file.path) {
       try {
         fs.unlinkSync(file.path);
@@ -241,8 +173,6 @@ ${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
  * @returns {Promise<Array>} Verification results array
  */
 async function processFullCVWithClaude(anthropic, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 15000; // Claude can handle larger chunks
-
   try {
     // Check if CV is too large and needs chunking
     if (cvText.length > MAX_CHUNK_SIZE) {
@@ -256,12 +186,6 @@ async function processFullCVWithClaude(anthropic, cvText, candidateName) {
     return await processSmallCVDirectly(anthropic, cvText, candidateName);
   } catch (error) {
     console.error("Error in CV processing:", error);
-    // Fallback: Try to extract publications using the existing AI helper
-    return await fallbackPublicationExtraction(
-      anthropic,
-      cvText,
-      candidateName
-    );
   }
 }
 
@@ -319,7 +243,7 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8000, // Increased token limit to prevent truncation
+      max_tokens: 8000,
       temperature: 0,
       messages: [
         {
@@ -390,8 +314,6 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
  * @returns {Promise<Array>} Verification results array
  */
 async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
-  const MAX_CHUNK_SIZE = 15000;
-
   try {
     console.log(
       "[Claude CV Verification] Using ML model for large CV processing"
@@ -442,113 +364,24 @@ async function processLargeCVWithChunking(anthropic, cvText, candidateName) {
 
     console.log(`[Claude CV Verification] Processing ${chunks.length} chunks`);
 
-    const allResults = [];
+    // Process all chunks in parallel for better performance
+    const chunkPromises = chunks.map((chunk, i) => {
+      return processSmallCVDirectly(anthropic, chunk, candidateName).catch(
+        (error) => {
+          console.error(`Error processing chunk ${i + 1}:`, error);
+          return [];
+        }
+      );
+    });
 
-    // Process each chunk
-    for (let i = 0; i < chunks.length; i++) {
-      try {
-        const chunkResults = await processSmallCVDirectly(
-          anthropic,
-          chunks[i],
-          candidateName
-        );
-        allResults.push(...chunkResults);
-      } catch (error) {
-        console.error(`Error processing chunk ${i + 1}:`, error);
-        // Continue with other chunks
-      }
-    }
+    const chunkResultsArray = await Promise.all(chunkPromises);
+    const allResults = chunkResultsArray.flat();
 
     // Remove duplicates based on title similarity
     return removeDuplicatePublications(allResults);
   } catch (error) {
     console.error("Error in large CV chunked processing:", error);
     throw error;
-  }
-}
-
-/**
- * Fallback publication extraction if direct verification fails
- * @param {Anthropic} anthropic - Anthropic client instance
- * @param {string} cvText - CV text content
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Basic verification results
- */
-async function fallbackPublicationExtraction(anthropic, cvText, candidateName) {
-  console.log("[Claude CV Verification] Using fallback publication extraction");
-
-  try {
-    // Extract publications using Claude in a simpler way
-    const extractPrompt = `Extract all academic publications from this CV. Return as JSON array:
-
-CV TEXT:
-${cvText}
-
-Return format:
-{
-  "publications": [
-    {
-      "title": "publication title",
-      "authors": "author list",
-      "year": "year",
-      "venue": "journal/conference",
-      "fullText": "original text from CV"
-    }
-  ]
-}`;
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // Increased token limit
-      temperature: 0,
-      messages: [
-        {
-          role: "user",
-          content: extractPrompt,
-        },
-      ],
-    });
-
-    const extractionText = cleanJSONResponse(response.content[0]?.text);
-
-    let extractionData;
-    try {
-      extractionData = JSON.parse(extractionText);
-    } catch (jsonError) {
-      console.error(
-        "JSON parsing failed in fallback extraction:",
-        jsonError.message
-      );
-
-      // Try to recover simple publication list
-      const recoveredData = attemptSimplePublicationRecovery(extractionText);
-      if (recoveredData) {
-        extractionData = recoveredData;
-        console.log(
-          "[Claude CV Verification] Successfully recovered from malformed JSON in fallback"
-        );
-      } else {
-        console.log(
-          "[Claude CV Verification] Fallback extraction failed completely"
-        );
-        return [];
-      }
-    }
-
-    const publications =
-      extractionData.publications || extractionData.allPublications || [];
-
-    // Transform to expected format with basic verification
-    return publications.map((pub) => {
-      return transformPublicationResult(
-        pub,
-        { isOnline: false, hasAuthorMatch: false }, // Basic not verified
-        pub
-      );
-    });
-  } catch (error) {
-    console.error("Fallback extraction failed:", error);
-    return [];
   }
 }
 
@@ -1030,22 +863,11 @@ function extractPublicationSectionsWithML(cvText, headerClassifier) {
     }
   }
 
-  // Filter headers to focus on publication-related sections
-  const publicationHeaders = getFilteredHeaders(
-    allHeaders,
-    headerClassifier,
-    lines
-  );
-
-  console.log(
-    `[Claude CV Verification] ML model detected ${allHeaders.length} headers, ${publicationHeaders.length} publication-related`
-  );
-
   // Extract content for each publication section
   const publicationSections = [];
-  for (let i = 0; i < publicationHeaders.length; i++) {
-    const header = publicationHeaders[i];
-    const nextHeader = publicationHeaders[i + 1];
+  for (let i = 0; i < allHeaders.length; i++) {
+    const header = allHeaders[i];
+    const nextHeader = allHeaders[i + 1];
 
     let sectionEnd;
     if (nextHeader) {
@@ -1145,8 +967,8 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
       temperature: 0,
+      max_tokens: 10000,
       messages: [
         {
           role: "user",
@@ -1262,7 +1084,7 @@ IMPORTANT: Return ONLY the JSON object. Start with { and end with }.`;
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 3000,
+      max_tokens: 8000,
       temperature: 0,
       messages: [
         {

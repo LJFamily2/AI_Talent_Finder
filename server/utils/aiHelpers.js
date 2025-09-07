@@ -23,7 +23,6 @@ const { getTitleSimilarity } = require("./textUtils");
 const { initializeHeaderClassifier } = require("./headerClassifierUtils");
 const fs = require("fs");
 const path = require("path");
-const { getFilteredHeaders } = require("./headerFilterUtils");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
