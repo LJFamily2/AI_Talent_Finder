@@ -114,9 +114,10 @@ const searchOpenAlex = async (title, maxResults) => {
       title
     )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics&api_key=${apiKey}`;
 
-    const { data: openAlexResult } = await axios.get(openAlexApiUrl);
+    const { data: openAlexResult } = await axios.get(openAlexApiUrl,{ timeout: 2000 });
     return openAlexResult;
   } catch (err) {
+    console.error("❌ [OpenAlex] Search error:", err.message);
     return { results: [] };
   }
 }; 

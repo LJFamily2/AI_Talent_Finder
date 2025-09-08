@@ -155,7 +155,7 @@ const searchPubMed = async (title, maxResults) => {
       searchUrl += `&api_key=${apiKey}`;
     }
 
-    const xmlResponse = await axios.get(searchUrl);
+    const xmlResponse = await axios.get(searchUrl, { timeout: 2000 });
 
     // Parse XML response
     const parser = new xml2js.Parser();
@@ -176,6 +176,7 @@ const searchPubMed = async (title, maxResults) => {
       retStart: parseInt(eSearchResult.RetStart[0]) || 0,
     };
   } catch (err) {
+    console.error("❌ [PubMed] Search error:", err.message);
     return { idList: [], count: 0 };
   }
 };

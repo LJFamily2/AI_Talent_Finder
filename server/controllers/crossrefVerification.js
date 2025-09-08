@@ -142,7 +142,7 @@ const searchCrossref = async (title, maxResults) => {
       CROSSREF_SELECT_FIELDS
     )}&mailto=${CROSSREF_EMAIL}`;
 
-    const { data: crossrefResult } = await axios.get(crossrefApiUrl);
+    const { data: crossrefResult } = await axios.get(crossrefApiUrl,{ timeout: 1000 });
 
     if (
       crossrefResult.message &&

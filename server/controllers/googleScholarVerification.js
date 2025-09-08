@@ -139,7 +139,7 @@ const searchGoogleScholar = async (title, maxResults) => {
       title
     )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
 
-    const { data: scholarResult } = await axios.get(scholarApiUrl);
+    const { data: scholarResult } = await axios.get(scholarApiUrl, { timeout: 2000 });
     const organicResults =
       scholarResult?.organic_results || scholarResult?.items || [];
 
