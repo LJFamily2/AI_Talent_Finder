@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import searchIcon from '../assets/search.png';
 import menuIcon from '../assets/menu.png';
@@ -6,9 +7,8 @@ import sortIcon from '../assets/sort.png';
 import { Switch } from "@/components/ui/switch"
 import Bulb from '../assets/lightbulb.png';
 import Dot from '../assets/dot.png';
-import letterH from '../assets/letter-h.png';
-import scholarHat from '../assets/scholar-hat.png';
-import infoIcon from '../assets/info.png';
+import filterIcon from '../assets/filter.png';
+import noResultImage from '../assets/no-result.png';
 import {
     Pagination,
     PaginationContent,
@@ -32,8 +32,6 @@ import {
 } from '@/services/searchFiltersService';
 
 function SearchInterface() {
-    const [showSortModal, setShowSortModal] = useState(false);
-    const [sortOption, setSortOption] = useState('ranking');
     const [showCountryModal, setShowCountryModal] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
     const [selectedCountries, setSelectedCountries] = useState([]);
@@ -43,6 +41,21 @@ function SearchInterface() {
     // Add state for expertise input and focus
     const [expertiseInput, setExpertiseInput] = useState("");
     const [expertiseInputFocused, setExpertiseInputFocused] = useState(false);
+    // const [peopleList, setPeopleList] = useState([]);
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [hasSearched, setHasSearched] = useState(false);
+    const [peopleList, setPeopleList] = useState([]);
+    // const navigate = useNavigate();
+
+    useEffect(() => {
+        fetch('/api/researchers?page=1&limit=10')
+          .then(res => res.json())
+        .then(data => {
+            console.log('API response:', data);
+            setPeopleList(data.peopleList || []);
+    });
+      }, []);
 
     // // State for institutions filter
     const [showInstitutionModal, setShowInstitutionModal] = useState(false);
@@ -101,7 +114,7 @@ function SearchInterface() {
     // search(filters)
     // // =================================================
 
-    let peopleList = [
+    let initialPeopleList = [
         { name: 'Jason Carroll', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
         { name: 'James Kim', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
         { name: 'Medison Pham', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
@@ -459,6 +472,7 @@ function SearchInterface() {
 
     async function handleApply(e) {
         e?.preventDefault?.();
+        setHasSearched(true); // Mark that a search has been performed
         // gather controlled state values (avoid DOM queries)
         const payload = buildFilterPayload({
             selectedInstitutions,
@@ -470,9 +484,9 @@ function SearchInterface() {
 
         try {
             const results = await searchResearchers(payload);
-            console.log(results)
-            // handle results
+            setPeopleList(results.peopleList || []);
         } catch (err) {
+            setPeopleList([]);
             // handle error
             console.error("searchResearchers failed error:", err);
         }
@@ -481,57 +495,71 @@ function SearchInterface() {
     return (
         <div>
             <Header />
-            <div className='w-screen h-max bg-[#F3F4F6] flex p-10'>
-                {/* Left side: filter */}
-                <div className='w-fit min-w-90 h-full flex justify-center'>
-                    <div className='w-full bg-white py-8 rounded-2xl shadow-md h-full border border-[#D9D9D9]'>
-                        {/* Subsection: Research-based metrics */}
-                        <div className='px-6'>
-                            <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
-                            <form action="/processing.php">
-                                <div className='flex items-center justify-between '>
-                                    <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
-                                        <select name="comparison" className='border border-gray-300 bg-white rounded-lg py-1 px-2 text-gray-500'>
-                                            <option value="equals" >equals</option>
-                                            <option value="less-than">less than</option>
-                                            <option value="larger-than">larger than</option>
-                                        </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                            <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Space between elements */}
-                                <div className='h-2' />
-
-                                <div className='flex items-center justify-between'>
-                                    <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
-                                        <select name="comparison" className='border border-gray-300 bg-white rounded-lg py-1 px-2 text-gray-500'>
-                                            <option value="equals" >equals</option>
-                                            <option value="less-than">less than</option>
-                                            <option value="larger-than">larger than</option>
-                                        </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                            <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className='flex gap-2 mt-6'>
-                                    <button type="reset" className='w-1/2 bg-white py-1 rounded-lg border border-[#9F9F9F] cursor-pointer hover:bg-gray-200 hover:border-gray-300'>Clear</button>
-                                    <button type="submit" className='w-1/2 bg-[#E60028] text-white py-1 rounded-lg cursor-pointer hover:bg-[#B4001F]'>Apply</button>
-                                </div>
-                            </form>
+            <div className='w-screen h-max bg-[#F3F4F6] flex'>
+                <form>
+                    {/* Left side: filter */}
+                <div className='w-fit min-w-[390px] h-full flex justify-center'>
+                    <div className='w-full bg-white py-10 pl-8 pr-10 h-full border border-[#D9D9D9]'>
+                        <div className='flex items-center mb-5'>
+                            <img src={filterIcon} alt='Filter' className='w-4 h-4 mr-4' />
+                            <h2 className='text-lg font-semibold text-[#625B71]'>FILTER</h2>
                         </div>
 
+                        {/* Clear and Apply all filters button */}
+                        <div className='flex gap-1'>
+                            <input type='reset' value="Reset" className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]' />
+                            <button
+                                type="button"
+                                onClick={handleApply}
+                                className='w-full bg-[#E60028] text-white rounded-lg cursor-pointer hover:bg-[#B4001F] border border-[#E60028]'
+                            >
+                                Apply
+                            </button>
+                        </div>
 
-                        <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
+                        <hr className='mt-6 mb-10' />
+
+                        {/* Subsection: Academics name */}
+                        <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
+                        <input type="text" className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500' placeholder='e.g. Michael' />
+
+                        {/* Subsection: Research-based metrics */}
+                        <div className='mt-16'>
+                            <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
+                            <div className='flex items-center justify-between '>
+                                <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
+                                <div className='flex w-3/4 justify-end items-center gap-5'>
+                                    <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
+                                        <option value="equals" >equals</option>
+                                        <option value="less-than">less than</option>
+                                        <option value="larger-than">larger than</option>
+                                    </select>
+                                    <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                        <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Space between elements */}
+                            <div className='h-2' />
+
+                            <div className='flex items-center justify-between'>
+                                <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
+                                <div className='flex w-3/4 justify-end items-center gap-5'>
+                                    <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
+                                        <option value="equals" >equals</option>
+                                        <option value="less-than">less than</option>
+                                        <option value="larger-than">larger than</option>
+                                    </select>
+                                    <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                        <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Subsection: Field */}
-                        <div className='px-6'>
+                        <div className='mt-12'>
                             <div className='flex items-center justify-between'>
                                 <h4 className='text-lg mb-5 font-semibold mt-6'>Expertise field</h4>
                                 <button
@@ -596,7 +624,7 @@ function SearchInterface() {
                         </div>
 
                         {/* Subsection: Institution */}
-                        <div className='px-6'>
+                        <div className='mt-10'>
                             <div className='flex items-center justify-between'>
                                 <h4 className='text-lg mb-5 font-semibold mt-6'>Institutions</h4>
                                 <button
@@ -618,12 +646,12 @@ function SearchInterface() {
                                     <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
                                         <input
                                             type='text'
-                                            placeholder='e.g. RMIT'
+                                            placeholder='e.g. RMIT Vietnam'
                                             className='focus:outline-0 w-full'
                                             value={institutionInput}
                                             onChange={e => setInstitutionInput(e.target.value)}
                                             onFocus={() => setInstitutionInputFocused(true)}
-                                            onBlur={() => setTimeout(() => setInstitutionInputFocused(false), 150)}
+                                            onBlur={() => setInstitutionInputFocused(false)}
                                         />
                                     </div>
                                     {/* Dropdown for suggestions for institutions */}
@@ -664,12 +692,8 @@ function SearchInterface() {
                             </div>
                         </div>
 
-                        {/* Space between elements */}
-
-                        <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
-
                         {/* Subsection: Institution country */}
-                        <div className='px-6'>
+                        <div className='mt-12'>
                             <h4 className='text-lg mb-5 font-semibold'>Institution country</h4>
                             <div className='flex flex-col gap-2'>
                                 <div>
@@ -699,136 +723,109 @@ function SearchInterface() {
                             </div>
                         </div>
 
-                        <hr className='mt-12 mb-6 border-[#F3F4F6] shadow-sm' />
+                        <hr className='mt-3 mb-10 border-[#e9e9e9]' />
 
-                        {/* Apply all filters button */}
-                        <button
-                            type="button"
-                            onClick={handleApply}
-                            className='w-full bg-[#E60028] text-white py-1 rounded-lg cursor-pointer hover:bg-[#B4001F]'
-                        >
-                            Apply
-                        </button>
+                        {/* Clear and Apply all filters button */}
+                        <div className='flex gap-1 mb-8'>
+                            <input type='reset' value="Reset" className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]' />
+                            <button
+                                type="button"
+                                onClick={handleApply}
+                                className='w-full bg-[#E60028] text-white py-2 rounded-lg cursor-pointer hover:bg-[#B4001F] border border-[#E60028]'
+                            >
+                                Apply
+                            </button>
+                        </div>
                     </div>
                 </div>
+                </form>
 
 
 
-                {/* Right side: search results */}
+                {/* Right side: conditional rendering */}
                 <div className='w-3/5 h-full mx-auto'>
-                    <div className='w-full'>
-                        {/* Search bar */}
-                        <div className='flex items-center justify-between border border-[#D9D9D9] bg-white rounded-lg py-2 px-8 mb-6 w-full mx-auto shadow-md'>
-                            <input type='image' src={searchIcon} alt='Search' className='w-4 h-4 cursor-pointer' />
-                            <input type='text' placeholder='Search for academics by name' className='focus:outline-0 w-full ml-6 py-2' />
-                        </div>
-
-                        {/* Spacer */}
-                        <div className='h-10'></div>
-
-                        {/* Search results */}
-                        <div className='flex items-center justify-between'>
-                            <div className='flex items-end gap-2'>
-                                {/* <img src={Bulb} alt='Lightbulb' className='w-8 h-8' /> */}
-                                <p className='text-lg text-[#6a6a6a] italic'>Found 199 matching results</p>
+                    <div className='w-full h-screen flex flex-col justify-center'>
+                        {(!hasSearched || (hasSearched && peopleList.length === 0)) ? (
+                          <div className="flex flex-col items-center justify-center h-[400px]">
+                            <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
+                            <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
+                            {!hasSearched ? (
+                                <p className="text-md text-gray-500 text-center">
+                                    Choose the filters on the left panel to begin.
+                                </p>
+                            ) : (
+                                <p className="text-md text-gray-500 text-center mt-2">
+                                    We couldn't find anyone matching your filter. <br/>
+                                    Try changing your search criteria.
+                                </p>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {/* Max results per page */}
+                            <div className='w-full flex justify-between items-center mb-10'>
+                              <p>Showing <b>1-10</b> in <b>12,938</b></p>
+                              <div className='flex items-center gap-2'>
+                                <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
+                                <select name="resultsPerPage" id="resultsPerPage" className='border border-gray-300 bg-white rounded-lg py-1 px-2'>
+                                  <option value="10">10</option>
+                                  <option value="20">20</option>
+                                  <option value="50">50</option>
+                                </select>
+                              </div>
                             </div>
-                            {/* Sort Modal Trigger and Modal */}
-                            <div className="relative">
-                                <img
-                                    src={sortIcon}
-                                    alt="Sort"
-                                    className="w-8 h-8 cursor-pointer bottom-10"
-                                    onClick={() => setShowSortModal(!showSortModal)}
-                                />
-                                {showSortModal && (
-                                    <SortModal
-                                        selected={sortOption}
-                                        onSelect={setSortOption}
-                                        onClose={() => setShowSortModal(false)}
-                                    />
-                                )}
-                            </div>
-                        </div>
 
-                        <hr className='mt-4 mb-15 border-gray-400' />
-
-                        {/* People List */}
-                        {peopleList.map((person, index) => (
-                            <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] pb-8 px-6 pt-6 bg-white rounded-sm' key={index}>
-                                <div>
-                                    <div className='flex gap-3 items-end mb-1'>
+                            {/* People List */}
+                            {peopleList.map((person, index) => (
+                              <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
+                                <div className='w-full'>
+                                  <div className='flex gap-6 justify-between w-full'>
+                                    <div>
+                                      <div className='flex gap-3 items-end mb-1'>
                                         <p className='font-bold text-xl'>{person.name}</p>
                                         <img src={Dot} alt='Dot' className='w-2 h-2 self-center' />
                                         <p className='text-[#6A6A6A] text-md'>{person.institution}</p>
-                                    </div>
+                                      </div>
 
-                                    <div className='flex-col justify-center'>
-                                        <img src={letterH} alt='Letter H' className='w-4 h-4 inline-block mr-3 opacity-70' />
+                                      <div className='flex-col justify-center'>
                                         <span className='text-sm text-[#6A6A6A]'>h-index: {person.hIndex}</span>
                                         <br />
-                                        <img src={scholarHat} alt='Scholar Hat' className='w-4 h-4 inline-block mr-3' />
                                         <span className='text-sm text-[#6A6A6A]'>i10-index: {person.i10Index}</span>
+                                      </div>
                                     </div>
+                                    <button className='h-fit text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline'>View profile</button>
+                                  </div>
 
-                                    <div className='w-max py-1 px-8 rounded-md font-semibold bg-[#4D8BC5] text-white text-sm mt-3'>{person.field}</div>
+                                  <div className='w-max py-1 px-8 rounded-full font-semibold bg-white border border-[#d2e4f4] text-[#3C72A5] text-sm mt-6'>{person.field}</div>
                                 </div>
-
-                                <div className='w-max h-full flex items-start justify-center border-l-1 border-[#E5E5E5] px-12'>
-                                    <div className='h-20 w-20 rounded-full border border-[#9F9F9F] flex flex-col items-center justify-center'>
-                                        <div className='flex relative group'>
-                                            <p className='text-xs text-[#6A6A6A]'>Score</p>
-                                            <img src={infoIcon} alt='Info' className='w-3 h-3 mb-1 cursor-pointer' aria-describedby="scoreTooltip" />
-                                            <div role='tooltip' id='scoreTooltip' className='absolute left-6 top-0 z-10 bg-white border border-gray-300 p-2 rounded shadow-md text-xs text-gray-700 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200'
-                                            >
-                                                The score is calculated based on the h-index and i10-index, reflecting the academic's research impact.
-                                            </div>
-                                        </div>
-
-                                        <p className='text-2xl font-semibold'>{person.score}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-
-                        {/* Max results per page */}
-                        <div className='w-full flex justify-between items-center mb-10'>
-                            {/* showing results 1-10 of 199 */}
-                            <p className='text-sm text-[#6A6A6A]'>Showing results <b>1-10</b> of <b>199</b></p>
-                            <div className='flex items-center gap-2'>
-                                <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Results per page:</label>
-                                <select name="resultsPerPage" id="resultsPerPage" className='border border-gray-300 bg-white rounded-lg py-1 px-2'>
-                                    <option value="10">10</option>
-                                    <option value="20">20</option>
-                                    <option value="50">50</option>
-                                </select>
-                            </div>
-
-                        </div>
-                        <Pagination>
-                            <PaginationContent>
+                              </div>
+                            ))}
+                            <Pagination>
+                              <PaginationContent>
                                 <PaginationItem>
-                                    <PaginationPrevious href="#" />
+                                  <PaginationPrevious href="#" />
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationLink href="#" isActive>1</PaginationLink>
+                                  <PaginationLink href="#" isActive>1</PaginationLink>
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationLink href="#">
-                                        2
-                                    </PaginationLink>
+                                  <PaginationLink href="#">
+                                      2
+                                  </PaginationLink>
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationLink href="#">3</PaginationLink>
+                                  <PaginationLink href="#">3</PaginationLink>
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationEllipsis />
+                                  <PaginationEllipsis />
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationNext href="#" />
+                                  <PaginationNext href="#" />
                                 </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
+                              </PaginationContent>
+                            </Pagination>
+                          </>
+                        )}
                     </div>
                 </div>
 

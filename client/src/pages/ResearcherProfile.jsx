@@ -219,6 +219,7 @@ export default function ResearcherProfile() {
       institution: currentInst = "",
       display_name: currentInstDisplayName = "",
     } = {},
+    current_affiliations = [],
   } = researcher;
 
   // derive topics from fields if present, otherwise fall back to legacy topics
