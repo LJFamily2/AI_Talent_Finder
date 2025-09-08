@@ -155,7 +155,7 @@ const searchPubMed = async (title, maxResults) => {
       searchUrl += `&api_key=${apiKey}`;
     }
 
-    const xmlResponse = await axios.get(searchUrl, { timeout: 2000 });
+    const xmlResponse = await axios.get(searchUrl, { timeout: 1000 });
 
     // Parse XML response
     const parser = new xml2js.Parser();

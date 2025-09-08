@@ -150,8 +150,6 @@ async function processFullCVWithChatGPT(openai, cvText, candidateName) {
     return await processSmallCVDirectly(openai, cvText, candidateName);
   } catch (error) {
     console.error("Error in CV processing:", error);
-    // Fallback: Try to extract publications using the existing AI helper with a generic model
-    return await fallbackPublicationExtraction(openai, cvText, candidateName);
   }
 }
 
@@ -228,8 +226,37 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
       response.choices[0]?.message?.content
     );
 
-    const verificationData = JSON.parse(verificationText);
-    const allPublications = verificationData.allPublications || [];
+    let verificationData;
+    try {
+      verificationData = JSON.parse(verificationText);
+    } catch (jsonError) {
+      console.error(
+        `[ChatGPT CV Verification] JSON Parse Error: ${jsonError.message}`
+      );
+
+      // Attempt to fix truncated or malformed JSON
+      const fixedText = fixTruncatedJSON(verificationText);
+
+      try {
+        verificationData = JSON.parse(fixedText);
+      } catch (secondError) {
+        console.error(
+          `[ChatGPT CV Verification] Could not fix JSON:`,
+          secondError.message
+        );
+
+        // Try to recover by attempting to fix incomplete JSON
+        const recoveredData = attemptJSONRecovery(verificationText);
+        if (recoveredData) {
+          verificationData = recoveredData;
+        } else {
+          return [];
+        }
+      }
+    }
+
+    const allPublications =
+      verificationData.allPublications || verificationData.publications || [];
 
     // Transform to expected format using helper function
     return allPublications.map((item) => {
@@ -241,7 +268,10 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
     });
   } catch (error) {
     console.error("Error parsing small CV verification result:", error);
-    throw error;
+    console.log(
+      "[ChatGPT CV Verification] Falling back to empty results due to error"
+    );
+    return []; // Return empty array instead of throwing
   }
 }
 
@@ -259,9 +289,7 @@ async function processLargeCVWithChunking(openai, cvText, candidateName) {
     );
 
     // Initialize ML header classifier
-    const headerClassifier = initializeHeaderClassifier(
-      "ChatGPT CV Verification"
-    );
+    const headerClassifier = initializeHeaderClassifier();
 
     if (headerClassifier && headerClassifier.trained) {
       // Use ML model to identify publication sections
@@ -303,16 +331,18 @@ async function processLargeCVWithChunking(openai, cvText, candidateName) {
       currentIndex += MAX_CHUNK_SIZE;
     }
 
-    console.log(
-      `[ChatGPT CV Verification] Processing ${chunks.length} chunks in batched requests`
-    );
+    // Process all chunks in parallel for better performance
+    const chunkPromises = chunks.map((chunk, i) => {
+      return processSmallCVDirectly(openai, chunk, candidateName).catch(
+        (error) => {
+          console.error(`Error processing chunk ${i + 1}:`, error);
+          return [];
+        }
+      );
+    });
 
-    // Process chunks in batches to reduce API calls
-    const allResults = await processBatchedChunksWithChatGPT(
-      openai,
-      chunks,
-      candidateName
-    );
+    const chunkResultsArray = await Promise.all(chunkPromises);
+    const allResults = chunkResultsArray.flat();
 
     // Remove duplicates based on title similarity
     return removeDuplicatePublications(allResults);
@@ -320,170 +350,6 @@ async function processLargeCVWithChunking(openai, cvText, candidateName) {
     console.error("Error in large CV chunked processing:", error);
     throw error;
   }
-}
-
-/**
- * Fallback publication extraction if direct verification fails
- * @param {OpenAI} openai - OpenAI client instance
- * @param {string} cvText - CV text content
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Basic verification results
- */
-async function fallbackPublicationExtraction(openai, cvText, candidateName) {
-  console.log(
-    "[ChatGPT CV Verification] Using fallback publication extraction"
-  );
-
-  try {
-    // Extract publications using ChatGPT in a simpler way
-    const extractPrompt = `Extract all academic publications from this CV. Return as JSON array:
-
-CV TEXT:
-${cvText}
-
-Return format:
-{
-  "publications": [
-    {
-      "title": "publication title",
-      "authors": "author list",
-      "year": "year",
-      "venue": "journal/conference",
-      "fullText": "original text from CV"
-    }
-  ]
-}`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at extracting publications from academic CVs.",
-        },
-        {
-          role: "user",
-          content: extractPrompt,
-        },
-      ],
-
-      max_completion_tokens: 3000,
-    });
-
-    const extractionText = cleanJSONResponse(
-      response.choices[0]?.message?.content
-    );
-    const extractionData = JSON.parse(extractionText);
-    const publications = extractionData.publications || [];
-
-    // Transform to expected format with basic verification
-    return publications.map((pub) => {
-      return transformPublicationResult(
-        pub,
-        { isOnline: false, hasAuthorMatch: false }, // Basic not verified
-        pub
-      );
-    });
-  } catch (error) {
-    console.error("Fallback extraction failed:", error);
-    return [];
-  }
-}
-
-/**
- * Process multiple CV chunks in batched ChatGPT requests
- * Combines chunks to reduce API calls while staying within token limits
- * @param {OpenAI} openai - OpenAI client instance
- * @param {Array} chunks - Array of CV text chunks
- * @param {string} candidateName - Candidate name
- * @returns {Promise<Array>} Array of verified publications from all chunks
- */
-async function processBatchedChunksWithChatGPT(openai, chunks, candidateName) {
-  const MAX_COMBINED_SIZE = 15000; // Conservative limit for combined chunks
-  const batchedChunks = [];
-
-  // Group chunks into batches that fit within token limits
-  let currentBatch = [];
-  let currentSize = 0;
-
-  for (const chunk of chunks) {
-    if (
-      currentSize + chunk.length > MAX_COMBINED_SIZE &&
-      currentBatch.length > 0
-    ) {
-      // Start a new batch
-      batchedChunks.push(currentBatch);
-      currentBatch = [chunk];
-      currentSize = chunk.length;
-    } else {
-      currentBatch.push(chunk);
-      currentSize += chunk.length;
-    }
-  }
-
-  // Add the last batch
-  if (currentBatch.length > 0) {
-    batchedChunks.push(currentBatch);
-  }
-
-  console.log(
-    `[ChatGPT CV Verification] Grouped ${chunks.length} chunks into ${batchedChunks.length} batched requests`
-  );
-
-  const allResults = [];
-
-  // Process each batch
-  for (let i = 0; i < batchedChunks.length; i++) {
-    const batch = batchedChunks[i];
-    try {
-      console.log(
-        `[ChatGPT CV Verification] Processing batch ${i + 1}/${
-          batchedChunks.length
-        } with ${batch.length} chunks`
-      );
-
-      // Combine chunks in this batch
-      const combinedChunkText = batch.join("\n\n--- NEXT CHUNK ---\n\n");
-
-      const batchResults = await processSmallCVDirectly(
-        openai,
-        combinedChunkText,
-        candidateName
-      );
-
-      allResults.push(...batchResults);
-    } catch (error) {
-      console.error(`Error processing batch ${i + 1}:`, error);
-
-      // Fallback: Process chunks individually if batch fails
-      console.log(
-        `[ChatGPT CV Verification] Batch ${
-          i + 1
-        } failed, processing chunks individually`
-      );
-      for (let j = 0; j < batch.length; j++) {
-        try {
-          const chunkResults = await processSmallCVDirectly(
-            openai,
-            batch[j],
-            candidateName
-          );
-          allResults.push(...chunkResults);
-        } catch (chunkError) {
-          console.error(
-            `Error processing individual chunk in batch ${i + 1}, chunk ${
-              j + 1
-            }:`,
-            chunkError
-          );
-          // Continue with other chunks
-        }
-      }
-    }
-  }
-
-  return allResults;
 }
 
 //=============================================================================
@@ -725,18 +591,66 @@ function fixTruncatedJSON(jsonText) {
 function cleanJSONResponse(response) {
   if (!response) return "{}";
 
-  // Remove markdown code blocks
-  let cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+  try {
+    // Remove markdown code blocks
+    let cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "");
 
-  // Find JSON content between { and }
-  const startIndex = cleaned.indexOf("{");
-  const lastIndex = cleaned.lastIndexOf("}");
+    // Remove any extra text before the JSON
+    const startIndex = cleaned.indexOf("{");
+    const lastIndex = cleaned.lastIndexOf("}");
 
-  if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
-    cleaned = cleaned.substring(startIndex, lastIndex + 1);
+    if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+      cleaned = cleaned.substring(startIndex, lastIndex + 1);
+    }
+
+    // Fix common JSON formatting issues
+    cleaned = cleaned
+      .replace(/,\s*}/g, "}") // Remove trailing commas before closing braces
+      .replace(/,\s*]/g, "]") // Remove trailing commas before closing brackets
+      .replace(/[\r\n\t]/g, " ") // Replace newlines and tabs with spaces
+      .replace(/\s+/g, " ") // Normalize multiple spaces
+      .trim();
+
+    // Validate JSON structure before returning
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (error) {
+    console.warn(
+      "JSON cleaning failed, attempting to fix structure:",
+      error.message
+    );
+
+    // Fallback: Try to extract valid JSON more aggressively
+    try {
+      let fallbackCleaned = response.replace(/```[^`]*```/g, ""); // Remove all code blocks
+
+      // Find the largest valid JSON object
+      const jsonRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+      const matches = fallbackCleaned.match(jsonRegex);
+
+      if (matches && matches.length > 0) {
+        // Try each match until we find a valid one
+        for (const match of matches) {
+          try {
+            JSON.parse(match);
+            return match;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+
+      // Last resort: return empty structure
+      console.warn("Could not extract valid JSON, returning empty structure");
+      return '{"publications": []}';
+    } catch (fallbackError) {
+      console.error(
+        "Fallback JSON cleaning also failed:",
+        fallbackError.message
+      );
+      return '{"publications": []}';
+    }
   }
-
-  return cleaned.trim();
 }
 
 /**
@@ -748,6 +662,146 @@ function generateSearchLink(title) {
   if (!title) return "#";
   const query = encodeURIComponent(title);
   return `https://scholar.google.com/scholar?q=${query}`;
+}
+
+/**
+ * Attempt to recover a valid JSON structure from malformed/truncated JSON
+ * @param {string} malformedJson - The malformed JSON string
+ * @returns {Object|null} Recovered JSON object or null if recovery fails
+ */
+function attemptJSONRecovery(malformedJson) {
+  try {
+    // First, try to identify if it's a truncated array
+    if (
+      malformedJson.includes('"allPublications"') &&
+      malformedJson.includes("[")
+    ) {
+      // Find the start of the allPublications array
+      const startIndex = malformedJson.indexOf('"allPublications"');
+      const arrayStartIndex = malformedJson.indexOf("[", startIndex);
+
+      if (arrayStartIndex !== -1) {
+        // Build the beginning of the JSON structure
+        let workingJson = '{"allPublications":[';
+
+        // Find all complete publication objects - improved regex
+        const publicationRegex =
+          /\{\s*"publication"\s*:\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}\s*,\s*"verification"\s*:\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}\s*\}/g;
+        const matches = malformedJson.match(publicationRegex) || [];
+
+        if (matches.length > 0) {
+          // Add all complete publications
+          workingJson += matches.join(",");
+          workingJson += "]}";
+
+          // Try to parse the recovered JSON
+          const recovered = JSON.parse(workingJson);
+          return recovered;
+        }
+      }
+    }
+
+    // Try simpler recovery: find any complete publication objects with more flexible regex
+    const publicationRegex =
+      /\{\s*"publication"\s*:\s*\{(?:[^{}]*(?:\{[^{}]*\})?)*[^{}]*\}\s*,\s*"verification"\s*:\s*\{(?:[^{}]*(?:\{[^{}]*\})?)*[^{}]*\}\s*\}/g;
+    const matches = malformedJson.match(publicationRegex) || [];
+
+    if (matches.length > 0) {
+      const validPublications = [];
+      for (const match of matches) {
+        try {
+          const parsed = JSON.parse(match);
+          validPublications.push(parsed);
+        } catch (e) {
+          console.warn("Skipping invalid publication object:", e.message);
+        }
+      }
+
+      if (validPublications.length > 0) {
+        const recoveredStructure = {
+          allPublications: validPublications,
+        };
+        console.log(
+          `[ChatGPT CV Verification] Recovered ${validPublications.length} publications using simple recovery`
+        );
+        return recoveredStructure;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("JSON recovery attempt failed:", error.message);
+    return null;
+  }
+}
+
+/**
+ * Attempt to recover a simple publication list from malformed JSON
+ * @param {string} malformedJson - The malformed JSON string
+ * @returns {Object|null} Recovered JSON object or null if recovery fails
+ */
+function attemptSimplePublicationRecovery(malformedJson) {
+  try {
+    // Look for simple publication objects without verification - more flexible regex
+    const simplePublicationRegex =
+      /\{\s*"title"\s*:\s*"[^"]*"[^}]*"authors"\s*:\s*(?:"[^"]*"|\[[^\]]*\])[^}]*"year"\s*:\s*"[^"]*"[^}]*"venue"\s*:\s*"[^"]*"[^}]*\}/g;
+    const matches = malformedJson.match(simplePublicationRegex) || [];
+
+    if (matches.length > 0) {
+      const recoveredPublications = [];
+      for (const match of matches) {
+        try {
+          const parsed = JSON.parse(match);
+          recoveredPublications.push(parsed);
+        } catch (e) {
+          console.warn(
+            "Skipping invalid simple publication object:",
+            e.message
+          );
+        }
+      }
+
+      if (recoveredPublications.length > 0) {
+        console.log(
+          `[ChatGPT CV Verification] Recovered ${recoveredPublications.length} simple publications`
+        );
+        return { publications: recoveredPublications };
+      }
+    }
+
+    // Try even simpler recovery - just find title/author pairs
+    const titleAuthorRegex =
+      /"title"\s*:\s*"([^"]+)"[^}]*"authors"\s*:\s*(?:"([^"]+)"|\[([^\]]+)\])/g;
+    let match;
+    const simplePublications = [];
+
+    while ((match = titleAuthorRegex.exec(malformedJson)) !== null) {
+      const title = match[1];
+      const authors = match[2] || match[3];
+
+      if (title && authors) {
+        simplePublications.push({
+          title: title,
+          authors: authors,
+          year: "Unknown",
+          venue: "Unknown",
+          fullText: `${title} by ${authors}`,
+        });
+      }
+    }
+
+    if (simplePublications.length > 0) {
+      console.log(
+        `[ChatGPT CV Verification] Recovered ${simplePublications.length} minimal publications from title/author pairs`
+      );
+      return { publications: simplePublications };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Simple publication recovery failed:", error.message);
+    return null;
+  }
 }
 
 /**
@@ -928,6 +982,9 @@ async function processBatchedPublicationSectionsWithChatGPT(
     allResults.push(...batchResults);
   }
 
+  console.log(
+    `[ChatGPT CV Verification] Completed processing with ${allResults.length} verified publications`
+  );
   return removeDuplicatePublications(allResults);
 }
 
@@ -1038,6 +1095,10 @@ IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, 
 
   const allPublications = verificationData.allPublications || [];
 
+  console.log(
+    `[ChatGPT CV Verification] Extracted ${allPublications.length} publications from batch ${batchNumber}`
+  );
+
   return allPublications.map((item) => {
     return transformPublicationResult(
       item.publication,
@@ -1066,95 +1127,4 @@ async function processPublicationSectionWithChatGPT(
     candidateName,
     1
   );
-}
-
-//=============================================================================
-// ML MODEL UTILITIES
-//=============================================================================
-
-/**
- * Extract publication sections using ML header classifier
- * @param {string} cvText - Full CV text content
- * @param {Object} headerClassifier - Trained ML header classifier
- * @returns {Array} Array of publication sections with content
- */
-function extractPublicationSectionsWithML(cvText, headerClassifier) {
-  const lines = cvText
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  // Use ML model to detect all headers
-  const allHeaders = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    try {
-      const isHeader = headerClassifier.predict(line, i, lines.length);
-      if (isHeader) {
-        allHeaders.push({
-          text: line,
-          lineNumber: i + 1,
-          index: i,
-        });
-      }
-    } catch (error) {
-      // Skip if prediction fails for this line
-      continue;
-    }
-  }
-
-  // Extract content for each publication section
-  const publicationSections = [];
-  for (let i = 0; i < allHeaders.length; i++) {
-    const header = allHeaders[i];
-    const nextHeader = allHeaders[i + 1];
-
-    let sectionEnd;
-    if (nextHeader) {
-      sectionEnd = nextHeader.index;
-    } else {
-      sectionEnd = lines.length;
-    }
-
-    // Get content between headers
-    const sectionLines = lines.slice(header.index + 1, sectionEnd);
-    const content = sectionLines.join("\n");
-
-    publicationSections.push({
-      header: header.text,
-      content: content,
-      startLine: header.lineNumber,
-      endLine: nextHeader ? nextHeader.lineNumber - 1 : lines.length,
-    });
-  }
-
-  return publicationSections;
-}
-
-/**
- * Chunk CV text into smaller pieces for processing
- * @param {string} cvText - Full CV text content
- * @param {number} maxSize - Maximum chunk size
- * @returns {Array} Array of text chunks
- */
-function chunkCVText(cvText, maxSize = 8000) {
-  // Split on newlines to avoid cutting in middle of text
-  const lines = cvText.split(/\n+/).filter(Boolean);
-  const chunks = [];
-  let currentChunk = "";
-
-  for (const line of lines) {
-    if (currentChunk.length + line.length + 1 > maxSize) {
-      chunks.push(currentChunk.trim());
-      currentChunk = "";
-    }
-    currentChunk += line + "\n";
-  }
-
-  if (currentChunk) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks;
 }

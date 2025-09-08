@@ -110,7 +110,7 @@ const searchScopusDatabase = async (title, maxResults) => {
       scopusQuery
     )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResults}`;
 
-    const { data: scopusResult } = await axios.get(scopusApiUrl, { timeout: 2000 });
+    const { data: scopusResult } = await axios.get(scopusApiUrl, { timeout: 1000 });
     const entries = scopusResult?.["search-results"]?.entry || [];
 
     return {

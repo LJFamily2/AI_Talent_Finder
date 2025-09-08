@@ -510,7 +510,7 @@ const processPublicationVerification = async (pub, candidateName) => {
     /*scholarResult*/ scopusResult,
     openAlexResult,
     pubmedResult,
-    crossrefResult,
+    /*crossrefResult*/,
   ] = await Promise.all([
     (async () => {
       // The following code is commented out to save Google Scholar credits:
@@ -568,21 +568,23 @@ const processPublicationVerification = async (pub, candidateName) => {
         }ms for: "${pub.title}"`
       );
       return result;
+      // return null;
     })(),
     (async () => {
-      const start = Date.now();
-      const result = await verifyWithCrossref(
-        pub.title,
-        pub.doi,
-        candidateName
-      );
-      const end = Date.now();
-      console.log(
-        `[Publication Verification] Crossref verification completed in ${
-          end - start
-        }ms for: "${pub.title}"`
-      );
-      return result;
+      // const start = Date.now();
+      // const result = await verifyWithCrossref(
+      //   pub.title,
+      //   pub.doi,
+      //   candidateName
+      // );
+      // const end = Date.now();
+      // console.log(
+      //   `[Publication Verification] Crossref verification completed in ${
+      //     end - start
+      //   }ms for: "${pub.title}"`
+      // );
+      // return result;
+      return null;
     })(),
   ]);
 
@@ -602,6 +604,14 @@ const processPublicationVerification = async (pub, candidateName) => {
     status: "not verified",
     details: null,
   };
+  const crossrefResult = {
+    status: "not verified",
+    details: null,
+  };
+  // const pubmedResult = {
+  //   status: "not verified",
+  //   details: null,
+  // };
 
   // Get authors from Google Scholar
   if (scholarResult.details?.extractedAuthors) {
