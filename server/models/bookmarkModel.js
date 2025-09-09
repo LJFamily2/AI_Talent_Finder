@@ -1,8 +1,25 @@
 const mongoose = require("mongoose");
 
 //==================================================================
-// Bookmark Schema
+// Bookmark Schema (with Folders)
 //==================================================================
+
+const FolderSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    researcherIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Researcher",
+      },
+    ],
+  },
+  { _id: false } // prevent auto _id for each folder subdocument
+);
 
 const BookmarkSchema = new mongoose.Schema(
   {
@@ -11,9 +28,9 @@ const BookmarkSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    researcherIds: {
-      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Researcher" }],
-      required: true,
+    folders: {
+      type: [FolderSchema],
+      default: [],
     },
   },
   {
@@ -21,9 +38,6 @@ const BookmarkSchema = new mongoose.Schema(
     versionKey: false,
   }
 );
-
-// Create compound index to ensure user can't bookmark the same researcher twice
-BookmarkSchema.index({ userId: 1, researcherIds: 1 }, { unique: true });
 
 //==================================================================
 // Export Mongo Model
