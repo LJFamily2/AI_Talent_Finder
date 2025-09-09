@@ -1,0 +1,6 @@
+"Method","Total Tests","Successful Tests","Completion Rate","Avg Processing Time (ms)","Avg Time Per Publication (ms)","Avg Link Provision Rate","Avg Metadata Richness","Avg Input Tokens","Avg Output Tokens","Total Input Tokens","Total Output Tokens","Total API Calls"
+"Traditional","136","135","0.993","30056.45","1898.71","0.711","0.284","3655","2436","493380","328920","5482"
+"Gemini AI","136","136","1.000","21153.81","1179.14","0.713","0.285","9007","3860","1225000","525000","741"
+"Claude AI","136","121","0.890","43870.91","4944.37","0.752","0.301","5134","2200","621250","266250","393"
+"ChatGPT AI","136","115","0.846","45427.81","3136.29","0.817","0.327","5609","2404","645050","276450","409"
+"Grok AI","136","133","0.978","54263.16","3753.02","0.812","0.325","10003","4287","1330350","570150","807"
