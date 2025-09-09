@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import searchIcon from '../assets/search.png';
@@ -26,7 +26,7 @@ import scoreIcon from '../assets/score.png';
 import {
     buildFilterPayload,
     searchResearchers,
-    // loadCountriesFilter,
+    loadCountriesFilter,
     searchInstitutions,
     listInstitutions,
     loadAllFields,
@@ -37,6 +37,7 @@ function SearchInterface() {
     const [showCountryModal, setShowCountryModal] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
     const [selectedCountries, setSelectedCountries] = useState([]);
+    const [countriesList, setCountriesList] = useState([]); // loaded from API for left-panel display
     const [showFieldModal, setShowFieldModal] = useState(false);
     const [fieldSearch, setFieldSearch] = useState("");
     const [selectedFields, setSelectedFields] = useState([]);
@@ -48,16 +49,20 @@ function SearchInterface() {
     const [sortOrder, setSortOrder] = useState('asc');
     const [hasSearched, setHasSearched] = useState(false);
     const [peopleList, setPeopleList] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
+    const [totalResults, setTotalResults] = useState(0);
     // const navigate = useNavigate();
 
-    useEffect(() => {
-        fetch('/api/researchers?page=1&limit=10')
-          .then(res => res.json())
-        .then(data => {
-            console.log('API response:', data);
-            setPeopleList(data.peopleList || []);
-    });
-      }, []);
+    // useEffect(() => {
+    //     fetch('/api/researchers?page=1&limit=10')
+    //       .then(res => res.json())
+    //     .then(data => {
+    //         console.log('API response:', data);
+    //         setPeopleList(data.peopleList || []);
+    // });
+    //   }, []);
 
     // // State for institutions filter
     const [showInstitutionModal, setShowInstitutionModal] = useState(false);
@@ -67,6 +72,17 @@ function SearchInterface() {
     const [institutionSuggestions, setInstitutionSuggestions] = useState([]);
     const [institutionLoading, setInstitutionLoading] = useState(false);
     const instLastQueryRef = useRef("");
+
+    const hasFilters = useMemo(() => {
+        return (
+            (selectedCountries && selectedCountries.length > 0) ||
+            (selectedFields && selectedFields.length > 0) ||
+            (selectedInstitutions && selectedInstitutions.length > 0) ||
+            (fieldSearch && fieldSearch.trim().length > 0) ||
+            (countrySearch && countrySearch.trim().length > 0)
+        );
+    }, [selectedCountries, selectedFields, selectedInstitutions, fieldSearch, countrySearch]);
+
 
     const COUNTRY_LIST = [
         'United States of America', 'China', 'Brazil', 'India', 'Germany',
@@ -115,16 +131,6 @@ function SearchInterface() {
     // }
     // search(filters)
     // // =================================================
-
-    let initialPeopleList = [
-        { name: 'Jason Carroll', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'James Kim', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Medison Pham', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Linh Cao', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Kim Cheoul', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Minh Tran', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 },
-        { name: 'Cuong Nguyen', institution: 'RMIT University', hIndex: 12, i10Index: 8, field: 'Aviation', score: 89 }]
 
     function SortModal({ selected, onSelect, onClose }) {
         const modalRef = useRef(null);
@@ -194,8 +200,12 @@ function SearchInterface() {
         );
     }
 
-    function CountryModal({ open, onClose, countries, selected, onSelect, search, onSearch }) {
+    function CountryModal({ open, onClose, selected, onSelect }) {
         const modalRef = useRef(null);
+        const [countries, setCountries] = useState([]);
+        const [q, setQ] = useState("");
+        const [loading, setLoading] = useState(false);
+
         useEffect(() => {
             function handleClickOutside(event) {
                 if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -205,33 +215,61 @@ function SearchInterface() {
             if (open) document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }, [onClose, open]);
-        const filtered = countries.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+
+        // load countries once when modal opens
+        useEffect(() => {
+            if (!open) return;
+            setLoading(true);
+            setCountries([]);
+            (async () => {
+                try {
+                    // loadCountriesFilter -> returns [{ search_tag, display_name }, ...]
+                    const list = await loadCountriesFilter();
+                    // ensure array of objects with { search_tag, display_name }
+                    const normalized = (list || []).map(item => {
+                        if (!item) return null;
+                        if (typeof item === 'string') return { search_tag: item, display_name: item };
+                        return { search_tag: item.search_tag || item._id || item.code || item.id || item.value || "", display_name: item.display_name || item.name || item.label || item.display || "" };
+                    }).filter(Boolean);
+                    setCountries(normalized);
+                } catch (err) {
+                    console.error("loadCountriesFilter error:", err);
+                    setCountries([]);
+                } finally {
+                    setLoading(false);
+                }
+            })();
+        }, [open]);
+
+        const filtered = (countries || []).filter(c => (c.display_name || "").toLowerCase().includes((q || "").toLowerCase()));
+
         return open ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
                 <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
+                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
                     <input
                         type="text"
                         placeholder="Search institution countries"
                         className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
-                        value={search}
-                        onChange={e => onSearch(e.target.value)}
+                        value={q}
+                        onChange={e => setQ(e.target.value)}
                     />
                     <div className="text-gray-500 text-sm mb-2">All countries ({countries.length})</div>
                     <div className="border-b mb-2"></div>
                     <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
-                        {filtered.map((country, idx) => (
-                            <label key={country} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
+                        {loading && <div className="text-center py-4 text-gray-500">Loading countries…</div>}
+                        {!loading && filtered.map((country) => (
+                            <label key={country.search_tag} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
                                 <input
                                     type="checkbox"
-                                    checked={selected.includes(country)}
+                                    checked={selected.includes(country.search_tag)}
                                     onChange={() => onSelect(country)}
                                     className="w-5 h-5 accent-[#E60028]"
                                 />
-                                <span>{country}</span>
+                                <span>{country.display_name}</span>
                             </label>
                         ))}
-                        {filtered.length === 0 && <div className="text-gray-400 text-center py-8">No countries found</div>}
+                        {!loading && filtered.length === 0 && <div className="text-gray-400 text-center py-8">No countries found</div>}
                     </div>
                 </div>
             </div>
@@ -308,7 +346,7 @@ function SearchInterface() {
         return open ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
                 <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
+                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
                     <input
                         type="text"
                         placeholder="Search fields or topics"
@@ -320,7 +358,7 @@ function SearchInterface() {
                     <div className="border-b mb-2"></div>
                     <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
                         {loadingFields && <div className="text-center py-4 text-gray-500">Loading fields…</div>}
-                        {!loadingFields && fields.map((f, fi) => {
+                        {!loadingFields && fields.map((f) => {
                             const fieldIdKey = f._id ? String(f._id) : `null`;
                             const fieldSelected = selected.includes(f.display_name);
                             const isExpanded = expandedSet.has(fieldIdKey);
@@ -504,7 +542,7 @@ function SearchInterface() {
         return open ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
                 <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
+                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
                     <input
                         type="text"
                         placeholder="Search institutions..."
@@ -577,360 +615,545 @@ function SearchInterface() {
         setInstitutionSuggestions([]);
     }
 
-    async function handleApply(e) {
-        e?.preventDefault?.();
-        setHasSearched(true); // Mark that a search has been performed
-        // gather controlled state values (avoid DOM queries)
+    // reset all filters and results
+    function handleReset() {
+        setSelectedCountries([]);
+        setSelectedFields([]);
+        setSelectedInstitutions([]);
+        setInstitutionInput("");
+        setInstitutionSuggestions([]);
+        setExpertiseInput("");
+        setExpertiseInputFocused(false);
+        setFieldSearch("");
+        setCountrySearch("");
+        setPeopleList([]);
+        setHasSearched(false);
+        setIsSearching(false);
+        setShowCountryModal(false);
+        setShowFieldModal(false);
+        setShowInstitutionModal(false);
+        setSortBy('name');
+        setSortOrder('asc');
+    }
+
+    // central loader for search results supporting pagination
+    async function loadResults({ page = 1, limit = perPage } = {}) {
+        setIsSearching(true);
+        // build payload from UI state
         const payload = buildFilterPayload({
             selectedInstitutions,
-            // selectedFields,
-            // selectedCountries,
-            page: 1,
-            limit: 20
+            selectedFields,
+            selectedCountries,
+            page,
+            limit
         });
 
         try {
             const results = await searchResearchers(payload);
-            setPeopleList(results.peopleList || []);
+            // resilient shape handling:
+            const list = results?.researchers || results?.items || results?.results || [];
+            const total = results?.total || results?.count || results?.total_count || list.length;
+
+            setPeopleList(list);
+            setTotalResults(Number(total || 0));
+            setCurrentPage(Number(page));
+            setHasSearched(true);
         } catch (err) {
-            setPeopleList([]);
-            // handle error
             console.error("searchResearchers failed error:", err);
+            setPeopleList([]);
+            setTotalResults(0);
+            setHasSearched(true);
+        } finally {
+            setIsSearching(false);
         }
     }
+
+    // handler used by Apply button - resets to first page
+    async function handleApply(e) {
+        e?.preventDefault?.();
+        await loadResults({ page: 1, limit: perPage });
+    }
+
+    // load countries once on mount so left panel can show common countries
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const raw = await loadCountriesFilter();
+                const normalized = (raw || []).map(item => {
+                    if (!item) return null;
+                    if (typeof item === 'string') return { search_tag: item, display_name: item };
+                    return {
+                        search_tag: item.search_tag || item._id || item.code || item.id || item.value || "",
+                        display_name: item.display_name || item.name || item.label || item.display || ""
+                    };
+                }).filter(Boolean);
+                if (mounted) setCountriesList(normalized);
+            } catch (err) {
+                console.error("loadCountriesFilter (left panel) error:", err);
+                if (mounted) setCountriesList([]);
+            }
+        })();
+        return () => { mounted = false; };
+    }, []);
+
+    // common display names to show when no selection exists (order matters)
+    const COMMON_COUNTRY_DISPLAY_NAMES = [
+        'Vietnam',
+        'China',
+        'India',
+        'United Kingdom',
+        'Australia',
+    ];
+
+    // derive what to show in the left panel: selected countries (if any) else common ones from API
+    const commonCountries = countriesList.filter(c => COMMON_COUNTRY_DISPLAY_NAMES.includes(c.display_name));
+    const fallbackCommon = countriesList.slice(0, 6);
+    const leftPanelCountries = (selectedCountries && selectedCountries.length > 0)
+        ? countriesList.filter(c => selectedCountries.includes(c.search_tag))
+        : (commonCountries.length ? commonCountries : fallbackCommon);
 
     return (
         <div>
             <Header />
-            <div className='w-screen h-max bg-[#F3F4F6] flex'>
+            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20'>
                 <form>
                     {/* Left side: filter */}
-                <div className='w-fit min-w-[390px] h-full flex justify-center'>
-                    <div className='w-full bg-white py-10 pl-8 pr-10 h-full border border-[#D9D9D9]'>
-                        <div className='flex items-center mb-5'>
-                            <img src={filterIcon} alt='Filter' className='w-4 h-4 mr-4' />
-                            <h2 className='text-lg font-semibold text-[#625B71]'>FILTER</h2>
-                        </div>
-
-                        {/* Clear and Apply all filters button */}
-                        <div className='flex gap-1'>
-                            <input type='reset' value="Reset" className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]' />
-                            <button
-                                type="button"
-                                onClick={handleApply}
-                                className='w-full bg-[#E60028] text-white rounded-lg cursor-pointer hover:bg-[#B4001F] border border-[#E60028]'
-                            >
-                                Apply
-                            </button>
-                        </div>
-
-                        <hr className='mt-6 mb-10' />
-
-                        {/* Subsection: Academics name */}
-                        <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
-                        <input type="text" className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500' placeholder='e.g. Michael' />
-
-                        {/* Subsection: Research-based metrics */}
-                        <div className='mt-16'>
-                            <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
-                            <div className='flex items-center justify-between '>
-                                <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
-                                <div className='flex w-3/4 justify-end items-center gap-5'>
-                                    <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
-                                        <option value="equals" >equals</option>
-                                        <option value="less-than">less than</option>
-                                        <option value="larger-than">larger than</option>
-                                    </select>
-                                    <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                        <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0} />
-                                    </div>
-                                </div>
+                    <div className='w-fit min-w-[390px] h-auto flex justify-center'>
+                        <div className='w-full bg-white py-10 pl-8 pr-10 h-full border border-[#D9D9D9]'>
+                            <div className='flex items-center mb-5'>
+                                <img src={filterIcon} alt='Filter' className='w-4 h-4 mr-4' />
+                                <h2 className='text-lg font-semibold text-[#625B71]'>FILTER</h2>
                             </div>
 
-                            {/* Space between elements */}
-                            <div className='h-2' />
-
-                            <div className='flex items-center justify-between'>
-                                <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
-                                <div className='flex w-3/4 justify-end items-center gap-5'>
-                                    <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
-                                        <option value="equals" >equals</option>
-                                        <option value="less-than">less than</option>
-                                        <option value="larger-than">larger than</option>
-                                    </select>
-                                    <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                        <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Subsection: Field */}
-                        <div className='mt-12'>
-                            <div className='flex items-center justify-between'>
-                                <h4 className='text-lg mb-5 font-semibold mt-6'>Expertise field</h4>
+                            {/* Clear and Apply all filters button */}
+                            <div className='flex gap-1'>
                                 <button
-                                    className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
-                                    style={{ visibility: selectedFields.length > 0 ? 'visible' : 'hidden' }}
-                                    onClick={() => setSelectedFields([])}
+                                    type="button"
+                                    onClick={handleReset}
+                                    className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]'
                                 >
-                                    Clear filter
+                                    Reset
+                                </button>
+                                { /* disable when searching or when no filters selected */}
+                                <button
+                                    type="button"
+                                    onClick={handleApply}
+                                    disabled={isSearching || !hasFilters}
+                                    className={`w-full rounded-lg border ${isSearching || !hasFilters ? 'bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed' : 'bg-[#E60028] text-white py-2 hover:bg-[#B4001F] border border-[#E60028]'}`}
+                                >
+                                    {isSearching ? 'Searching...' : 'Apply'}
                                 </button>
                             </div>
-                            <div className='flex items-center gap-3'>
-                                <img
-                                    src={menuIcon}
-                                    alt='Menu'
-                                    className='w-4 h-5 cursor-pointer'
-                                    onClick={() => setShowFieldModal(true)}
-                                />
-                                <div className='w-full relative'>
-                                    <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
-                                        <input
-                                            type='text'
-                                            placeholder='e.g. Food nutrition'
-                                            className='focus:outline-0 w-full'
-                                            value={expertiseInput}
-                                            onChange={e => setExpertiseInput(e.target.value)}
-                                            onFocus={() => setExpertiseInputFocused(true)}
-                                            onBlur={() => setTimeout(() => setExpertiseInputFocused(false), 150)}
-                                        />
+
+                            <hr className='mt-6 mb-10' />
+
+                            {/* Subsection: Academics name */}
+                            <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
+                            <input type="text" className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500' placeholder='e.g. Michael' />
+
+                            {/* Subsection: Research-based metrics */}
+                            <div className='mt-16'>
+                                <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
+                                <div className='flex items-center justify-between '>
+                                    <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
+                                    <div className='flex w-3/4 justify-end items-center gap-5'>
+                                        <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
+                                            <option value="equals" >equals</option>
+                                            <option value="less-than">less than</option>
+                                            <option value="larger-than">larger than</option>
+                                        </select>
+                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                            <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                        </div>
                                     </div>
-                                    {/* Dropdown for suggestions */}
-                                    {expertiseInputFocused && expertiseInput.trim() && (
-                                        <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
-                                            {FIELD_LIST.filter(f => f.toLowerCase().includes(expertiseInput.toLowerCase()) && !selectedFields.includes(f)).slice(0, 4).map(f => (
-                                                <div
-                                                    key={f}
-                                                    className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
-                                                    onMouseDown={() => {
-                                                        setSelectedFields([...selectedFields, f]);
-                                                        setExpertiseInput("");
+                                </div>
+
+                                {/* Space between elements */}
+                                <div className='h-2' />
+
+                                <div className='flex items-center justify-between'>
+                                    <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
+                                    <div className='flex w-3/4 justify-end items-center gap-5'>
+                                        <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
+                                            <option value="equals" >equals</option>
+                                            <option value="less-than">less than</option>
+                                            <option value="larger-than">larger than</option>
+                                        </select>
+                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                            <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Subsection: Field */}
+                            <div className='mt-12'>
+                                <div className='flex items-center justify-between'>
+                                    <h4 className='text-lg mb-5 font-semibold mt-6'>Expertise field</h4>
+                                    <button
+                                        type="button"
+                                        className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
+                                        style={{ visibility: selectedFields.length > 0 ? 'visible' : 'hidden' }}
+                                        onClick={() => setSelectedFields([])}
+                                    >
+                                        Clear filter
+                                    </button>
+                                </div>
+                                <div className='flex items-center gap-3'>
+                                    <img
+                                        src={menuIcon}
+                                        alt='Menu'
+                                        className='w-4 h-5 cursor-pointer'
+                                        onClick={() => setShowFieldModal(true)}
+                                    />
+                                    <div className='w-full relative'>
+                                        <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
+                                            <input
+                                                type='text'
+                                                placeholder='e.g. Food nutrition'
+                                                className='focus:outline-0 w-full'
+                                                value={expertiseInput}
+                                                onChange={e => setExpertiseInput(e.target.value)}
+                                                onFocus={() => setExpertiseInputFocused(true)}
+                                                onBlur={() => setTimeout(() => setExpertiseInputFocused(false), 150)}
+                                            />
+                                        </div>
+                                        {/* Dropdown for suggestions */}
+                                        {expertiseInputFocused && expertiseInput.trim() && (
+                                            <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
+                                                {FIELD_LIST.filter(f => f.toLowerCase().includes(expertiseInput.toLowerCase()) && !selectedFields.includes(f)).slice(0, 4).map(f => (
+                                                    <div
+                                                        key={f}
+                                                        className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
+                                                        onMouseDown={() => {
+                                                            setSelectedFields([...selectedFields, f]);
+                                                            setExpertiseInput("");
+                                                        }}
+                                                    >
+                                                        {f}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3 mt-4'>
+                                    {selectedFields.map(field => (
+                                        <div key={field} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
+                                            <button
+                                                type="button"
+                                                className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
+                                                onClick={() => setSelectedFields(selectedFields.filter(f => f !== field))}
+                                            >
+                                                ×
+                                            </button>
+                                            {field}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Subsection: Institution */}
+                            <div className='mt-10'>
+                                <div className='flex items-center justify-between'>
+                                    <h4 className='text-lg mb-5 font-semibold mt-6'>Institutions</h4>
+                                    <button
+                                        type="button"
+                                        className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
+                                        style={{ visibility: selectedInstitutions.length > 0 ? 'visible' : 'hidden' }}
+                                        onClick={() => setSelectedInstitutions([])}
+                                    >
+                                        Clear filter
+                                    </button>
+                                </div>
+                                <div className='flex items-center gap-3'>
+                                    <img
+                                        src={menuIcon}
+                                        alt='Menu'
+                                        className='w-4 h-5 cursor-pointer'
+                                        onClick={() => setShowInstitutionModal(true)}
+                                    />
+                                    <div className='w-full relative'>
+                                        <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
+                                            <input
+                                                type='text'
+                                                placeholder='e.g. RMIT Vietnam'
+                                                className='focus:outline-0 w-full'
+                                                value={institutionInput}
+                                                onChange={e => setInstitutionInput(e.target.value)}
+                                                onFocus={() => setInstitutionInputFocused(true)}
+                                                onBlur={() => setInstitutionInputFocused(false)}
+                                            />
+                                        </div>
+                                        {/* Dropdown for suggestions for institutions */}
+                                        {institutionInputFocused && institutionInput.trim() && (
+                                            <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
+                                                {institutionLoading && (
+                                                    <div className='px-4 py-2 text-sm text-gray-500'>Searching…</div>
+                                                )}
+                                                {!institutionLoading && institutionSuggestions.length === 0 && (
+                                                    <div className='px-4 py-2 text-sm text-gray-500'>No institutions found</div>
+                                                )}
+                                                {!institutionLoading && institutionSuggestions.map(item => (
+                                                    <div
+                                                        key={item.search_tag}
+                                                        className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
+                                                        onMouseDown={() => addInstitutionSelection(item)} // pass whole item
+                                                    >
+                                                        {item.display_name}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3 mt-4'>
+                                    {selectedInstitutions.map(inst => (
+                                        <div key={inst.search_tag} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
+                                            <button
+                                                type="button"
+                                                className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
+                                                onClick={() => setSelectedInstitutions(prev => prev.filter(s => s.search_tag !== inst.search_tag))}
+                                            >
+                                                ×
+                                            </button>
+                                            {inst.display_name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Subsection: Institution country */}
+                            <div className='mt-12'>
+                                <h4 className='text-lg mb-5 font-semibold'>Institution countries</h4>
+                                <div className='flex flex-col gap-2'>
+                                    {leftPanelCountries.map(c => {
+                                        const checked = selectedCountries.includes(c.search_tag);
+                                        return (
+                                            <label key={c.search_tag} className="flex items-center gap-3 py-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => {
+                                                        setSelectedCountries(prev => prev.includes(c.search_tag) ? prev.filter(x => x !== c.search_tag) : [...prev, c.search_tag]);
                                                     }}
-                                                >
-                                                    {f}
-                                                </div>
-                                            ))}
-                                        </div>
+                                                    className="mr-3"
+                                                />
+                                                <span>{c.display_name}</span>
+                                            </label>
+                                        );
+                                    })}
+
+                                    {/* If there are no countries loaded yet show a small placeholder list */}
+                                    {leftPanelCountries.length === 0 && (
+                                        <div className="text-sm text-gray-500">Loading countries…</div>
                                     )}
+
+                                    <button
+                                        type="button"
+                                        className='w-min self-end cursor-pointer text-gray-500'
+                                        onClick={() => setShowCountryModal(true)}
+                                    >More...</button>
                                 </div>
                             </div>
-                            <div className='flex flex-col gap-3 mt-4'>
-                                {selectedFields.map(field => (
-                                    <div key={field} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
-                                        <button
-                                            className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
-                                            onClick={() => setSelectedFields(selectedFields.filter(f => f !== field))}
-                                        >
-                                            ×
-                                        </button>
-                                        {field}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        {/* Subsection: Institution */}
-                        <div className='mt-10'>
-                            <div className='flex items-center justify-between'>
-                                <h4 className='text-lg mb-5 font-semibold mt-6'>Institutions</h4>
+                            <hr className='mt-3 mb-10 border-[#e9e9e9]' />
+
+                            {/* Clear and Apply all filters button */}
+                            <div className='flex gap-1 mb-8'>
                                 <button
-                                    className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
-                                    style={{ visibility: selectedInstitutions.length > 0 ? 'visible' : 'hidden' }}
-                                    onClick={() => setSelectedInstitutions([])}
+                                    type="button"
+                                    onClick={handleReset}
+                                    className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]'
                                 >
-                                    Clear filter
+                                    Reset
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApply}
+                                    disabled={isSearching || !hasFilters}
+                                    className={`w-full rounded-lg border ${isSearching || !hasFilters ? 'bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed' : 'bg-[#E60028] text-white py-2 hover:bg-[#B4001F] border border-[#E60028]'}`}
+                                >
+                                    {isSearching ? 'Searching...' : 'Apply'}
                                 </button>
                             </div>
-                            <div className='flex items-center gap-3'>
-                                <img
-                                    src={menuIcon}
-                                    alt='Menu'
-                                    className='w-4 h-5 cursor-pointer'
-                                    onClick={() => setShowInstitutionModal(true)}
-                                />
-                                <div className='w-full relative'>
-                                    <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
-                                        <input
-                                            type='text'
-                                            placeholder='e.g. RMIT Vietnam'
-                                            className='focus:outline-0 w-full'
-                                            value={institutionInput}
-                                            onChange={e => setInstitutionInput(e.target.value)}
-                                            onFocus={() => setInstitutionInputFocused(true)}
-                                            onBlur={() => setInstitutionInputFocused(false)}
-                                        />
-                                    </div>
-                                    {/* Dropdown for suggestions for institutions */}
-                                    {institutionInputFocused && institutionInput.trim() && (
-                                        <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
-                                            {institutionLoading && (
-                                                <div className='px-4 py-2 text-sm text-gray-500'>Searching…</div>
-                                            )}
-                                            {!institutionLoading && institutionSuggestions.length === 0 && (
-                                                <div className='px-4 py-2 text-sm text-gray-500'>No institutions found</div>
-                                            )}
-                                            {!institutionLoading && institutionSuggestions.map(item => (
-                                                <div
-                                                    key={item.search_tag}
-                                                    className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
-                                                    onMouseDown={() => addInstitutionSelection(item)} // pass whole item
-                                                >
-                                                    {item.display_name}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className='flex flex-col gap-3 mt-4'>
-                                {selectedInstitutions.map(inst => (
-                                    <div key={inst.search_tag} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
-                                        <button
-                                            className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
-                                            onClick={() => setSelectedInstitutions(prev => prev.filter(s => s.search_tag !== inst.search_tag))}
-                                        >
-                                            ×
-                                        </button>
-                                        {inst.display_name}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Subsection: Institution country */}
-                        <div className='mt-12'>
-                            <h4 className='text-lg mb-5 font-semibold'>Institution country</h4>
-                            <div className='flex flex-col gap-2'>
-                                <div>
-                                    <input type='checkbox' id='insCountryIsVietNam' className='mr-4' />
-                                    <label htmlFor='insCountryIsVietNam'>Vietnam</label>
-                                </div>
-                                <div>
-                                    <input type='checkbox' id='insCountryIsUSA' className='mr-4' />
-                                    <label htmlFor='insCountryIsUSA'>United States of America</label>
-                                </div>
-                                <div>
-                                    <input type='checkbox' id='insCountryIsGermany' className='mr-4' />
-                                    <label htmlFor='insCountryIsGermany'>Germany</label>
-                                </div>
-                                <div>
-                                    <input type='checkbox' id='insCountryIsIndia' className='mr-4' />
-                                    <label htmlFor='insCountryIsIndia'>India</label>
-                                </div>
-                                <div>
-                                    <input type='checkbox' id='insCountryIsFrance' className='mr-4' />
-                                    <label htmlFor='insCountryIsFrance'>France</label>
-                                </div>
-                                <button
-                                    className='w-min self-end cursor-pointer text-gray-500'
-                                    onClick={() => setShowCountryModal(true)}
-                                >More...</button>
-                            </div>
-                        </div>
-
-                        <hr className='mt-3 mb-10 border-[#e9e9e9]' />
-
-                        {/* Clear and Apply all filters button */}
-                        <div className='flex gap-1 mb-8'>
-                            <input type='reset' value="Reset" className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]' />
-                            <button
-                                type="button"
-                                onClick={handleApply}
-                                className='w-full bg-[#E60028] text-white py-2 rounded-lg cursor-pointer hover:bg-[#B4001F] border border-[#E60028]'
-                            >
-                                Apply
-                            </button>
                         </div>
                     </div>
-                </div>
                 </form>
 
-
-
                 {/* Right side: conditional rendering */}
-                <div className='w-3/5 h-full mx-auto'>
-                    <div className='w-full h-screen flex flex-col justify-center'>
-                        {(!hasSearched || (hasSearched && peopleList.length === 0)) ? (
-                          <div className="flex flex-col items-center justify-center h-[400px]">
-                            <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
-                            <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
-                            {!hasSearched ? (
+                <div className='w-3/5 mt-10 mx-auto'>
+                    <div className='w-full flex flex-col'>
+                        {isSearching ? (
+                            <div className="flex flex-col items-center justify-center h-[400px]">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E60028] mb-4"></div>
+                                <h3 className='font-semibold text-xl mb-2'>Searching…</h3>
+                                <p className="text-sm text-gray-500">Looking for researchers that match your filters</p>
+                            </div>
+                        ) : !hasSearched ? (
+                            <div className="flex flex-col items-center justify-center h-[400px]">
+                                <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
+                                <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
                                 <p className="text-md text-gray-500 text-center">
                                     Choose the filters on the left panel to begin.
                                 </p>
-                            ) : (
+                            </div>
+                        ) : (hasSearched && peopleList.length === 0) ? (
+                            <div className="flex flex-col items-center justify-center h-[400px]">
+                                <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
+                                <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
                                 <p className="text-md text-gray-500 text-center mt-2">
-                                    We couldn't find anyone matching your filter. <br/>
+                                    We couldn't find anyone matching your filter. <br />
                                     Try changing your search criteria.
                                 </p>
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            {/* Max results per page */}
-                            <div className='w-full flex justify-between items-center mb-10'>
-                              <p>Showing <b>1-10</b> in <b>12,938</b></p>
-                              <div className='flex items-center gap-2'>
-                                <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
-                                <select name="resultsPerPage" id="resultsPerPage" className='border border-gray-300 bg-white rounded-lg py-1 px-2'>
-                                  <option value="10">10</option>
-                                  <option value="20">20</option>
-                                  <option value="50">50</option>
-                                </select>
-                              </div>
                             </div>
-
-                            {/* People List */}
-                            {peopleList.map((person, index) => (
-                              <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
-                                <div className='w-full'>
-                                  <div className='flex gap-6 justify-between w-full'>
-                                    <div>
-                                      <div className='flex gap-3 items-end mb-1'>
-                                        <p className='font-bold text-xl'>{person.name}</p>
-                                        <img src={Dot} alt='Dot' className='w-2 h-2 self-center' />
-                                        <p className='text-[#6A6A6A] text-md'>{person.institution}</p>
-                                      </div>
-
-                                      <div className='flex-col justify-center'>
-                                        <span className='text-sm text-[#6A6A6A]'>h-index: {person.hIndex}</span>
-                                        <br />
-                                        <span className='text-sm text-[#6A6A6A]'>i10-index: {person.i10Index}</span>
-                                      </div>
+                        ) : (
+                            <>
+                                {/* Max results per page */}
+                                <div className='w-full flex justify-between items-center mb-10'>
+                                    <p>
+                                        Showing <b>
+                                            {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
+                                            -
+                                            {Math.min(currentPage * perPage, totalResults)}
+                                        </b> in <b>{totalResults.toLocaleString()}</b>
+                                    </p>
+                                    <div className='flex items-center gap-2'>
+                                        <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
+                                        <select
+                                            name="resultsPerPage"
+                                            id="resultsPerPage"
+                                            value={perPage}
+                                            onChange={async (e) => {
+                                                const newLimit = Number(e.target.value);
+                                                setPerPage(newLimit);
+                                                // reset to page 1 when changing page size
+                                                await loadResults({ page: 1, limit: newLimit });
+                                            }}
+                                            className='border border-gray-300 bg-white rounded-lg py-1 px-2'
+                                        >
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                        </select>
                                     </div>
-                                    <button className='h-fit text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline'>View profile</button>
-                                  </div>
-
-                                  <div className='w-max py-1 px-8 rounded-full font-semibold bg-white border border-[#d2e4f4] text-[#3C72A5] text-sm mt-6'>{person.field}</div>
                                 </div>
-                              </div>
-                            ))}
-                            <Pagination>
-                              <PaginationContent>
-                                <PaginationItem>
-                                  <PaginationPrevious href="#" />
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <PaginationLink href="#" isActive>1</PaginationLink>
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <PaginationLink href="#">
-                                      2
-                                  </PaginationLink>
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <PaginationLink href="#">3</PaginationLink>
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <PaginationEllipsis />
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <PaginationNext href="#" />
-                                </PaginationItem>
-                              </PaginationContent>
-                            </Pagination>
-                          </>
+
+                                {/* People List */}
+                                {peopleList.map((person, index) => (
+                                    <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
+                                        <div className='w-full'>
+                                            <div className='flex gap-6 justify-between w-full'>
+                                                <div>
+                                                    <div className='flex gap-3 items-end mb-1'>
+                                                        <p className='font-bold text-xl'>{person.name}</p>
+                                                        <img src={Dot} alt='Dot' className='w-2 h-2 self-center' />
+                                                        <p className='text-[#6A6A6A] text-md'>{person.institution}</p>
+                                                    </div>
+
+                                                    <div className='flex-col justify-center'>
+                                                        <span className='text-sm text-[#6A6A6A]'>h-index: {person.hIndex}</span>
+                                                        <br />
+                                                        <span className='text-sm text-[#6A6A6A]'>i10-index: {person.i10Index}</span>
+                                                    </div>
+                                                </div>
+                                                <button className='h-fit text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline'>View profile</button>
+                                            </div>
+
+                                            <div className='w-max py-1 px-8 rounded-full font-semibold bg-white border border-[#d2e4f4] text-[#3C72A5] text-sm mt-6'>{person.field}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* dynamic pagination */}
+                                {totalResults > 0 && (
+                                    (() => {
+                                        const totalPages = Math.max(1, Math.ceil(totalResults / perPage));
+                                        // show a simple windowed pagination (max 7 page links)
+                                        const windowSize = 7;
+                                        let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+                                        let end = Math.min(totalPages, start + windowSize - 1);
+                                        if (end - start + 1 < windowSize) start = Math.max(1, end - windowSize + 1);
+
+                                        const pages = [];
+                                        for (let p = start; p <= end; p++) pages.push(p);
+
+                                        return (
+                                            <Pagination>
+                                                <PaginationContent>
+                                                    <PaginationItem>
+                                                        <PaginationPrevious
+                                                            href="#"
+                                                            onClick={async (e) => {
+                                                                e?.preventDefault?.();
+                                                                if (currentPage > 1) await loadResults({ page: currentPage - 1, limit: perPage });
+                                                            }}
+                                                        />
+                                                    </PaginationItem>
+
+                                                    {/* first page + leading ellipsis */}
+                                                    {start > 1 && (
+                                                        <>
+                                                            <PaginationItem>
+                                                                <PaginationLink
+                                                                    href="#"
+                                                                    onClick={async (e) => {
+                                                                        e?.preventDefault?.();
+                                                                        await loadResults({ page: 1, limit: perPage });
+                                                                    }}
+                                                                >1</PaginationLink>
+                                                            </PaginationItem>
+                                                            <PaginationItem><PaginationEllipsis /></PaginationItem>
+                                                        </>
+                                                    )}
+
+                                                    {pages.map(p => (
+                                                        <PaginationItem key={p}>
+                                                            <PaginationLink
+                                                                href="#"
+                                                                isActive={p === currentPage}
+                                                                onClick={async (e) => {
+                                                                    e?.preventDefault?.();
+                                                                    if (p === currentPage) return;
+                                                                    await loadResults({ page: p, limit: perPage });
+                                                                }}
+                                                            >
+                                                                {p}
+                                                            </PaginationLink>
+                                                        </PaginationItem>
+                                                    ))}
+
+                                                    {/* trailing ellipsis + last page */}
+                                                    {end < totalPages && (
+                                                        <>
+                                                            <PaginationItem><PaginationEllipsis /></PaginationItem>
+                                                            <PaginationItem>
+                                                                <PaginationLink
+                                                                    href="#"
+                                                                    onClick={async (e) => {
+                                                                        e?.preventDefault?.();
+                                                                        await loadResults({ page: totalPages, limit: perPage });
+                                                                    }}
+                                                                >{totalPages}</PaginationLink>
+                                                            </PaginationItem>
+                                                        </>
+                                                    )}
+
+                                                    <PaginationItem>
+                                                        <PaginationNext
+                                                            href="#"
+                                                            onClick={async (e) => {
+                                                                e?.preventDefault?.();
+                                                                if (currentPage < totalPages) await loadResults({ page: currentPage + 1, limit: perPage });
+                                                            }}
+                                                        />
+                                                    </PaginationItem>
+                                                </PaginationContent>
+                                            </Pagination>
+                                        );
+                                    })()
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -940,14 +1163,11 @@ function SearchInterface() {
             <CountryModal
                 open={showCountryModal}
                 onClose={() => setShowCountryModal(false)}
-                countries={COUNTRY_LIST}
                 selected={selectedCountries}
-                onSelect={country => {
-                    setSelectedCountries(sel => sel.includes(country) ? sel.filter(c => c !== country) : [...sel, country]);
-                    setShowCountryModal(false);
+                onSelect={(countryObj) => {
+                    // toggle by search_tag but DO NOT close modal here
+                    setSelectedCountries(sel => sel.includes(countryObj.search_tag) ? sel.filter(c => c !== countryObj.search_tag) : [...sel, countryObj.search_tag]);
                 }}
-                search={countrySearch}
-                onSearch={setCountrySearch}
             />
             <FieldModal
                 open={showFieldModal}
