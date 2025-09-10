@@ -10,6 +10,16 @@ export const getBookmarks = async () => {
   }
 };
 
+// Get only the IDs of bookmarked researchers
+export const getBookmarkIds = async () => {
+  try {
+    const response = await api.get("/api/bookmarks/get-ids");
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 // Add bookmark(s) for researcher profile(s)
 export const addBookmarks = async (researcherIds, folderName) => {
   try {
