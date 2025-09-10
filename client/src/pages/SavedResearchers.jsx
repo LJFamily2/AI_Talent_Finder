@@ -106,13 +106,9 @@ export default function SavedResearchers() {
 
   const handleExport = async () => {
     try {
-      console.log("selectMode", selectMode)
-      console.log("savedResearcherse", savedResearchers)
       const data = selectMode
         ? savedResearchers.filter((r) => selectedResearchers.includes(r._id))
         : savedResearchers;
-
-      console.log("selectedResearchers", selectedResearchers)
 
       if (data.length === 0) {
         showToast("No researchers to export", "warning");
@@ -135,6 +131,7 @@ export default function SavedResearchers() {
       // Clear selection after export if in select mode
       if (selectMode) {
         setSelectedResearchers([]);
+        setSelectMode(false);
       }
     } catch (error) {
       console.error("Export failed:", error);
@@ -156,9 +153,10 @@ export default function SavedResearchers() {
     handleExportMenuClose();
     try {
       const data = selectMode
-        ? savedResearchers.filter((r) => selectedResearchers.includes(r.id))
+        ? savedResearchers.filter((r) => selectedResearchers.includes(r._id))
         : savedResearchers;
 
+      console.log("handleExportPDF", data)
       if (data.length === 0) {
         showToast("No researchers to export", "warning");
         return;
@@ -179,6 +177,7 @@ export default function SavedResearchers() {
       // Clear selection after export if in select mode
       if (selectMode) {
         setSelectedResearchers([]);
+        setSelectMode(false);
       }
     } catch (error) {
       console.error("PDF export failed:", error);
@@ -700,9 +699,20 @@ export default function SavedResearchers() {
             onClick={() => setShowModal(false)}
           />
 
-          <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-[320px] max-w-full">
-            <p className="text-xl font-semibold text-gray-800 mb-6">
-              Remove this researcher?
+          <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-fit max-w-full">
+            <p className="text-xl font-semibold text-gray-800 mb-6 text-center">
+              Remove
+              {" "}
+              <span className="text-gray-700 font-bold">
+                "{targetResearcher?.basic_info?.name || targetResearcher?.name || targetResearcher?.display_name || targetResearcher?.slug || ""}"
+              </span>
+              {" "}
+              from
+              {" "}
+              <span className="text-blue-700 font-bold">
+                "{currentFolderId}"
+              </span>
+              ?
             </p>
             <div className="flex justify-center gap-4">
               <button
@@ -732,10 +742,14 @@ export default function SavedResearchers() {
           <div className="absolute inset-0" onClick={() => closeMoveModal()} />
           <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-[400px] max-w-full">
             <h3 className="text-lg font-semibold mb-2 text-center">
-              Move "{moveTargetResearcher.basic_info.name}"
+              Move
+              {" "}
+              <span className="text-gray-700 font-bold">
+                "{moveTargetResearcher.basic_info.name}"
+              </span>
             </h3>
             <div className="text-center text-gray-500 text-sm mb-4">
-              Current Folder: <span className="font-semibold text-gray-700">"{currentFolderId}"</span>
+              Current Folder: <span className="font-semibold text-blue-700">"{currentFolderId}"</span>
             </div>
             <div className="flex flex-col gap-3 max-h-60 overflow-y-auto mb-4">
               {folders
