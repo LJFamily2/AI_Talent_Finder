@@ -6,12 +6,13 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
-    DialogContentText,
     DialogTitle,
     Button,
     TextField,
+    Snackbar,
+    Alert,
 } from "@mui/material";
-import { MoreVert as MoreVertIcon } from "@mui/icons-material";
+import { MoreVert as MoreVertIcon, Add as AddIcon } from "@mui/icons-material";
 
 function FolderSidebar({
     folders = [],
@@ -19,6 +20,7 @@ function FolderSidebar({
     onSelectFolder = () => { },
     onRenameFolder = () => { },
     onDeleteFolder = () => { },
+    onCreateFolder = () => { }, // Callback for creating a new folder
 }) {
     const [menuAnchorEl, setMenuAnchorEl] = useState(null); // Anchor for the three-dot menu
     const [menuFolder, setMenuFolder] = useState(null); // Folder associated with the menu
@@ -26,6 +28,10 @@ function FolderSidebar({
     const [renameValue, setRenameValue] = useState(""); // New name for the folder
     const [deleteFolder, setDeleteFolder] = useState(null); // Folder to delete
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false); // Delete confirmation dialog
+    const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false); // Create folder modal
+    const [newFolderName, setNewFolderName] = useState(""); // New folder name
+    const [toastOpen, setToastOpen] = useState(false); // State for the toast
+    const [toastMessage, setToastMessage] = useState(""); // Message for the toast
     const renameInputRef = useRef(null); // Ref for the TextField
 
     // Open the three-dot menu
@@ -89,12 +95,45 @@ function FolderSidebar({
         setDeleteFolder(null);
     };
 
+    // Open the "Create Folder" modal
+    const handleCreateFolderOpen = () => {
+        setCreateFolderModalOpen(true);
+    };
+
+    // Close the "Create Folder" modal
+    const handleCreateFolderClose = () => {
+        setCreateFolderModalOpen(false);
+        setNewFolderName(""); // Reset the input field
+    };
+
+    // Handle creating a new folder
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return; // Prevent empty folder names
+        try {
+            await onCreateFolder(newFolderName.trim()); // Call the parent function to create the folder
+            setToastMessage(`"${newFolderName.trim()}" is created.`); // Set the toast message
+            setToastOpen(true); // Show the toast
+            handleCreateFolderClose(); // Close the modal
+        } catch (error) {
+            console.error("Error creating folder:", error);
+            setToastMessage("Failed to create folder. Please try again.");
+            setToastOpen(true);
+        }
+    };
+
     return (
         <aside className="w-1/6 p-0 mt-16 text-black flex-shrink-0">
-            <div className="px-3">
+            <div className="px-3 flex items-center justify-between">
                 <h3 className="font-semibold mb-0">Folders</h3>
-                <hr className="border-t border-gray-300 mt-3 mb-4" />
+                <IconButton
+                    size="small"
+                    onClick={handleCreateFolderOpen}
+                    title="Create New Folder"
+                >
+                    <AddIcon />
+                </IconButton>
             </div>
+            <hr className="border-t border-gray-300 mt-3 mb-4" />
 
             <div className="flex flex-col gap-2 px-1">
                 {folders.length === 0 && (
@@ -177,11 +216,9 @@ function FolderSidebar({
             >
                 <DialogTitle id="delete-folder-dialog-title">Delete Folder</DialogTitle>
                 <DialogContent>
-                    <DialogContentText>
-                        Are you sure you want to delete the folder{" "}
-                        <strong>{deleteFolder?.name}</strong>? All researchers inside this
-                        folder will also be deleted.
-                    </DialogContentText>
+                    Are you sure you want to delete the folder{" "}
+                    <strong>{deleteFolder?.name}</strong>? All researchers inside this
+                    folder will also be deleted.
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleDeleteCancel} color="primary">
@@ -192,6 +229,61 @@ function FolderSidebar({
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Create Folder Modal */}
+            {createFolderModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="absolute inset-0"
+                        onClick={handleCreateFolderClose}
+                    />
+                    <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-[400px] max-w-full">
+                        <h3 className="text-lg font-semibold mb-2 text-center">
+                            Create New Folder
+                        </h3>
+                        <div className="text-center text-gray-500 text-sm mb-4">
+                            Enter a name for your new folder:
+                        </div>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="Folder name"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                onClick={handleCreateFolderClose}
+                                className="px-4 py-2 bg-gray-200 rounded"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreateFolder}
+                                className="px-4 py-2 bg-blue-600 text-white rounded"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast for folder creation */}
+            <Snackbar
+                open={toastOpen}
+                autoHideDuration={6000}
+                onClose={() => setToastOpen(false)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+            >
+                <Alert severity="success" onClose={() => setToastOpen(false)}>
+                    {toastMessage}
+                </Alert>
+            </Snackbar>
         </aside>
     );
 }

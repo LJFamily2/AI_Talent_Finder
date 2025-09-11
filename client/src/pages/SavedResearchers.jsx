@@ -19,7 +19,7 @@ import {
   ButtonGroup,
   Button,
 } from "@mui/material";
-import { getBookmarks, removeBookmark, moveResearchersBetweenFolders, renameFolder, deleteFolder } from "../services/bookmarkService";
+import { getBookmarks, removeBookmark, moveResearchersBetweenFolders, renameFolder, deleteFolder, createFolder } from "../services/bookmarkService";
 import { exportResearchersToExcel } from "../services/exportService";
 import { exportResearchersWithFullData } from "../services/pdfExportService";
 import SavedResearchCard from '../components/SavedResearchCard';
@@ -501,6 +501,29 @@ export default function SavedResearchers() {
     }
   };
 
+  const handleCreateFolder = async (newFolderName) => {
+    if (!newFolderName.trim()) {
+      showToast("Folder name cannot be empty", "warning");
+      return;
+    }
+
+    try {
+      // Call the createFolder service to create the folder on the backend
+      await createFolder(newFolderName.trim());
+
+      // Update the folders state to include the new folder
+      setFolders((prevFolders) => [
+        ...prevFolders,
+        { name: newFolderName, researcherIds: [] },
+      ]);
+
+      showToast(`Folder "${newFolderName}" has been created`, "success");
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      showToast("Failed to create folder. Please try again.", "error");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -513,6 +536,7 @@ export default function SavedResearchers() {
             onSelectFolder={handleFolderSelect}
             onRenameFolder={handleRenameFolder}
             onDeleteFolder={handleDeleteFolder}
+            onCreateFolder={handleCreateFolder}
           />
 
           {/* Right: main content */}
