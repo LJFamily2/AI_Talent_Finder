@@ -19,7 +19,7 @@ import {
   ButtonGroup,
   Button,
 } from "@mui/material";
-import { getBookmarks, removeBookmark, moveResearchersBetweenFolders } from "../services/bookmarkService";
+import { getBookmarks, removeBookmark, moveResearchersBetweenFolders, renameFolder, deleteFolder } from "../services/bookmarkService";
 import { exportResearchersToExcel } from "../services/exportService";
 import { exportResearchersWithFullData } from "../services/pdfExportService";
 import SavedResearchCard from '../components/SavedResearchCard';
@@ -67,8 +67,6 @@ export default function SavedResearchers() {
       // Get all folders data
       const res = await getBookmarks();
       const foldersList = res?.data || [];
-
-      console.log("Returned data:", foldersList)
 
       setFolders(foldersList);
 
@@ -156,7 +154,6 @@ export default function SavedResearchers() {
         ? savedResearchers.filter((r) => selectedResearchers.includes(r._id))
         : savedResearchers;
 
-      console.log("handleExportPDF", data)
       if (data.length === 0) {
         showToast("No researchers to export", "warning");
         return;
@@ -207,8 +204,11 @@ export default function SavedResearchers() {
 
   const handleMoveToFolder = async (folder) => {
     if (!moveTargetResearcher) return;
+
     const srcName = currentFolderId;
     const dstName = folder.name;
+
+    // Check if the source and destination folders are the same
     if (srcName === dstName) {
       showToast("Researcher already in the selected folder", "warning");
       closeMoveModal();
@@ -228,38 +228,43 @@ export default function SavedResearchers() {
       return;
     }
 
+    // Check if the researcher already exists in the target folder
+    const targetFolder = folders.find((f) => f.name === dstName);
+    const alreadyExists = targetFolder?.researcherIds.some((item) => {
+      const val =
+        (item._id && item._id.toString && item._id.toString()) ||
+        (item.id && item.id.toString && item.id.toString()) ||
+        item.slug ||
+        item.toString();
+      return String(val) === String(idStr);
+    });
+
+    if (alreadyExists) {
+      showToast(`Researcher already exists in the folder "${dstName}"`, "warning");
+      closeMoveModal();
+      return;
+    }
+
     try {
       setLoading(true);
       await moveResearchersBetweenFolders(srcName, dstName, [idStr]);
 
-      // update local folders: remove from source, add to destination (avoid dupes)
+      // Update local folders: remove from source, add to destination
       setFolders((prev) =>
         prev.map((f) => {
           if (f.name === srcName) {
             const nextIds = (f.researcherIds || []).filter((item) => {
-              if (!item) return false;
-              const val =
-                (item._id && item._id.toString && item._id.toString()) ||
-                (item.id && item.id.toString && item.id.toString()) ||
-                item.slug ||
-                null;
-              return String(val) !== String(idStr);
-            });
-            return { ...f, researcherIds: nextIds };
-          }
-          if (f.name === dstName) {
-            // decide whether folder stores objects or ids
-            const storesObjects = (f.researcherIds || []).some(it => it && typeof it === "object" && (it._id || it.id));
-            const already = (f.researcherIds || []).some((item) => {
-              if (!item) return false;
               const val =
                 (item._id && item._id.toString && item._id.toString()) ||
                 (item.id && item.id.toString && item.id.toString()) ||
                 item.slug ||
                 item.toString();
-              return String(val) === String(idStr);
+              return String(val) !== String(idStr);
             });
-            if (already) return f;
+            return { ...f, researcherIds: nextIds };
+          }
+          if (f.name === dstName) {
+            const storesObjects = (f.researcherIds || []).some((it) => it && typeof it === "object" && (it._id || it.id));
             const toAdd = storesObjects ? moveTargetResearcher : idStr;
             return { ...f, researcherIds: [...(f.researcherIds || []), toAdd] };
           }
@@ -267,7 +272,7 @@ export default function SavedResearchers() {
         })
       );
 
-      // if the current view was the source folder, remove from displayed list
+      // If the current view was the source folder, remove from displayed list
       if (currentFolderId === srcName) {
         setSavedResearchers((prev) =>
           prev.filter((r) => {
@@ -314,26 +319,32 @@ export default function SavedResearchers() {
       // Pass current folder to ensure removal from the right folder on server
       await removeBookmark(idStr, currentFolderId);
 
-      // Update displayed list (savedResearchers) and folder counts/local lists.
-      setSavedResearchers((prev) =>
-        prev.filter((r) => {
-          const rid = (r._id && r._id.toString && r._id.toString()) || r.id || r.slug || (r.__raw && (r.__raw._id || r.__raw.id));
-          return String(rid) !== String(idStr);
-        })
-      );
+      // Update displayed list (savedResearchers) for the current folder
+      if (currentFolderId) {
+        setSavedResearchers((prev) =>
+          prev.filter((r) => {
+            const rid = (r._id && r._id.toString && r._id.toString()) || r.id || r.slug || (r.__raw && (r.__raw._id || r.__raw.id));
+            return String(rid) !== String(idStr);
+          })
+        );
+      }
 
+      // Update folder counts/local lists for the specific folder
       setFolders((prev) =>
         prev.map((f) => {
-          const nextIds = (f.researcherIds || []).filter((item) => {
-            if (!item) return false;
-            const val =
-              (item._id && item._id.toString && item._id.toString()) ||
-              (item.id && item.id.toString && item.id.toString()) ||
-              item.slug ||
-              item.toString();
-            return String(val) !== String(idStr);
-          });
-          return { ...f, researcherIds: nextIds };
+          if (f.name === currentFolderId) {
+            const nextIds = (f.researcherIds || []).filter((item) => {
+              if (!item) return false;
+              const val =
+                (item._id && item._id.toString && item._id.toString()) ||
+                (item.id && item.id.toString && item.id.toString()) ||
+                item.slug ||
+                item.toString();
+              return String(val) !== String(idStr);
+            });
+            return { ...f, researcherIds: nextIds };
+          }
+          return f;
         })
       );
 
@@ -344,7 +355,7 @@ export default function SavedResearchers() {
         targetResearcher.slug ||
         idStr;
 
-      showToast(`${displayName} has been removed`, "error");
+      showToast(`${displayName} has been removed from "${currentFolderId}"`, "success");
     } catch (error) {
       console.error("Error removing bookmark:", error);
       showToast("Failed to remove bookmark", "error");
@@ -445,6 +456,51 @@ export default function SavedResearchers() {
     }));
   };
 
+  const handleDeleteFolder = async (folderName) => {
+    try {
+      // Call the deleteFolder service to delete the folder on the backend
+      await deleteFolder(folderName);
+
+      // Update the folders state to remove the deleted folder
+      setFolders((prevFolders) => prevFolders.filter((f) => f.name !== folderName));
+
+      // If the deleted folder is the currently selected folder, reset the current folder
+      if (currentFolderId === folderName) {
+        setCurrentFolderId(null);
+        setSavedResearchers([]);
+      }
+
+      showToast(`Folder "${folderName}" has been deleted`, "success");
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      showToast("Failed to delete folder. Please try again.", "error");
+    }
+  };
+
+  const handleRenameFolder = async (oldName, newName) => {
+    try {
+      // Call the renameFolder service to update the folder name on the backend
+      await renameFolder(oldName, newName);
+
+      // Update the folders state to reflect the new name
+      setFolders((prevFolders) =>
+        prevFolders.map((f) =>
+          f.name === oldName ? { ...f, name: newName } : f
+        )
+      );
+
+      // If the renamed folder is the currently selected folder, update the currentFolderId
+      if (currentFolderId === oldName) {
+        setCurrentFolderId(newName);
+      }
+
+      showToast(`Folder renamed to "${newName}"`, "success");
+    } catch (error) {
+      console.error("Error renaming folder:", error);
+      showToast("Failed to rename folder. Please try again.", "error");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -455,6 +511,8 @@ export default function SavedResearchers() {
             folders={folders}
             currentFolderId={currentFolderId}
             onSelectFolder={handleFolderSelect}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
 
           {/* Right: main content */}
