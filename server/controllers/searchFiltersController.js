@@ -171,7 +171,7 @@ exports.searchResearchers = async (req, res) => {
       { $limit: limit }
     ];
 
-    let researchers = await Researcher.aggregate(pipeline);
+    let researchers = await Researcher.aggregate(pipeline).allowDiskUse(true).exec();
 
     // -----------------------------
     // Enrich fields from search_tags
@@ -219,7 +219,7 @@ exports.searchResearchers = async (req, res) => {
         fields: r.search_tags
           .filter(tag => tag.startsWith("field:"))
           .map(tag => fieldMap[tag.split(":")[1]]),
-        topics: r.topics, // no need
+        topics: r.topics.map(t => t.display_name),
         last_known_affiliations: r.last_known_affiliations.map(id => instMap[id]),
         research_metrics: {
           h_index: r.research_metrics.h_index,

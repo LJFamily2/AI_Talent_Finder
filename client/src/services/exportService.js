@@ -8,7 +8,7 @@ import api from "../config/api";
 export const exportResearchersToExcel = async (researchers) => {
   try {
     // Extract researcher IDs from the researcher objects
-    const researcherIds = researchers.map((researcher) => researcher.id);
+    const researcherIds = researchers.map((researcher) => researcher._id);
 
     if (researcherIds.length === 0) {
       throw new Error("No researchers to export");

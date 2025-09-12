@@ -14,10 +14,12 @@ const TopicSchema = new mongoose.Schema(
     display_name: { type: String, required: true },
     field_id: { type: mongoose.Schema.ObjectId, ref: "Field" },
     sync_status: { type: SyncStatusSchema, default: () => ({}) }
-}, {
-    timestamps: true,
-    versionKey: false,
-  }
+  }, {
+  timestamps: true,
+  versionKey: false,
+}
 );
+
+TopicSchema.index({ field_id: 1, display_name: 1 });
 
 module.exports = mongoose.model("Topic", TopicSchema);
