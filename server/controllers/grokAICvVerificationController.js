@@ -103,6 +103,9 @@ async function verifyCVWithGrok(file, prioritySource = "grok") {
       candidateName
     );
 
+    // Ensure verificationResults is always an array
+    verificationResults = verificationResults || [];
+
     // Remove duplicates
     verificationResults = removeDuplicatePublications(verificationResults);
 
@@ -122,17 +125,27 @@ async function verifyCVWithGrok(file, prioritySource = "grok") {
       total: verificationResults.length,
       verifiedPublications: verificationResults.filter(
         (r) =>
-          r.verification.displayData.status === "verified" ||
-          r.verification.displayData.status ===
-            "verified but not same author name"
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          (r.verification.displayData.status === "verified" ||
+            r.verification.displayData.status ===
+              "verified but not same author name")
       ).length,
       verifiedWithAuthorMatch: verificationResults.filter(
-        (r) => r.verification.displayData.status === "verified"
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          r.verification.displayData.status === "verified"
       ).length,
       verifiedButDifferentAuthor: verificationResults.filter(
         (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
           r.verification.displayData.status ===
-          "verified but not same author name"
+            "verified but not same author name"
       ).length,
       results: verificationResults,
       authorDetails: authorProfile,
@@ -636,8 +649,14 @@ async function searchOpenAlexAuthor(candidateName) {
  * @returns {Object} Basic author profile
  */
 function createBasicAuthorProfile(candidateName, verificationResults) {
-  const verifiedPublications = verificationResults.filter(
-    (r) => r.verification.displayData.status === "verified"
+  // Handle cases where verificationResults is undefined or null
+  const results = verificationResults || [];
+  const verifiedPublications = results.filter(
+    (r) =>
+      r &&
+      r.verification &&
+      r.verification.displayData &&
+      r.verification.displayData.status === "verified"
   );
 
   return {
@@ -909,11 +928,20 @@ function generateSearchLink(title) {
  * @returns {Array} Deduplicated publications
  */
 function removeDuplicatePublications(publications) {
+  // Handle cases where publications is undefined or null
+  if (!publications || !Array.isArray(publications)) {
+    return [];
+  }
+
   const unique = [];
   const seen = new Set();
 
   for (const pub of publications) {
-    const title = pub.verification?.displayData?.title || "";
+    if (!pub || !pub.verification || !pub.verification.displayData) {
+      continue; // Skip invalid publication objects
+    }
+
+    const title = pub.verification.displayData.title || "";
     const normalizedTitle = title
       .toLowerCase()
       .replace(/[^\w\s]/g, "")

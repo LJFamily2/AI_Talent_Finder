@@ -11,7 +11,6 @@
  */
 
 const axios = require("axios");
-const { getTitleSimilarity } = require("./textUtils");
 const { strictAuthorNameVerification } = require("./authorUtils");
 require("dotenv").config();
 
@@ -106,12 +105,7 @@ const aggregateAuthorDetails = async (
   // Collect data from Scopus
   if (authorIds.scopus) {
     try {
-      // const [scopusAuthorData, scopusPublications] = await Promise.all([
-      //   fetchScopusAuthor(authorIds.scopus),
-      //   fetchScopusPublications(authorIds.scopus),
-      // ]);
       const scopusAuthorData = await fetchScopusAuthor(authorIds.scopus);
-      // Don't fetch publications
 
       // Verify author name match before merging data
       if (scopusAuthorData && scopusAuthorData["author-retrieval-response"]) {
@@ -127,12 +121,7 @@ const aggregateAuthorDetails = async (
 
           // Use strict verification to ensure names match
           if (strictAuthorNameVerification(candidateName, authorName)) {
-            mergeScopusData(
-              authorDetails,
-              scopusAuthorData,
-              null,
-              prioritySource
-            );
+            mergeScopusData(authorDetails, scopusAuthorData, prioritySource);
             verifiedSources.scopus = true;
           }
         }
@@ -145,12 +134,7 @@ const aggregateAuthorDetails = async (
   // Collect data from OpenAlex
   if (authorIds.openalex) {
     try {
-      // const [openAlexAuthorData, openAlexWorksData] = await Promise.all([
-      //   fetchOpenAlexAuthor(authorIds.openalex),
-      //   fetchOpenAlexWorks(authorIds.openalex),
-      // ]);
       const openAlexAuthorData = await fetchOpenAlexAuthor(authorIds.openalex);
-      // Don't fetch works
 
       // Verify author name match before merging data
       if (openAlexAuthorData && openAlexAuthorData.display_name) {
@@ -158,12 +142,7 @@ const aggregateAuthorDetails = async (
 
         // Use strict verification to ensure names match
         if (strictAuthorNameVerification(candidateName, authorName)) {
-          mergeOpenAlexData(
-            authorDetails,
-            openAlexAuthorData,
-            null,
-            prioritySource
-          );
+          mergeOpenAlexData(authorDetails, openAlexAuthorData, prioritySource);
           verifiedSources.openalex = true;
         }
       }
@@ -215,31 +194,6 @@ const aggregateAuthorDetails = async (
     }
   }
 
-  // After all sources have been processed, enrich the publication metadata
-  // if (authorDetails.articles.length > 0) {
-  //   const originalCount = authorDetails.articles.length;
-  //   authorDetails.articles = enrichPublicationMetadata(
-  //     authorDetails.articles,
-  //     prioritySource
-  //   );
-  //   const enrichedCount = authorDetails.articles.length;
-  //   // Update document count to match the actual number of articles from preferred source
-  //   if (
-  //     authorDetails.documentCount !== null &&
-  //     enrichedCount !== originalCount
-  //   ) {
-  //     authorDetails.documentCount = enrichedCount;
-  //   }
-  // }
-
-  // // Remove _source field from final output for clean API response
-  // if (authorDetails.articles) {
-  //   authorDetails.articles = authorDetails.articles.map((article) => {
-  //     const { _source, ...cleanArticle } = article;
-  //     return cleanArticle;
-  //   });
-  // }
-
   return authorDetails;
 };
 
@@ -286,33 +240,6 @@ const fetchScopusAuthor = async (authorId) => {
     throw error;
   }
 };
-
-/**
- * Fetches author's publications from Scopus
- * @param {string} authorId - Scopus author ID
- * @returns {Promise<Object>} Publications data
- * @private
- */
-const fetchScopusPublications = async (authorId) => {
-  const url = `https://api.elsevier.com/content/search/scopus?query=AU-ID(${authorId})`;
-
-  try {
-    const { data } = await axios.get(url, {
-      headers: {
-        "X-ELS-APIKey": scopusApiKey,
-        "X-ELS-Insttoken": scopusInsttoken,
-        Accept: "application/json",
-      },
-    });
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-//=============================================================================
-// DATA MERGING FUNCTIONS
-//=============================================================================
 
 /**
  * Merges Google Scholar data into author details object
@@ -418,50 +345,16 @@ const mergeGoogleScholarData = (
       }
     }
   }
-
-  // Publications
-  // if (googleScholarData.articles && googleScholarData.articles.length > 0) {
-  //   // Document count - directly apply based on priority
-  //   if (isPreferredSource || authorDetails.documentCount === null) {
-  //     authorDetails.documentCount = googleScholarData.articles.length;
-  //   }
-  //   googleScholarData.articles.forEach((article) => {
-  //     const articleObj = {
-  //       title: article.title,
-  //       link: article.link || null,
-  //       authors: article.authors ? [{ name: article.authors }] : [],
-  //       publicationName: article.publication || null,
-  //       citedBy:
-  //         article.cited_by && article.cited_by.value
-  //           ? article.cited_by.value
-  //           : 0,
-  //       year: article.year || null,
-  //       issn: null,
-  //       volume: null,
-  //       issueIdentifier: null,
-  //       pageRange: null,
-  //       _source: "googleScholar",
-  //     };
-
-  //     authorDetails.articles.push(articleObj);
-  //   });
-  // }
 };
 
 /**
  * Merges Scopus data into author details object
  * @param {Object} authorDetails - Target author details object
  * @param {Object} scopusAuthorData - Scopus author data
- * @param {Object} scopusPublications - Scopus publications data
  * @param {string} prioritySource - Primary source to use for metrics
  * @private
  */
-const mergeScopusData = (
-  authorDetails,
-  scopusAuthorData,
-  scopusPublications,
-  prioritySource
-) => {
+const mergeScopusData = (authorDetails, scopusAuthorData, prioritySource) => {
   const isPreferredSource = prioritySource === "scopus";
   // Parse XML or JSON response based on format
   const authorProfile = scopusAuthorData["author-retrieval-response"][0];
@@ -541,80 +434,6 @@ const mergeScopusData = (
       authorDetails.documentCount = documentCount;
     }
   }
-
-  // Publications
-  if (
-    scopusPublications &&
-    scopusPublications["search-results"] &&
-    scopusPublications["search-results"].entry
-  ) {
-    const entries = scopusPublications["search-results"].entry; // Build Scopus citation graph and apply based on priority
-    const scopusGraph = buildScopusCitationGraph(entries);
-    if (scopusGraph.length > 0) {
-      if (isPreferredSource || authorDetails.graph.length === 0) {
-        // Count publications per year
-        const yearWorkCounts = {};
-        entries.forEach((pub) => {
-          if (pub["prism:coverDate"]) {
-            const year = parseInt(pub["prism:coverDate"].substring(0, 4), 10);
-            yearWorkCounts[year] = (yearWorkCounts[year] || 0) + 1;
-          }
-        }); // Create year-by-year data with works_count and cited_by_count
-        authorDetails.graph = scopusGraph
-          .map((item) => ({
-            year: item.year,
-            works_count: yearWorkCounts[item.year] || 0,
-            cited_by_count: item.citations || 0,
-          }))
-          .sort((a, b) => b.year - a.year); // Sort by year descending
-      }
-    }
-
-    // Add publications
-    entries.forEach((pub) => {
-      const existingArticle = findMatchingArticle(
-        authorDetails.articles,
-        pub["dc:title"]
-      );
-
-      if (existingArticle) {
-        // Update existing article with Scopus info
-        existingArticle.link.scopusLink = pub["prism:url"];
-        existingArticle.publicationName =
-          pub["prism:publicationName"] || existingArticle.publicationName;
-        existingArticle.citedBy = Math.max(
-          existingArticle.citedBy,
-          parseInt(pub["citedby-count"] || "0", 10)
-        );
-        existingArticle.year = pub["prism:coverDate"]
-          ? pub["prism:coverDate"].substring(0, 4)
-          : existingArticle.year;
-        existingArticle.issn = pub["prism:issn"];
-        existingArticle.volume = pub["prism:volume"];
-        existingArticle.issueIdentifier = pub["prism:issueIdentifier"];
-        existingArticle.pageRange = pub["prism:pageRange"];
-      } else {
-        // Add new article from Scopus
-        const articleObj = {
-          title: pub["dc:title"],
-          link: pub["prism:url"] || null,
-          authors: [{ name: pub["dc:creator"] }],
-          publicationName: pub["prism:publicationName"],
-          citedBy: parseInt(pub["citedby-count"] || "0", 10),
-          year: pub["prism:coverDate"]
-            ? pub["prism:coverDate"].substring(0, 4)
-            : null,
-          issn: pub["prism:issn"],
-          volume: pub["prism:volume"],
-          issueIdentifier: pub["prism:issueIdentifier"],
-          pageRange: pub["prism:pageRange"],
-          _source: "scopus",
-        };
-
-        authorDetails.articles.push(articleObj);
-      }
-    });
-  }
 };
 
 //=============================================================================
@@ -670,77 +489,6 @@ const parseAndAddScopusAffiliation = (authorDetails, affiliation) => {
   }
 };
 
-/**
- * Builds citation graph from Scopus publications
- * @param {Array} publications - Scopus publications array
- * @returns {Array} Year-based citation graph
- * @private
- */
-const buildScopusCitationGraph = (publications) => {
-  const yearCitations = {};
-
-  publications.forEach((pub) => {
-    if (pub["prism:coverDate"] && pub["citedby-count"]) {
-      const year = pub["prism:coverDate"].substring(0, 4);
-      const citations = parseInt(pub["citedby-count"], 10) || 0;
-
-      if (!yearCitations[year]) {
-        yearCitations[year] = 0;
-      }
-
-      yearCitations[year] += citations;
-    }
-  });
-
-  // Convert to array format similar to Google Scholar
-  return Object.keys(yearCitations)
-    .map((year) => ({
-      year: parseInt(year, 10),
-      citations: yearCitations[year],
-    }))
-    .sort((a, b) => a.year - b.year);
-};
-
-/**
- * Finds a matching article in the articles array based on title similarity
- * @param {Array} articles - Array of articles
- * @param {string} title - Title to search for
- * @returns {Object|null} Matching article or null
- * @private
- */
-const findMatchingArticle = (articles, title) => {
-  if (!title || !articles || articles.length === 0) {
-    return null;
-  }
-
-  const normalizedTitle = title.toLowerCase().trim();
-
-  return articles.find((article) => {
-    const articleTitle = article.title.toLowerCase().trim();
-
-    // Exact match
-    if (articleTitle === normalizedTitle) {
-      return true;
-    }
-
-    // Substring match for longer titles
-    if (articleTitle.length > 20 && normalizedTitle.length > 20) {
-      return (
-        articleTitle.includes(normalizedTitle) ||
-        normalizedTitle.includes(articleTitle)
-      );
-    }
-
-    // Title similarity
-    const similarity = getTitleSimilarity(articleTitle, normalizedTitle);
-    if (similarity > 80) {
-      return true;
-    }
-
-    return false;
-  });
-};
-
 //=============================================================================
 // OPENALEX DATA FUNCTIONS
 //=============================================================================
@@ -766,64 +514,15 @@ const fetchOpenAlexAuthor = async (authorId) => {
 };
 
 /**
- * Fetches author's works/publications from OpenAlex with pagination
- * @param {string} authorId - OpenAlex author ID
- * @returns {Promise<Object>} Works data with all pages combined
- * @private
- */
-const fetchOpenAlexWorks = async (authorId) => {
-  // Extract the ID from the full URL format if needed
-  const id = authorId.includes("/") ? authorId.split("/").pop() : authorId;
-
-  const allWorks = [];
-  let cursor = "*";
-  let hasMorePages = true;
-  const perPage = 200; // Maximum allowed by OpenAlex
-  while (hasMorePages) {
-    const url = `https://api.openalex.org/works?filter=authorships.author.id:${id}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,primary_location,cited_by_count,biblio,open_access,topics,counts_by_year&per_page=${perPage}&cursor=${cursor}&api_key=${openAlexApiKey}`;
-
-    try {
-      const { data } = await axios.get(url);
-
-      if (data.results && data.results.length > 0) {
-        allWorks.push(...data.results);
-      }
-
-      // Check if there are more pages
-      if (data.meta && data.meta.next_cursor) {
-        cursor = data.meta.next_cursor;
-      } else {
-        hasMorePages = false;
-      }
-    } catch (error) {
-      console.error(
-        `Failed to fetch OpenAlex works with cursor ${cursor}:`,
-        error.message
-      );
-      throw error;
-    }
-  }
-
-  return {
-    results: allWorks,
-    meta: {
-      count: allWorks.length,
-    },
-  };
-};
-
-/**
  * Merges OpenAlex data into author details object
  * @param {Object} authorDetails - Target author details object
  * @param {Object} openAlexAuthorData - OpenAlex author data
- * @param {Object} openAlexWorksData - OpenAlex works data
  * @param {string} prioritySource - Primary source to use for metrics
  * @private
  */
 const mergeOpenAlexData = (
   authorDetails,
   openAlexAuthorData,
-  openAlexWorksData = null,
   prioritySource
 ) => {
   const isPreferredSource = prioritySource === "openalex";
@@ -928,444 +627,6 @@ const mergeOpenAlexData = (
         .sort((a, b) => b.year - a.year); // Sort by year descending
     }
   }
-
-  // Merge publications/works data
-  if (
-    openAlexWorksData &&
-    openAlexWorksData.results &&
-    Array.isArray(openAlexWorksData.results)
-  ) {
-    openAlexWorksData.results.forEach((work) => {
-      // Extract authors information
-      const authors = [];
-      if (work.authorships && Array.isArray(work.authorships)) {
-        work.authorships.forEach((authorship) => {
-          if (authorship.author && authorship.author.display_name) {
-            authors.push({
-              name: authorship.author.display_name,
-            });
-          }
-        });
-      }
-
-      // Extract venue/journal information
-      let publicationName = null;
-      let issn = null;
-
-      if (work.host_venue) {
-        publicationName = work.host_venue.display_name;
-        issn = work.host_venue.issn_l || work.host_venue.issn;
-      } else if (work.primary_location && work.primary_location.source) {
-        publicationName = work.primary_location.source.display_name;
-        issn =
-          work.primary_location.source.issn_l ||
-          work.primary_location.source.issn;
-      }
-
-      // Extract volume and issue information
-      let volume = null;
-      let issueIdentifier = null;
-      let pageRange = null;
-
-      if (work.biblio) {
-        volume = work.biblio.volume;
-        issueIdentifier = work.biblio.issue;
-
-        // Combine first_page and last_page for pageRange
-        if (work.biblio.first_page && work.biblio.last_page) {
-          pageRange = `${work.biblio.first_page}-${work.biblio.last_page}`;
-        } else if (work.biblio.first_page) {
-          pageRange = work.biblio.first_page;
-        }
-      }
-
-      // Determine the best link - prefer DOI, fallback to OpenAlex link
-      let link = work.id; // Default to OpenAlex link
-      if (work.doi) {
-        link = work.doi.startsWith("http")
-          ? work.doi
-          : `https://doi.org/${work.doi}`;
-      }
-      // Create article object matching the required structure
-      const articleObj = {
-        title: work.display_name || work.title,
-        link: link,
-        authors: authors,
-        publicationName: publicationName,
-        citedBy: work.cited_by_count || 0,
-        year: work.publication_year,
-        issn: issn,
-        volume: volume,
-        issueIdentifier: issueIdentifier,
-        pageRange: pageRange,
-        _source: "openalex",
-      };
-      authorDetails.articles.push(articleObj);
-    });
-  }
-};
-
-//=============================================================================
-// PUBLICATION METADATA ENRICHMENT FUNCTIONS
-//=============================================================================
-
-/**
- * Enriches publication metadata from preferred source with data from other sources
- * @param {Array} articles - Array of publication objects from different sources
- * @param {string} prioritySource - Primary source to preserve publications from
- * @returns {Array} Enhanced publications with preferred source publications preserved
- */
-const enrichPublicationMetadata = (
-  articles,
-  prioritySource = "googleScholar"
-) => {
-  // Step 1: Separate articles by source
-  const sourceMap = categorizeArticlesBySource(articles);
-
-  // Get preferred source articles (all must be preserved)
-  const preferredArticles = sourceMap[prioritySource] || [];
-
-  // Get supplementary articles (only used for metadata enrichment)
-  const supplementaryArticles = [];
-  Object.keys(sourceMap).forEach((source) => {
-    if (source !== prioritySource) {
-      supplementaryArticles.push(...sourceMap[source]);
-    }
-  });
-
-  // Step 2: Enrich each preferred publication with data from supplementary sources
-  const enrichedArticles = preferredArticles.map((article) => {
-    // Find matching supplementary articles
-    const matches = findMatchingPublications(article, supplementaryArticles);
-
-    if (matches.length > 0) {
-      return enrichPublicationWithMatches(article, matches);
-    }
-
-    return article;
-  });
-
-  return enrichedArticles;
-};
-
-/**
- * Categorizes articles by their source based on their structure and properties
- * @param {Array} articles - Array of article objects
- * @returns {Object} Map of source name to array of articles
- */
-const categorizeArticlesBySource = (articles) => {
-  const sourceMap = {
-    googleScholar: [],
-    scopus: [],
-    openalex: [],
-    other: [],
-  };
-
-  articles.forEach((article, index) => {
-    let sourceDetected = false;
-
-    // Method 1: Use explicit _source field if available (most reliable)
-    if (article._source && sourceMap[article._source]) {
-      sourceMap[article._source].push(article);
-      sourceDetected = true;
-    }
-
-    // Method 2: Check link patterns (fallback for articles without _source)
-    if (!sourceDetected && article.link && typeof article.link === "string") {
-      if (
-        article.link.includes("scholar.google.com") ||
-        article.link.includes("citations?view_op=view_citation")
-      ) {
-        sourceMap.googleScholar.push(article);
-        sourceDetected = true;
-      } else if (
-        article.link.includes("scopus") ||
-        article.link.includes("elsevier")
-      ) {
-        sourceMap.scopus.push(article);
-        sourceDetected = true;
-      } else if (article.link.includes("openalex.org")) {
-        sourceMap.openalex.push(article);
-        sourceDetected = true;
-      }
-    }
-
-    // Method 3: Check for OpenAlex-specific properties
-    if (
-      !sourceDetected &&
-      (article.openAlexId ||
-        (article.link && article.link.startsWith("https://openalex.org/")))
-    ) {
-      sourceMap.openalex.push(article);
-      sourceDetected = true;
-    }
-
-    // Method 4: Check publication name patterns
-    if (!sourceDetected && article.publicationName) {
-      // Google Scholar often has publication patterns like "Journal Name, Year" or "Publisher, Year"
-      if (/,\s*\d{4}$/.test(article.publicationName)) {
-        sourceMap.googleScholar.push(article);
-        sourceDetected = true;
-      }
-    }
-
-    // Method 5: Check for Scopus-specific ISSN format or volume/issue patterns
-    if (
-      !sourceDetected &&
-      (article.issn || (article.volume && article.issueIdentifier))
-    ) {
-      sourceMap.scopus.push(article);
-      sourceDetected = true;
-    }
-
-    // Default: assign to 'other' if no source detected
-    if (!sourceDetected) {
-      sourceMap.other.push(article);
-    }
-  });
-
-  return sourceMap;
-};
-
-/**
- * Finds matching publications in supplementary sources
- * @param {Object} article - Target article to find matches for
- * @param {Array} supplementaryArticles - Articles from other sources
- * @returns {Array} Matching articles from supplementary sources
- */
-const findMatchingPublications = (article, supplementaryArticles) => {
-  const matches = [];
-
-  supplementaryArticles.forEach((supArticle) => {
-    if (publicationsMatch(article, supArticle)) {
-      matches.push(supArticle);
-    }
-  });
-
-  return matches;
-};
-
-/**
- * Enriches a publication with data from matching supplementary publications
- * @param {Object} article - Target article to enrich
- * @param {Array} matches - Matching articles from supplementary sources
- * @returns {Object} Enriched article with filled-in metadata
- */
-const enrichPublicationWithMatches = (article, matches) => {
-  // Create a copy of the original article
-  const enriched = { ...article };
-
-  // For each matching article, fill in missing fields
-  matches.forEach((match) => {
-    Object.entries(match).forEach(([key, value]) => {
-      // Skip undefined/null/empty values or already populated fields
-      if (value === undefined || value === null || value === "") return;
-      if (
-        enriched[key] !== undefined &&
-        enriched[key] !== null &&
-        enriched[key] !== ""
-      )
-        return;
-
-      // Special handling for specific fields
-      switch (key) {
-        case "citedBy":
-          // Use the highest citation count
-          enriched[key] = Math.max(enriched[key] || 0, value);
-          break;
-
-        case "title":
-          // Only fill if missing
-          if (!enriched[key]) {
-            enriched[key] = value;
-          }
-          break;
-
-        case "authors":
-          // Only fill if missing or has fewer authors
-          if (
-            !enriched[key] ||
-            !enriched[key].length ||
-            (Array.isArray(value) && value.length > enriched[key].length)
-          ) {
-            enriched[key] = [...value];
-          }
-          break;
-
-        default:
-          // Fill in missing fields
-          if (
-            enriched[key] === undefined ||
-            enriched[key] === null ||
-            enriched[key] === ""
-          ) {
-            enriched[key] = value;
-          }
-      }
-    });
-  });
-
-  return enriched;
-};
-
-/**
- * Determines if two publications likely represent the same work
- * @param {Object} pub1 - First publication
- * @param {Object} pub2 - Second publication
- * @returns {Boolean} True if publications match
- */
-const publicationsMatch = (pub1, pub2) => {
-  // Match by DOI (most reliable)
-  if (
-    pub1.link &&
-    pub2.link &&
-    isDoi(pub1.link) &&
-    isDoi(pub2.link) &&
-    normalizeDoi(pub1.link) === normalizeDoi(pub2.link)
-  ) {
-    return true;
-  }
-
-  // Match by title similarity + year
-  if (pub1.title && pub2.title && pub1.year && pub2.year) {
-    const titleSimilarity = getTitleSimilarity(pub1.title, pub2.title) / 100;
-
-    // High title similarity + same year = likely match
-    if (titleSimilarity > 0.8 && pub1.year === pub2.year) {
-      return true;
-    }
-
-    // Very high title similarity = match even with different year
-    if (titleSimilarity > 0.9) {
-      return true;
-    }
-  }
-
-  // Match by first author + title keywords + year
-  if (
-    pub1.authors?.length > 0 &&
-    pub2.authors?.length > 0 &&
-    pub1.title &&
-    pub2.title &&
-    pub1.year &&
-    pub2.year
-  ) {
-    const firstAuthor1 = pub1.authors[0].name.toLowerCase();
-    const firstAuthor2 = pub2.authors[0].name.toLowerCase();
-    const authorSimilarity = calculateStringSimilarity(
-      firstAuthor1,
-      firstAuthor2
-    );
-
-    // Extract keywords from titles
-    const keywords1 = extractKeywords(pub1.title);
-    const keywords2 = extractKeywords(pub2.title);
-    const keywordOverlap = calculateKeywordOverlap(keywords1, keywords2);
-
-    // Same first author + keyword overlap + same year = likely match
-    if (
-      authorSimilarity > 0.7 &&
-      keywordOverlap > 0.6 &&
-      pub1.year === pub2.year
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-// Helper functions for publication enrichment
-const isDoi = (link) =>
-  link &&
-  (link.startsWith("https://doi.org/") ||
-    link.startsWith("http://doi.org/") ||
-    link.startsWith("doi:"));
-
-const normalizeDoi = (doi) => {
-  if (!doi) return "";
-  return doi.replace(/^https?:\/\/doi\.org\/|^doi:/i, "").toLowerCase();
-};
-
-const calculateStringSimilarity = (str1, str2) => {
-  if (!str1 || !str2) return 0;
-  const maxLength = Math.max(str1.length, str2.length);
-  if (maxLength === 0) return 1.0;
-
-  let matches = 0;
-  const window = Math.floor(maxLength / 2) - 1;
-
-  for (let i = 0; i < str1.length; i++) {
-    const start = Math.max(0, i - window);
-    const end = Math.min(i + window + 1, str2.length);
-
-    for (let j = start; j < end; j++) {
-      if (str1[i] === str2[j]) {
-        matches++;
-        break;
-      }
-    }
-  }
-
-  return matches / maxLength;
-};
-
-const extractKeywords = (title) => {
-  if (!title) return [];
-  // Remove common stop words and extract significant terms
-  const stopWords = new Set([
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "but",
-    "of",
-    "in",
-    "on",
-    "at",
-    "to",
-    "for",
-    "with",
-    "by",
-    "about",
-    "as",
-    "into",
-    "like",
-    "through",
-    "after",
-    "over",
-    "between",
-    "out",
-    "from",
-    "using",
-    "analysis",
-    "study",
-    "research",
-    "case",
-    "new",
-    "approach",
-  ]);
-
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "") // Remove punctuation
-    .split(/\s+/)
-    .filter((word) => word.length > 2 && !stopWords.has(word));
-};
-
-const calculateKeywordOverlap = (keywords1, keywords2) => {
-  if (keywords1.length === 0 || keywords2.length === 0) return 0;
-
-  const set1 = new Set(keywords1);
-  const set2 = new Set(keywords2);
-  let intersection = 0;
-
-  set1.forEach((word) => {
-    if (set2.has(word)) intersection++;
-  });
-
-  return intersection / Math.min(set1.size, set2.size);
 };
 
 module.exports = {

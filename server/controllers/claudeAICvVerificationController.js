@@ -71,29 +71,43 @@ async function verifyCVWithClaude(file, prioritySource = "claude") {
       cvText,
       candidateName
     );
+
+    // Ensure verificationResults is always an array
+    const results = verificationResults || [];
+
     const authorProfile = await getAuthorProfileFromAPIs(
       candidateName,
-      verificationResults
+      results
     );
     return {
       success: true,
       candidateName,
-      total: verificationResults.length,
-      verifiedPublications: verificationResults.filter(
+      total: results.length,
+      verifiedPublications: results.filter(
         (r) =>
-          r.verification.displayData.status === "verified" ||
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          (r.verification.displayData.status === "verified" ||
+            r.verification.displayData.status ===
+              "verified but not same author name")
+      ).length,
+      verifiedWithAuthorMatch: results.filter(
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          r.verification.displayData.status === "verified"
+      ).length,
+      verifiedButDifferentAuthor: results.filter(
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
           r.verification.displayData.status ===
             "verified but not same author name"
       ).length,
-      verifiedWithAuthorMatch: verificationResults.filter(
-        (r) => r.verification.displayData.status === "verified"
-      ).length,
-      verifiedButDifferentAuthor: verificationResults.filter(
-        (r) =>
-          r.verification.displayData.status ===
-          "verified but not same author name"
-      ).length,
-      results: verificationResults,
+      results: results,
       authorDetails: authorProfile,
     };
   } catch (error) {
@@ -433,9 +447,16 @@ function createSectionContentBatches(publicationSections) {
  */
 async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
   try {
+    // Handle cases where verificationResults is undefined or null
+    const results = verificationResults || [];
+
     // Only proceed if we have verified publications
-    const verifiedPublications = verificationResults.filter(
-      (r) => r.verification.displayData.status === "verified"
+    const verifiedPublications = results.filter(
+      (r) =>
+        r &&
+        r.verification &&
+        r.verification.displayData &&
+        r.verification.displayData.status === "verified"
     );
 
     if (verifiedPublications.length === 0) {
@@ -449,7 +470,7 @@ async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
     const authorIds = await searchAuthorInAPIs(candidateName);
 
     if (!authorIds || !Object.values(authorIds).some((id) => id)) {
-      return createBasicAuthorProfile(candidateName, verificationResults);
+      return createBasicAuthorProfile(candidateName, results);
     }
 
     // Use the aggregator to get comprehensive author details from APIs
@@ -480,10 +501,10 @@ async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
     }
 
     // Fallback to basic profile if aggregator fails
-    return createBasicAuthorProfile(candidateName, verificationResults);
+    return createBasicAuthorProfile(candidateName, results);
   } catch (error) {
     console.error("Error getting author profile from APIs:", error);
-    return createBasicAuthorProfile(candidateName, verificationResults);
+    return createBasicAuthorProfile(candidateName, results);
   }
 }
 
@@ -525,8 +546,14 @@ async function searchAuthorInAPIs(candidateName) {
  * @returns {Object} Basic author profile
  */
 function createBasicAuthorProfile(candidateName, verificationResults) {
-  const verifiedPublications = verificationResults.filter(
-    (r) => r.verification.displayData.status === "verified"
+  // Handle cases where verificationResults is undefined or null
+  const results = verificationResults || [];
+  const verifiedPublications = results.filter(
+    (r) =>
+      r &&
+      r.verification &&
+      r.verification.displayData &&
+      r.verification.displayData.status === "verified"
   );
 
   return {
