@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import { FaRegBookmark, FaBookmark } from "react-icons/fa";
 import {
     Snackbar,
@@ -10,7 +11,8 @@ import {
 } from "@mui/material";
 import { addBookmarks, removeBookmark, getBookmarkIds, createFolder } from "../services/bookmarkService";
 
-const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange }) => {
+const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 24, className = "" }) => {
+    const { user } = useAuth();
     const [isBookmarked, setIsBookMarked] = useState(false);
     const [bookmarkLoading, setBookmarkLoading] = useState(true);
     const [moveFolderModalOpen, setMoveFolderModalOpen] = useState(false);
@@ -146,15 +148,43 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange }) => {
     };
 
     useEffect(() => {
+        if (!user) {
+            // Public user: do not call API, just render idle state
+            setBookmarkLoading(false);
+            setIsBookMarked(false);
+            return;
+        }
         fetchFolderIds(); // Fetch folder IDs when the component mounts
-    }, [researcherId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [researcherId, user]);
 
     return (
         <>
             {/* Bookmark Icon */}
             <button
-                onClick={() => toggleBookmark()}
-                className="text-yellow-500 hover:text-yellow-600 transition"
+                onClick={() => {
+                    if (!user) {
+                        // Redirect public users to login instead of calling API
+                        try {
+                            const target =
+                              window.location.pathname + window.location.search + window.location.hash;
+                            sessionStorage.setItem("postLoginRedirect", target);
+                            if (window.location.pathname.startsWith('/search-interface')) {
+                              sessionStorage.setItem('restoreSearchState', '1');
+                            }
+                        } catch (err) {
+                            // Avoid silently swallowing storage errors; continue redirect regardless
+                            console.warn(
+                                "Could not save post-login redirect target to sessionStorage:",
+                                err
+                            );
+                        }
+                        window.location.href = "/login";
+                        return;
+                    }
+                    toggleBookmark();
+                }}
+                className={`text-yellow-500 hover:text-yellow-600 transition ${className}`}
                 aria-label="Bookmark"
                 title={isBookmarked ? "Unsave Profile" : "Save Profile"}
                 disabled={bookmarkLoading}
@@ -162,9 +192,9 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange }) => {
                 {bookmarkLoading ? (
                     <span></span>
                 ) : isBookmarked ? (
-                    <FaBookmark className="w-6 h-6" />
+                    <FaBookmark size={size} />
                 ) : (
-                    <FaRegBookmark className="w-6 h-6" />
+                    <FaRegBookmark size={size} />
                 )}
             </button>
 

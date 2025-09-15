@@ -22,7 +22,13 @@ const Login = () => {
     e.preventDefault();
     const result = await login(email, password);
     if (result.success) {
-      navigate("/dashboard");
+      const redirectPath = sessionStorage.getItem('postLoginRedirect');
+      if (redirectPath) {
+        sessionStorage.removeItem('postLoginRedirect');
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } else {
       setError(result.error);
     }
