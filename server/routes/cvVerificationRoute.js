@@ -37,24 +37,24 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
     const jobId = uuidv4();
     const io = req.app.get("io");
 
-    // Start verification and wait for the result
-    try {
-      const result = await verifyCV(req.file, prioritySource, { jobId, io });
-      // Send both socket event and HTTP response
-      io.to(jobId).emit("complete", { result });
-      res.json({
-        success: true,
-        data: result,
-        message: "CV verification completed successfully",
-      }); // Remove when done testing
-    } catch (error) {
-      io.to(jobId).emit("error", { error: error.message });
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        message: "CV verification failed",
-      }); // Remove when done testing
-    }
+    // Return jobId immediately so frontend can join the room
+    res.json({
+      success: true,
+      jobId: jobId,
+      message: "CV upload successful, verification started",
+    });
+
+    // Start verification asynchronously
+    (async () => {
+      try {
+        const result = await verifyCV(req.file, prioritySource, { jobId, io });
+        // Send completion event via socket
+        io.to(jobId).emit("complete", { result });
+      } catch (error) {
+        console.error("[CV Verification Route] Error:", error);
+        io.to(jobId).emit("error", { error: error.message });
+      }
+    })();
   } catch (error) {
     res.status(500).json({
       error: "Error processing CV",
