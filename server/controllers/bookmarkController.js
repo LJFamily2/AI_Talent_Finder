@@ -3,22 +3,64 @@ const Researcher = require("../models/Researcher");
 const Institution = require("../models/Institution");
 const Topic = require("../models/Topic");
 
+// Exported controller functions
 module.exports = {
   getBookmarks,
   addBookmarks,
   removeBookmark,
+  createFolder,
+  renameFolder,
+  deleteFolder,
+  replaceResearchersInFolder,
+  updateResearchersInFolder,
+  moveResearchersBetweenFolders,
 };
 
-// Get all bookmarks for the authenticated user
+/* ============================================================
+   Utilities
+============================================================ */
+async function ensureBookmarkDoc(userId) {
+  let bookmark = await Bookmark.findOne({ userId });
+  if (!bookmark) {
+    bookmark = new Bookmark({
+      userId,
+      folders: [{ name: "General", researcherIds: [] }],
+    });
+    await bookmark.save();
+  } else {
+    // Ensure "General" always exists
+    if (!bookmark.folders.some(f => f.name.toLowerCase() === "general")) {
+      bookmark.folders.push({ name: "General", researcherIds: [] });
+      await bookmark.save();
+    }
+  }
+  return bookmark;
+}
+
+function findFolder(bookmark, folderName) {
+  return bookmark.folders.find(
+    f => f.name.toLowerCase() === folderName.toLowerCase()
+  );
+}
+
+function folderExists(bookmark, name) {
+  return bookmark.folders.some(
+    f => f.name.toLowerCase() === name.toLowerCase()
+  );
+}
+
+/* ============================================================
+   GET Bookmarks (grouped by folders)
+============================================================ */
 async function getBookmarks(req, res) {
   try {
     const userId = req.user.id;
+    let bookmark = await ensureBookmarkDoc(userId);
 
-    // Find or create the user's bookmark document and populate all necessary data
-    let bookmark = await Bookmark.findOne({ userId }).populate({
-      path: "researcherIds",
+    await bookmark.populate({
+      path: "folders.researcherIds",
       select:
-        "name research_metrics last_known_affiliations topics affiliations identifiers citation_trends", // Include all fields needed for PDF
+        "name slug research_metrics last_known_affiliations topics affiliations identifiers citation_trends",
       populate: [
         {
           path: "last_known_affiliations",
@@ -43,250 +85,309 @@ async function getBookmarks(req, res) {
       ],
     });
 
-    // If no bookmark exists, return empty array
-    if (!bookmark) {
-      return res.status(200).json({
-        success: true,
-        count: 0,
-        data: [],
-      });
-    }
+    // Transform data
+    const transformed = bookmark.folders.map(folder => ({
+      name: folder.name,
+      researcherIds: folder.researcherIds.map(r => {
+        const institutionName =
+          r.last_known_affiliations?.[0]?.display_name || "Unknown Institution";
 
-    // Transform data to match frontend expectations and include full data for PDF export
-    const transformedData = bookmark.researcherIds.map((researcher) => {
-      // Get the primary institution name
-      const institutionName =
-        researcher.last_known_affiliations?.[0]?.display_name ||
-        "Unknown Institution";
+        const fieldName =
+          r.topics?.[0]?.field_id?.display_name ||
+          r.topics?.[0]?.display_name ||
+          "Unknown Field";
 
-      // Get the primary research field/topic
-      const fieldName =
-        researcher.topics?.[0]?.field_id?.display_name ||
-        researcher.topics?.[0]?.display_name ||
-        "Unknown Field";
-
-      // Group topics by field
-      const fieldTopicsMap = new Map();
-      researcher.topics?.forEach((topic) => {
-        const fieldName = topic.field_id?.display_name || "Uncategorized";
-        if (!fieldTopicsMap.has(fieldName)) {
-          fieldTopicsMap.set(fieldName, []);
-        }
-        fieldTopicsMap.get(fieldName).push({
-          display_name: topic.display_name,
+        const fieldTopicsMap = new Map();
+        r.topics?.forEach(topic => {
+          const fname = topic.field_id?.display_name || "Uncategorized";
+          if (!fieldTopicsMap.has(fname)) fieldTopicsMap.set(fname, []);
+          fieldTopicsMap.get(fname).push({ display_name: topic.display_name });
         });
-      });
 
-      // Convert map to array format for fields with their topics
-      const fieldsWithTopics = Array.from(fieldTopicsMap.entries()).map(
-        ([fieldName, topics]) => ({
-          display_name: fieldName,
-          topics: topics,
-        })
-      );
+        const fieldsWithTopics = Array.from(fieldTopicsMap.entries()).map(
+          ([fname, topics]) => ({ display_name: fname, topics })
+        );
 
-      return {
-        _id: researcher._id,
-        basic_info: {
-          name: researcher.name || "Unknown",
-          affiliations:
-            researcher.affiliations?.map((aff) => ({
-              institution: {
-                display_name:
-                  aff.institution?.display_name || "Unknown Institution",
-              },
+        return {
+          _id: r._id,
+          basic_info: {
+            name: r.name || "Unknown",
+            affiliations:
+              r.affiliations?.map(aff => ({
+                institution: {
+                  display_name:
+                    aff.institution?.display_name || "Unknown Institution",
+                },
+              })) || [],
+          },
+          current_affiliation: { display_name: institutionName },
+          current_affiliations:
+            r.last_known_affiliations?.map(inst => ({
+              display_name: inst.display_name,
             })) || [],
-        },
-        current_affiliation: {
-          display_name: institutionName,
-        },
-        current_affiliations:
-          researcher.last_known_affiliations?.map((inst) => ({
-            display_name: inst.display_name,
-          })) || [],
-        research_metrics: {
-          h_index: researcher.research_metrics?.h_index || 0,
-          i10_index: researcher.research_metrics?.i10_index || 0,
-          total_citations: researcher.research_metrics?.total_citations || 0,
-          total_works: researcher.research_metrics?.total_works || 0,
-          two_year_mean_citedness:
-            researcher.research_metrics?.two_year_mean_citedness || 0,
-        },
-        research_areas: {
-          fields: fieldsWithTopics,
-          topics: [], // Remove topics as a separate section
-        },
-        citation_trends: {
-          counts_by_year: researcher.citation_trends || [],
-        },
-        identifiers: {
-          orcid: researcher.identifiers?.orcid || "",
-          openalex: researcher.identifiers?.openalex || "",
-        },
-      };
-    });
+          research_metrics: {
+            h_index: r.research_metrics?.h_index || 0,
+            i10_index: r.research_metrics?.i10_index || 0,
+            total_citations: r.research_metrics?.total_citations || 0,
+            total_works: r.research_metrics?.total_works || 0,
+            two_year_mean_citedness:
+              r.research_metrics?.two_year_mean_citedness || 0,
+          },
+          research_areas: { fields: fieldsWithTopics, topics: [] },
+          citation_trends: { counts_by_year: r.citation_trends || [] },
+          identifiers: {
+            orcid: r.identifiers?.orcid || "",
+            openalex: r.identifiers?.openalex || "",
+          },
+          slug: r.slug || "",
+        };
+      }),
+    }));
 
     res.status(200).json({
       success: true,
-      count: transformedData.length,
-      data: transformedData,
+      data: transformed,
     });
-  } catch (error) {
-    console.error("Error fetching bookmarks:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching bookmarks",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("Error fetching bookmarks:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// Add bookmark(s) for one or more researchers
+/* ============================================================
+   ADD Bookmarks (to folder)
+============================================================ */
 async function addBookmarks(req, res) {
   try {
     const userId = req.user.id;
-    const { researcherIds } = req.body;
+    const { researcherIds, folderName = "General" } = req.body;
 
-    // Validate input
-    if (
-      !researcherIds ||
-      !Array.isArray(researcherIds) ||
-      researcherIds.length === 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide an array of researcher IDs",
-      });
+    if (!researcherIds || !Array.isArray(researcherIds) || !researcherIds.length) {
+      return res.status(400).json({ success: false, message: "researcherIds required" });
     }
 
-    // Verify that all researchers exist
-    const existingResearchers = await Researcher.find({
-      _id: { $in: researcherIds },
-    });
-
+    const existingResearchers = await Researcher.find({ _id: { $in: researcherIds } });
     if (existingResearchers.length !== researcherIds.length) {
-      return res.status(404).json({
-        success: false,
-        message: "One or more researchers not found",
-      });
+      return res.status(404).json({ success: false, message: "One or more researchers not found" });
     }
 
-    // Find or create the user's bookmark document
-    let bookmark = await Bookmark.findOne({ userId });
+    let bookmark = await ensureBookmarkDoc(userId);
+    let folder = findFolder(bookmark, folderName);
 
-    if (!bookmark) {
-      // Create new bookmark document with the researcher IDs
-      bookmark = new Bookmark({
-        userId,
-        researcherIds: researcherIds,
-      });
-      await bookmark.save();
-
-      return res.status(201).json({
-        success: true,
-        message: `Successfully bookmarked ${researcherIds.length} researcher(s)`,
-        bookmarked: researcherIds.length,
-        alreadyBookmarked: 0,
-      });
+    if (!folder) {
+      folder = { name: folderName, researcherIds: [] };
+      bookmark.folders.push(folder);
     }
 
-    // Check for duplicates
-    const alreadyBookmarked = researcherIds.filter((id) =>
-      bookmark.researcherIds.some(
-        (existingId) => existingId.toString() === id.toString()
-      )
-    );
+    const already = folder.researcherIds.map(id => id.toString());
+    const newOnes = researcherIds.filter(id => !already.includes(id.toString()));
 
-    const newBookmarks = researcherIds.filter(
-      (id) =>
-        !bookmark.researcherIds.some(
-          (existingId) => existingId.toString() === id.toString()
-        )
-    );
-
-    if (newBookmarks.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "All researchers are already bookmarked",
-      });
-    }
-
-    // Add new researcher IDs to the existing bookmark
-    bookmark.researcherIds.push(...newBookmarks);
+    folder.researcherIds.push(...newOnes);
     await bookmark.save();
 
     res.status(201).json({
       success: true,
-      message: `Successfully bookmarked ${newBookmarks.length} researcher(s)`,
-      bookmarked: newBookmarks.length,
-      alreadyBookmarked: alreadyBookmarked.length,
+      message: `Added ${newOnes.length} researchers to ${folderName}`,
+      bookmarked: newOnes.length,
+      alreadyBookmarked: researcherIds.length - newOnes.length,
     });
-  } catch (error) {
-    console.error("Error adding bookmarks:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error adding bookmarks",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("Error adding bookmarks:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// Remove a bookmark for a specific researcher
+/* ============================================================
+   REMOVE a researcher from folder
+============================================================ */
 async function removeBookmark(req, res) {
   try {
     const userId = req.user.id;
-    const { id } = req.params; // researcher ID
+    const { id } = req.params;
+    const { folderName = "General" } = req.query;
 
-    // Validate ID
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a researcher ID",
-      });
+    if (!id) return res.status(400).json({ success: false, message: "researcherId required" });
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    const folder = findFolder(bookmark, folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const idx = folder.researcherIds.findIndex(rid => rid.toString() === id.toString());
+    if (idx === -1) return res.status(404).json({ success: false, message: "Researcher not found" });
+
+    folder.researcherIds.splice(idx, 1);
+    await bookmark.save();
+
+    res.status(200).json({ success: true, message: "Removed successfully" });
+  } catch (err) {
+    console.error("Error removing bookmark:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   CREATE Folder
+============================================================ */
+async function createFolder(req, res) {
+  try {
+    const userId = req.user.id;
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: "Folder name required" });
+    if (name.toLowerCase() === "general") return res.status(400).json({ success: false, message: "General already exists" });
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    if (folderExists(bookmark, name)) return res.status(400).json({ success: false, message: "Folder already exists" });
+
+    bookmark.folders.push({ name, researcherIds: [] });
+    await bookmark.save();
+    res.status(201).json({ success: true, message: "Folder created" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   RENAME Folder
+============================================================ */
+async function renameFolder(req, res) {
+  try {
+    const userId = req.user.id;
+    const { folderName } = req.params;
+    const { newName } = req.body;
+
+    if (!newName) return res.status(400).json({ success: false, message: "newName required" });
+    if (folderName.toLowerCase() === "general") return res.status(400).json({ success: false, message: "Cannot rename General" });
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    const folder = findFolder(bookmark, folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    if (folderExists(bookmark, newName)) return res.status(400).json({ success: false, message: "Name already in use" });
+
+    folder.name = newName;
+    await bookmark.save();
+    res.status(200).json({ success: true, message: "Folder renamed" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   DELETE Folder
+============================================================ */
+async function deleteFolder(req, res) {
+  try {
+    const userId = req.user.id;
+    const { folderName } = req.params;
+
+    if (folderName.toLowerCase() === "general") {
+      return res.status(400).json({ success: false, message: "Cannot delete General" });
     }
 
-    // Find the user's bookmark document
-    const bookmark = await Bookmark.findOne({ userId });
+    let bookmark = await ensureBookmarkDoc(userId);
+    const idx = bookmark.folders.findIndex(f => f.name.toLowerCase() === folderName.toLowerCase());
+    if (idx === -1) return res.status(404).json({ success: false, message: "Folder not found" });
 
-    if (!bookmark) {
-      return res.status(404).json({
-        success: false,
-        message: "Bookmark not found",
-      });
+    bookmark.folders.splice(idx, 1);
+    await bookmark.save();
+    res.status(200).json({ success: true, message: "Folder deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   REPLACE Researchers in Folder
+============================================================ */
+async function replaceResearchersInFolder(req, res) {
+  try {
+    const userId = req.user.id;
+    const { folderName } = req.params;
+    const { researcherIds } = req.body;
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    const folder = findFolder(bookmark, folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const existing = await Researcher.find({ _id: { $in: researcherIds } });
+    if (existing.length !== researcherIds.length) return res.status(404).json({ success: false, message: "Invalid researcherIds" });
+
+    folder.researcherIds = [...new Set(researcherIds.map(id => id.toString()))];
+    await bookmark.save();
+    res.status(200).json({ success: true, message: "Researchers replaced" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   UPDATE Researchers in Folder (add/remove)
+============================================================ */
+async function updateResearchersInFolder(req, res) {
+  try {
+    const userId = req.user.id;
+    const { folderName } = req.params;
+    const { add = [], remove = [] } = req.body;
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    const folder = findFolder(bookmark, folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    if (add.length) {
+      const existing = await Researcher.find({ _id: { $in: add } });
+      if (existing.length !== add.length) return res.status(404).json({ success: false, message: "Invalid researcherIds in add" });
+
+      const set = new Set(folder.researcherIds.map(id => id.toString()));
+      add.forEach(id => set.add(id.toString()));
+      folder.researcherIds = Array.from(set);
     }
 
-    // Check if the researcher is bookmarked
-    const researcherIndex = bookmark.researcherIds.findIndex(
-      (researcherId) => researcherId.toString() === id.toString()
+    if (remove.length) {
+      folder.researcherIds = folder.researcherIds.filter(
+        id => !remove.some(rid => rid.toString() === id.toString())
+      );
+    }
+
+    await bookmark.save();
+    res.status(200).json({ success: true, message: "Researchers updated" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   MOVE Researchers between Folders
+============================================================ */
+async function moveResearchersBetweenFolders(req, res) {
+  try {
+    const userId = req.user.id;
+    const { from, to } = req.body;
+    const { researcherIds } = req.body;
+
+    if (!from || !to) return res.status(400).json({ success: false, message: "from and to folders required" });
+    if (!researcherIds || !researcherIds.length) return res.status(400).json({ success: false, message: "researcherIds required" });
+
+    let bookmark = await ensureBookmarkDoc(userId);
+    const fromFolder = findFolder(bookmark, from);
+    if (!fromFolder) return res.status(404).json({ success: false, message: "Source folder not found" });
+
+    let toFolder = findFolder(bookmark, to);
+    if (!toFolder) {
+      toFolder = { name: to, researcherIds: [] };
+      bookmark.folders.push(toFolder);
+    }
+
+    fromFolder.researcherIds = fromFolder.researcherIds.filter(
+      id => !researcherIds.includes(id.toString())
     );
 
-    if (researcherIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: "Researcher not found in bookmarks",
-      });
-    }
+    const set = new Set(toFolder.researcherIds.map(id => id.toString()));
+    researcherIds.forEach(id => set.add(id.toString()));
+    toFolder.researcherIds = Array.from(set);
 
-    // Remove the researcher from the bookmark
-    bookmark.researcherIds.splice(researcherIndex, 1);
-
-    // If no researchers left, delete the entire bookmark document
-    if (bookmark.researcherIds.length === 0) {
-      await Bookmark.findByIdAndDelete(bookmark._id);
-    } else {
-      await bookmark.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Bookmark removed successfully",
-    });
-  } catch (error) {
-    console.error("Error removing bookmark:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error removing bookmark",
-      error: error.message,
-    });
+    await bookmark.save();
+    res.status(200).json({ success: true, message: "Researchers moved" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 }
