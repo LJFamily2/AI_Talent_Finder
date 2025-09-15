@@ -345,6 +345,7 @@ export default function ResearcherProfile() {
               <BookmarkIcon
                 researcherId={researcher._id}
                 researcherName={name}
+                size={28}
                 onBookmarkChange={(newStatus) => {
                   console.log("Bookmark status changed:", newStatus);
                 }}
