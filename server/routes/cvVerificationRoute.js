@@ -48,6 +48,23 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
     (async () => {
       try {
         const result = await verifyCV(req.file, prioritySource, { jobId, io });
+
+        // Detect structured AI failure response
+        if (
+          result &&
+          result.success === false &&
+          (result.code === "AI_PUBLICATION_EXTRACTION_FAILED" ||
+            result.code === "AI_NAME_EXTRACTION_FAILED")
+        ) {
+          io.to(jobId).emit("error", {
+            error: result.error,
+            code: result.code,
+            retryable: true,
+            stage: result.stage,
+          });
+          return; // Do not emit complete
+        }
+
         // Send completion event via socket
         io.to(jobId).emit("complete", { result });
       } catch (error) {

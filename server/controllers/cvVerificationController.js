@@ -90,10 +90,39 @@ async function verifyCV(file, prioritySource, options = {}) {
       },
     });
 
-    // Extract candidate name using AI
+    // Extract candidate name using AI (with robust error handling)
     console.log("[CV Verification] Starting candidate name extraction...");
     const nameStartTime = Date.now();
-    const candidateName = await extractCandidateNameWithAI(model, cvText);
+    let candidateName;
+    try {
+      candidateName = await extractCandidateNameWithAI(model, cvText);
+    } catch (aiErr) {
+      const nameFailTime = Date.now();
+      console.error(
+        `[CV Verification] ERROR during candidate name extraction after ${
+          nameFailTime - nameStartTime
+        }ms:`,
+        aiErr
+      );
+      // Emit socket error with retry suggestion
+      if (io && jobId) {
+        io.to(jobId).emit("error", {
+          error:
+            "AI model is currently overloaded. Please try again in a minute.",
+          code: "AI_NAME_EXTRACTION_FAILED",
+          retryable: true,
+        });
+      }
+      // Return structured object signalling an AI failure so route can stop
+      return {
+        success: false,
+        stage: "name_extraction",
+        error:
+          "AI model overloaded while extracting candidate name. Please retry shortly.",
+        code: "AI_NAME_EXTRACTION_FAILED",
+        retryable: true,
+      };
+    }
     const nameEndTime = Date.now();
     console.log(
       `[CV Verification] Candidate name extraction completed in ${
@@ -103,10 +132,39 @@ async function verifyCV(file, prioritySource, options = {}) {
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 30, step: "name_extracted" });
 
-    // Extract publications using AI
+    // Extract publications using AI (with robust error handling)
     console.log("[CV Verification] Starting publications extraction...");
     const pubStartTime = Date.now();
-    const publications = await extractPublicationsFromCV(model, cvText);
+    let publications;
+    try {
+      publications = await extractPublicationsFromCV(model, cvText);
+    } catch (aiErr) {
+      const pubFailTime = Date.now();
+      console.error(
+        `[CV Verification] ERROR during publications extraction after ${
+          pubFailTime - pubStartTime
+        }ms:`,
+        aiErr
+      );
+      // Emit socket error with retry suggestion
+      if (io && jobId) {
+        io.to(jobId).emit("error", {
+          error:
+            "AI model is currently overloaded. Please try again in a minute.",
+          code: "AI_PUBLICATION_EXTRACTION_FAILED",
+          retryable: true,
+        });
+      }
+      // Return structured object signalling an AI failure so route can stop
+      return {
+        success: false,
+        stage: "publication_extraction",
+        error:
+          "AI model overloaded while extracting publications. Please retry shortly.",
+        code: "AI_PUBLICATION_EXTRACTION_FAILED",
+        retryable: true,
+      };
+    }
     const pubEndTime = Date.now();
     console.log(
       `[CV Verification] Publications extraction completed in ${
