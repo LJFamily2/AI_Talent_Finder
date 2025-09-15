@@ -2,7 +2,88 @@ const Country = require("../models/Country");
 const Institution = require("../models/Institution");
 const Field = require("../models/Field");
 const Topic = require("../models/Topic");
+const Researcher = require("../models/Researcher");
 const { foldString, toSafeRegex } = require("../utils/queryHelpers");
+
+// Suggest researchers by name using Atlas Search (if enabled) or regex fallback
+async function suggestResearchersByName(req, res) {
+    try {
+        const q = (req.query.q || "").trim();
+        const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+        if (!q) return res.json({ suggestions: [] });
+
+        // Auto-detect Atlas Search: try $search unless explicitly disabled
+        if (process.env.USE_ATLAS_SEARCH !== "false") {
+            try {
+                const docs = await Researcher.aggregate([
+                    {
+                        $search: {
+                            index: "name_autocomplete",
+                            autocomplete: {
+                                query: q,
+                                path: "name",
+                                tokenOrder: "sequential",
+                                fuzzy: { maxEdits: 1, prefixLength: 2 }
+                            }
+                        }
+                    },
+                    { $limit: limit },
+                    { $project: { id: "$_id", name: "$name", _id: 0 } }
+                ]);
+                res.set('X-Search-Source', 'atlas');
+                console.log(`[name-suggest] atlas hit q="${q}" -> ${docs.length} results`);
+                return res.json({ suggestions: docs });
+            } catch (atlasErr) {
+                // Fall through to regex if $search is unavailable or index missing
+                console.warn("Atlas $search unavailable (name), falling back:", atlasErr?.message || atlasErr);
+                if (process.env.REQUIRE_ATLAS_SEARCH === 'true') {
+                    return res.status(500).json({ error: "Atlas Search required but unavailable for name suggestions" });
+                }
+            }
+        }
+
+        // Fallback: two-stage regex search
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const qlow = q.toLowerCase();
+
+        // 1) Primary prefix matches
+        const primaryLimit = Math.min(limit, 10);
+        const prefixRe = new RegExp("^" + escapeRegex(q), "i");
+        let primary = await Researcher.find({ name: { $regex: prefixRe } }, { _id: 1, name: 1 })
+            .limit(primaryLimit)
+            .lean();
+
+        // Sort: earliest match (should be 0 for prefix), then shorter name
+        primary.sort((a, b) => {
+            const ai = (a.name || "").toLowerCase().indexOf(qlow);
+            const bi = (b.name || "").toLowerCase().indexOf(qlow);
+            if (ai !== bi) return ai - bi;
+            return (a.name || "").length - (b.name || "").length;
+        });
+
+        const primaryIds = primary.map(d => d._id);
+
+        // 2) Secondary token-AND contains to fill remaining
+        let results = primary;
+        if (results.length < limit) {
+            const terms = q.trim().split(/\s+/).filter(Boolean).map(escapeRegex);
+            const tokenConds = terms.map(t => ({ name: { $regex: new RegExp(t, "i") } }));
+            const remaining = limit - results.length;
+            const secondary = await Researcher.find({ $and: tokenConds, _id: { $nin: primaryIds } }, { _id: 1, name: 1 })
+                .sort({ name: 1 })
+                .limit(remaining)
+                .lean();
+            results = results.concat(secondary);
+        }
+
+        res.set('X-Search-Source', 'fallback');
+        console.log(`[name-suggest] fallback hit q="${q}" -> ${results.length} results`);
+        return res.json({ suggestions: results.map(d => ({ id: d._id, name: d.name || "" })) });
+    } catch (err) {
+        console.error("suggestResearchersByName error:", err);
+        return res.status(500).json({ error: "Failed to fetch name suggestions" });
+    }
+}
 
 // Get all countries to build filter
 async function getCountriesFilter(req, res) {
@@ -23,49 +104,47 @@ async function getInstitutionsFilter(req, res) {
         const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
         if (q) {
-            const qfold = foldString(q);
-            const terms = qfold.split(/\s+/).filter(Boolean);
-
-            // 1) Primary: full-name prefix matches (high priority)
-            const primaryLimit = Math.min(limit, 10); // tuneable
-            const primaryRegex = toSafeRegex(qfold, { anchor: true, flags: "" });
-            let primaryDocs = await Institution.find({ display_name_folded: { $regex: primaryRegex } })
-                .limit(primaryLimit)
-                .select("_id display_name display_name_folded")
-                .lean();
-
-            // sort primary results by: earliest match (indexOf), then shorter name
-            primaryDocs.sort((a, b) => {
-                const ai = a.display_name_folded.indexOf(qfold);
-                const bi = b.display_name_folded.indexOf(qfold);
-                if (ai !== bi) return ai - bi;
-                return a.display_name.length - b.display_name.length;
-            });
-
-            const primaryIds = primaryDocs.map(d => d._id);
-
-            // 2) Secondary: token-AND matches to fill the rest (excludes primary results)
-            let results = primaryDocs;
-            if (results.length < limit) {
-                const tokenConditions = terms.map(t => ({ display_name_tokens: { $regex: toSafeRegex(t, { anchor: true, flags: "" }) } }));
-                const remaining = limit - results.length;
-                const tokenDocs = await Institution.find({ $and: tokenConditions, _id: { $nin: primaryIds } })
-                    .sort({ display_name_folded: 1 })
-                    .limit(remaining)
-                    .select("_id display_name")
+            const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+            try {
+                const docs = await Institution.aggregate([
+                    {
+                        $search: {
+                            index: "inst_autocomplete",
+                            autocomplete: {
+                                query: q,
+                                path: "display_name",
+                                tokenOrder: "sequential",
+                                fuzzy: { maxEdits: 1, prefixLength: 2 }
+                            }
+                        }
+                    },
+                    { $limit: limit },
+                    { $project: { _id: 1, display_name: 1, score: { $meta: "searchScore" } } }
+                ]);
+                res.set('X-Search-Source', 'atlas');
+                console.log(`[inst-suggest] atlas hit q="${q}" -> ${docs.length} results`);
+                return res.json({ institutions: docs.map(d => ({ _id: d._id, display_name: d.display_name })) });
+            } catch (e) {
+                console.error("Atlas $search (institutions) failed:", e?.message || e);
+                if (process.env.REQUIRE_ATLAS_SEARCH === 'true') {
+                    return res.status(500).json({ error: "Atlas Search required but unavailable for institutions" });
+                }
+                // Minimal fallback: prefix regex on display_name
+                const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const prefix = new RegExp('^' + escapeRegex(q), 'i');
+                const docs = await Institution.find({ display_name: { $regex: prefix } }, { _id: 1, display_name: 1 })
+                    .sort({ display_name: 1 })
+                    .limit(limit)
                     .lean();
-                results = results.concat(tokenDocs);
+                res.set('X-Search-Source', 'fallback');
+                console.log(`[inst-suggest] fallback hit q="${q}" -> ${docs.length} results`);
+                return res.json({ institutions: docs });
             }
-
-            // strip fold field if present
-            results = results.map(r => ({ _id: r._id, display_name: r.display_name }));
-
-            return res.json({ institutions: results });
         }
 
         // browse (no q)
         const docs = await Institution.find()
-            .sort({ display_name_folded: 1 })
+            .sort({ display_name: 1 })
             .skip(offset)
             .limit(limit)
             .select("_id display_name")
@@ -74,6 +153,17 @@ async function getInstitutionsFilter(req, res) {
     } catch (error) {
         console.error("getInstitutionsFilter error:", error);
         return res.status(500).json({ error: "Failed to fetch institutions" });
+    }
+}
+
+// Returns total number of institutions in database
+async function getInstitutionsCount(req, res) {
+    try {
+        const total = await Institution.countDocuments();
+        return res.json({ total });
+    } catch (error) {
+        console.error("getInstitutionsCount error:", error);
+        return res.status(500).json({ error: "Failed to fetch institutions count" });
     }
 }
 
@@ -199,10 +289,103 @@ async function getTopicsForField(req, res) {
     }
 }
 
+// Autocomplete topics across all fields using Atlas Search with minimal fallback
+// GET /api/search-filters/topics?q=...&limit=50[&fieldId=...]
+async function searchTopicsAutocomplete(req, res) {
+    try {
+        const q = (req.query.q || "").trim();
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+        const rawFieldId = req.query.fieldId;
+        if (!q) return res.json({ topics: [] });
+
+        // Helper to build fieldId match condition
+        const fieldMatch = (() => {
+            if (rawFieldId == null) return null;
+            if (rawFieldId === "null") return { $or: [{ field_id: null }, { field_id: { $exists: false } }] };
+            return { field_id: rawFieldId };
+        })();
+
+        // Try Atlas Search first (auto-detect unless explicitly disabled)
+        if (process.env.USE_ATLAS_SEARCH !== "false") {
+            try {
+                const pipeline = [
+                    {
+                        $search: {
+                            index: "topic_autocomplete",
+                            autocomplete: {
+                                query: q,
+                                path: "display_name",
+                                tokenOrder: "sequential",
+                                fuzzy: { maxEdits: 1, prefixLength: 2 }
+                            }
+                        }
+                    }
+                ];
+                if (fieldMatch) pipeline.push({ $match: fieldMatch });
+                pipeline.push(
+                    { $limit: limit },
+                    {
+                        $lookup: {
+                            from: "fields",
+                            localField: "field_id",
+                            foreignField: "_id",
+                            as: "_field"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            field_display_name: {
+                                $ifNull: [{ $arrayElemAt: ["$_field.display_name", 0] }, "Uncategorized"]
+                            }
+                        }
+                    },
+                    { $project: { _id: 1, display_name: 1, field_id: 1, field_display_name: 1 } }
+                );
+                const docs = await Topic.aggregate(pipeline);
+                res.set('X-Search-Source', 'atlas');
+                console.log(`[topic-suggest] atlas hit q="${q}" -> ${docs.length} results`);
+                return res.json({ topics: docs });
+            } catch (atlasErr) {
+                console.warn("Atlas $search (topics) unavailable, fallback:", atlasErr?.message || atlasErr);
+                if (process.env.REQUIRE_ATLAS_SEARCH === 'true') {
+                    return res.status(500).json({ error: "Atlas Search required but unavailable for topics" });
+                }
+            }
+        }
+
+        // Minimal fallback: prefix regex on display_name
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const prefix = new RegExp('^' + escapeRegex(q), 'i');
+        const matchStage = { display_name: { $regex: prefix } };
+        if (fieldMatch) Object.assign(matchStage, fieldMatch);
+        const docs = await Topic.aggregate([
+            { $match: matchStage },
+            { $sort: { display_name: 1 } },
+            { $limit: limit },
+            { $lookup: { from: 'fields', localField: 'field_id', foreignField: '_id', as: '_field' } },
+            {
+                $addFields: {
+                    field_display_name: { $ifNull: [{ $arrayElemAt: ["$_field.display_name", 0] }, "Uncategorized"] }
+                }
+            },
+            { $project: { _id: 1, display_name: 1, field_id: 1, field_display_name: 1 } }
+        ]);
+        res.set('X-Search-Source', 'fallback');
+        console.log(`[topic-suggest] fallback hit q="${q}" -> ${docs.length} results`);
+        return res.json({ topics: docs });
+    } catch (err) {
+        console.error("searchTopicsAutocomplete error:", err);
+        return res.status(500).json({ error: "Failed to fetch topic suggestions" });
+    }
+}
+
 module.exports = {
     getCountriesFilter,
     getInstitutionsFilter,
+    getInstitutionsCount,
     getSingleFieldWithTopics,
     getAllFields,
-    getTopicsForField
+    getTopicsForField,
+    suggestResearchersByName,
+    searchTopicsAutocomplete
 };

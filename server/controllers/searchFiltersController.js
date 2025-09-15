@@ -56,6 +56,8 @@ exports.searchResearchers = async (req, res) => {
       h_index,
       i10_index,
       researcher_name,
+      // allow fallback to `name` in case clients send it
+      name: nameRaw,
       sort_field = "match_count",
       sort_order = "desc",
       page = 1,
@@ -72,7 +74,15 @@ exports.searchResearchers = async (req, res) => {
     if (search_tags.length > 0) matchStage.search_tags = { $in: search_tags };
     if (h_index) matchStage["research_metrics.h_index"] = buildComparison(h_index);
     if (i10_index) matchStage["research_metrics.i10_index"] = buildComparison(i10_index);
-    if (researcher_name) matchStage.name = { $regex: researcher_name, $options: "i" };
+    // Name filter (supports `researcher_name` or `name` key)
+    const nameFilter = (typeof researcher_name === 'string' && researcher_name.trim())
+      || (typeof nameRaw === 'string' && nameRaw.trim())
+      || '';
+    if (nameFilter) {
+      // Escape regex and anchor to start for better selectivity
+      const escaped = String(nameFilter).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      matchStage.name = { $regex: `^${escaped}`, $options: "i" };
+    }
 
     // -----------------------------
     // Year range for affiliations
@@ -108,6 +118,7 @@ exports.searchResearchers = async (req, res) => {
         $project: {
           _id: 1,
           name: 1,
+          slug: 1,
           search_tags: 1,
           affiliations: 1,
           last_known_affiliations: 1,
@@ -215,6 +226,7 @@ exports.searchResearchers = async (req, res) => {
 
       return {
         _id: r._id,
+        slug: r.slug || "",
         name: r.name,
         fields: r.search_tags
           .filter(tag => tag.startsWith("field:"))
