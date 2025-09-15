@@ -3,11 +3,6 @@ import {
     Menu,
     MenuItem,
     IconButton,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Button,
     TextField,
     Snackbar,
     Alert,
@@ -46,8 +41,9 @@ function FolderSidebar({
         setMenuFolder(null);
     };
 
-    // Start renaming a folder
+    // Start renaming a folder (blocked for default "General")
     const handleRenameStart = (folder) => {
+        if (!folder || folder.name === "General") return;
         setRenameFolderId(folder.name); // Set the folder being renamed
         setRenameValue(folder.name); // Initialize the rename value with the current name
         handleMenuClose();
@@ -75,8 +71,9 @@ function FolderSidebar({
         setRenameValue("");
     };
 
-    // Open the delete confirmation dialog
+    // Open the delete confirmation dialog (blocked for default "General")
     const handleDeleteStart = (folder) => {
+        if (!folder || folder.name === "General") return;
         setDeleteFolder(folder);
         setDeleteDialogOpen(true);
         handleMenuClose();
@@ -188,7 +185,8 @@ function FolderSidebar({
                                 <IconButton
                                     size="small"
                                     onClick={(e) => handleMenuOpen(e, f)}
-                                    className="ml-2"
+                                    className={`ml-2 ${f.name === "General" ? "invisible pointer-events-none" : ""}`}
+                                    aria-hidden={f.name === "General"}
                                 >
                                     <MoreVertIcon />
                                 </IconButton>
@@ -204,31 +202,58 @@ function FolderSidebar({
                 open={Boolean(menuAnchorEl)}
                 onClose={handleMenuClose}
             >
-                <MenuItem onClick={() => handleRenameStart(menuFolder)}>Rename</MenuItem>
-                <MenuItem onClick={() => handleDeleteStart(menuFolder)}>Delete</MenuItem>
+                <MenuItem
+                    onClick={() => handleRenameStart(menuFolder)}
+                    disabled={!menuFolder || menuFolder.name === "General"}
+                >
+                    Rename
+                </MenuItem>
+                <MenuItem
+                    onClick={() => handleDeleteStart(menuFolder)}
+                    disabled={!menuFolder || menuFolder.name === "General"}
+                >
+                    Delete
+                </MenuItem>
             </Menu>
 
-            {/* Delete confirmation dialog */}
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={handleDeleteCancel}
-                aria-labelledby="delete-folder-dialog-title"
-            >
-                <DialogTitle id="delete-folder-dialog-title">Delete Folder</DialogTitle>
-                <DialogContent>
-                    Are you sure you want to delete the folder{" "}
-                    <strong>{deleteFolder?.name}</strong>? All researchers inside this
-                    folder will also be deleted.
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleDeleteCancel} color="primary">
-                        No
-                    </Button>
-                    <Button onClick={handleDeleteConfirm} color="secondary">
-                        Yes
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            {/* Delete confirmation modal (matches researcher delete style) */}
+            {deleteDialogOpen && (
+                <div
+                    className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="absolute inset-0"
+                        onClick={handleDeleteCancel}
+                    />
+                    <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-fit max-w-full">
+                        <p className="text-xl font-semibold text-gray-800 mb-4 text-center">
+                            Delete folder
+                            {" "}
+                            <span className="text-gray-700 font-bold">"{deleteFolder?.name}"</span>
+                            ?
+                        </p>
+                        <p className="text-sm text-gray-600 mb-6 text-center">
+                            All researchers inside this folder will also be removed.
+                        </p>
+                        <div className="flex justify-center gap-4">
+                            <button
+                                onClick={handleDeleteConfirm}
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition"
+                            >
+                                Yes
+                            </button>
+                            <button
+                                onClick={handleDeleteCancel}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition"
+                            >
+                                No
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Create Folder Modal */}
             {createFolderModalOpen && (

@@ -457,6 +457,10 @@ export default function SavedResearchers() {
   };
 
   const handleDeleteFolder = async (folderName) => {
+    if (folderName === "General") {
+      showToast("Cannot delete the default 'General' folder", "warning");
+      return;
+    }
     try {
       // Call the deleteFolder service to delete the folder on the backend
       await deleteFolder(folderName);
@@ -478,6 +482,10 @@ export default function SavedResearchers() {
   };
 
   const handleRenameFolder = async (oldName, newName) => {
+    if (oldName === "General") {
+      showToast("Cannot rename the default 'General' folder", "warning");
+      return;
+    }
     try {
       // Call the renameFolder service to update the folder name on the backend
       await renameFolder(oldName, newName);
