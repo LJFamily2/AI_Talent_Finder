@@ -11,6 +11,7 @@ const {
   replaceResearchersInFolder,
   updateResearchersInFolder,
   moveResearchersBetweenFolders,
+  getBookmarkIds
 } = require("../controllers/bookmarkController");
 
 // Bookmark routes (all protected - require authentication)
@@ -24,5 +25,6 @@ router.patch("/folders/:folderName", protect, renameFolder);
 router.put("/folders/:folderName/researchers", protect, replaceResearchersInFolder);
 router.patch("/folders/:folderName/researchers", protect, updateResearchersInFolder);
 router.post("/folders/move", protect, moveResearchersBetweenFolders);
+router.get("/get-ids",protect, getBookmarkIds);
 
 module.exports = router;

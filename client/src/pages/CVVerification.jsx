@@ -38,6 +38,19 @@ export default function CVVerification() {
     }
 
     const allDisplayData = publications.results.map(r => r.verification.displayData);
+
+    // Helper: normalize and pretty-print publication type
+    const formatType = (t) => {
+        if (!t) return '';
+        // Replace underscores/hyphens with spaces, lowercase, collapse spaces
+        const cleaned = String(t)
+            .replace(/[-_]+/g, ' ')
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, ' ');
+        // Sentence case: capitalize only the first character
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    };
     const researcherData = publications.authorDetails;
 
     // Type Selection - Handle toggle
@@ -57,18 +70,18 @@ export default function CVVerification() {
     };
 
     // Type Selection - Get the valid types
-    const validTypes = Array.from(
-        new Set(
-            allDisplayData
-                .map(pub => pub.type?.trim()) // ensure it's a string
-                .filter(type =>
-                    type &&
-                    !invalidTypeKeywords.some(keyword =>
-                        type.toLowerCase().includes(keyword)
-                    )
-                )
-        )
-    );
+    // Build list of valid unique types (case-insensitive)
+    const validTypes = (() => {
+        const map = new Map(); // key: lowercased type -> original raw type
+        for (const pub of allDisplayData) {
+            const raw = (pub.type || '').trim();
+            if (!raw) continue;
+            const lower = raw.toLowerCase();
+            if (invalidTypeKeywords.some(k => lower.includes(k))) continue;
+            if (!map.has(lower)) map.set(lower, raw);
+        }
+        return Array.from(map.values());
+    })();
 
 
     const filtered = allDisplayData
@@ -76,7 +89,12 @@ export default function CVVerification() {
             if (filterStatus === 'All') return true;
             return pub.status === filterStatus;
         })
-        .filter(pub => selectedTypes.length === 0 || selectedTypes.includes(pub.type))
+        .filter(pub => {
+            if (selectedTypes.length === 0) return true;
+            const selectedLC = selectedTypes.map(t => String(t).toLowerCase());
+            const pt = (pub.type || '').toLowerCase();
+            return selectedLC.includes(pt);
+        })
         .filter(pub => {
             if (!yearFilterActive) return true;
 
@@ -228,7 +246,7 @@ export default function CVVerification() {
                                                     onChange={() => handleTypeChange(type)}
                                                 />
                                             }
-                                            label={type}
+                                            label={formatType(type)}
                                             slotProps={{
                                                 typography: {
                                                     fontSize: 13,
@@ -319,7 +337,7 @@ export default function CVVerification() {
                                                 </div>
                                                 <div>
                                                     <span className="font-semibold">Type:</span>{' '}
-                                                    <span>{pub.type}</span>
+                                                    <span>{formatType(pub.type)}</span>
                                                 </div>
                                                 <div>
                                                     <span className="font-semibold">Cited By:</span>{' '}

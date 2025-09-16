@@ -1,20 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import {
-  Container,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Link as MuiLink,
-} from "@mui/material";
+import loginPageBackground from "../assets/login-page-bg.jpg";
+import rmitLogoRedWhite from "../assets/rmit-logo-red-white.png";
+import eyeIcon from "../assets/eye-on.png";
+import eyeOffIcon from "../assets/eye-off.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -22,71 +18,97 @@ const Login = () => {
     e.preventDefault();
     const result = await login(email, password);
     if (result.success) {
-      navigate("/dashboard");
+      const redirectPath = sessionStorage.getItem('postLoginRedirect');
+      if (redirectPath) {
+        sessionStorage.removeItem('postLoginRedirect');
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } else {
       setError(result.error);
     }
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <Typography component="h1" variant="h5">
-          Sign in
-        </Typography>
+    <div
+      className="min-h-screen min-w-full w-full h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${loginPageBackground})` }}
+    >
+      <div className="absolute top-8 left-8 flex items-center space-x-6">
+        <a href="/landing-page">
+          <img
+            src={rmitLogoRedWhite}
+            alt="RMIT Logo"
+            className="w-28 h-auto z-10"
+          />
+        </a>
+        <a href="/landing-page">
+          <h1 className="text-white text-3xl font-bold ml-4 tracking-wide drop-shadow-lg">Talent Finder</h1>
+        </a>
+      </div>
+      <div className="bg-white bg-opacity-85 rounded-2xl shadow-2xl px-10 py-15 w-full max-w-md mx-auto flex flex-col justify-center">
+        <h1 className="text-3xl font-bold text-center mb-3">Login</h1>
+        <p className="text-center text-md mb-13">Enter your credentials to sign in</p>
         {error && (
-          <Alert severity="error" sx={{ mt: 2, width: "100%" }}>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-6 text-center">
             {error}
-          </Alert>
+          </div>
         )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
-            autoComplete="email"
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Password"
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <Button
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+          <div>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base mb-2"
+              placeholder="Email address"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              name="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12 text-base mb-2"
+              placeholder="Password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((show) => !show)}
+              className="absolute right-5 top-6 -translate-y-1/2 focus:outline-none"
+              tabIndex={-1}
+            >
+              <img
+                src={showPassword ? eyeOffIcon : eyeIcon}
+                alt={showPassword ? "Hide password" : "Show password"}
+                className="w-5 h-5 opacity-70 hover:opacity-100"
+                style={{ filter: 'invert(34%) sepia(98%) saturate(2100%) hue-rotate(210deg) brightness(95%) contrast(101%)' }}
+              />
+            </button>
+            {/* <p className="absolute right-0 bottom-0 text-sm text-blue-600 cursor-pointer hover:underline mb-1 mr-1">Forgot password?</p> */}
+          </div>
+          </div>
+          <button
             type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mt-2 shadow-md mb-2"
           >
             Sign In
-          </Button>
-          <Box sx={{ textAlign: "center" }}>
-            <MuiLink component={Link} to="/register" variant="body2">
-              Don't have an account? Sign Up
-            </MuiLink>
-          </Box>
-        </Box>
-      </Box>
-    </Container>
+          </button>
+          <p className="mt-8 text-sm text-center">New here? <span className="text-blue-600">Contact your admin</span></p>
+        </form>
+      </div>
+    </div>
   );
 };
 

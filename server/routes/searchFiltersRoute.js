@@ -5,7 +5,7 @@ const { cache: cacheRedisInsight } = require('../middleware/cacheRedisInsight');
 // const filtersCtrl = require('../controllers/searchFiltersController'); 
 const searchCtrl = require('../controllers/searchFiltersController');
 const authorCtrl = require('../controllers/authorController');
-const { getCountriesFilter, getInstitutionsFilter, getAllFields, getTopicsForField } = require('../controllers/filtersController');
+const { getCountriesFilter, getInstitutionsFilter, getInstitutionsCount, getAllFields, getTopicsForField, suggestResearchersByName, searchTopicsAutocomplete } = require('../controllers/filtersController');
 
 const router = express.Router();
 const SHORT = 900;
@@ -77,11 +77,18 @@ router.get(
 
 router.get("/countries", getCountriesFilter);
 router.get("/institutions", getInstitutionsFilter);
+router.get("/institutions/count", getInstitutionsCount);
 
 // new: return small list of all fields
 router.get("/fields", getAllFields);
 
 // get topics for a single field (fieldId = "null" for uncategorized)
 router.get("/fields/:fieldId/topics", getTopicsForField);
+
+// researcher name suggestions
+router.get("/researchers/names", suggestResearchersByName);
+
+// topics autocomplete suggestions
+router.get("/topics", searchTopicsAutocomplete);
 
 module.exports = router;

@@ -1,39 +1,43 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import searchIcon from '../assets/search.png';
 import menuIcon from '../assets/menu.png';
-import sortIcon from '../assets/sort.png';
-import { Switch } from "@/components/ui/switch"
+// import sortIcon from '../assets/sort.png';
+// import { Switch } from "@/components/ui/switch"
 import Bulb from '../assets/lightbulb.png';
 import Dot from '../assets/dot.png';
+import letterH from '../assets/letter-h.png';
+import scholarHat from '../assets/scholar-hat.png';
+import citationIcon from '../assets/citation.png';
+import documentIcon from '../assets/document.png';
 import filterIcon from '../assets/filter.png';
 import noResultImage from '../assets/no-result.png';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination"
+// pagination primitives are used via PaginationBar component
 import Footer from '@/components/Footer';
-import documentIcon from '../assets/document.png';
-import nameIcon from '../assets/name.png';
-import citationIcon from '../assets/citation.png';
-import scoreIcon from '../assets/score.png';
-import {
-    buildFilterPayload,
-    searchResearchers,
-    loadCountriesFilter,
-    searchInstitutions,
-    listInstitutions,
-    loadAllFields,
-    loadTopicsForField,
-} from '@/services/searchFiltersService';
+// icons used inside SortModal are imported there
+import { buildFilterPayload, searchResearchers, loadCountriesFilter, searchInstitutions, loadAllFields, loadTopicsForField, searchResearcherNames, searchTopicsAutocomplete } from '../services/searchFiltersService';
+import BookmarkIcon from '@/components/BookmarkIcon';
+import CountryModalComp from '@/components/CountryModal';
+import InstitutionModalComp from '@/components/InstitutionModal';
+import FieldModalComp from '@/components/FieldModal';
+import InlineInstitutionsDropdown from '@/components/InlineInstitutionsDropdown';
+import InlineNameDropdown from '@/components/InlineNameDropdown';
+import InlineFieldDropdown from '@/components/InlineFieldDropdown';
+import SelectedFieldChips from '@/components/SelectedFieldChips';
+import SelectedInstitutionChips from '@/components/SelectedInstitutionChips';
+import PaginationBar from '@/components/PaginationBar';
+import SortBar from '@/components/SortBar';
 
 function SearchInterface() {
+    // Plan restoration before effects run to avoid clobbering saved state
+    let initialShouldRestore = false;
+    try {
+        initialShouldRestore = sessionStorage.getItem('restoreSearchState') === '1' && !!sessionStorage.getItem('searchInterfaceState');
+    } catch {}
+    const restorePlannedRef = useRef(initialShouldRestore);
+    const restoredRef = useRef(false);
+    const navigate = useNavigate();
     const [showCountryModal, setShowCountryModal] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
     const [selectedCountries, setSelectedCountries] = useState([]);
@@ -41,18 +45,34 @@ function SearchInterface() {
     const [showFieldModal, setShowFieldModal] = useState(false);
     const [fieldSearch, setFieldSearch] = useState("");
     const [selectedFields, setSelectedFields] = useState([]);
+    const [allFields, setAllFields] = useState([]);
+    const [selectedTopicIds, setSelectedTopicIds] = useState([]); // topic _ids for payload
+    const [topicKeyToId, setTopicKeyToId] = useState({}); // map "Field > Topic" -> topic _id
+    const [expertiseResults, setExpertiseResults] = useState([]); // [{ field, topics: [] }]
+    const [expertiseLoading, setExpertiseLoading] = useState(false);
+    const expertiseLastQueryRef = useRef("");
+    const [hiddenTopicsByField, setHiddenTopicsByField] = useState({}); // fieldName -> ["Field > Topic", ...]
+    const hiddenTopicsRef = useRef({});
+    useEffect(() => { hiddenTopicsRef.current = hiddenTopicsByField || {}; }, [hiddenTopicsByField]);
     // Add state for expertise input and focus
     const [expertiseInput, setExpertiseInput] = useState("");
     const [expertiseInputFocused, setExpertiseInputFocused] = useState(false);
     // const [peopleList, setPeopleList] = useState([]);
-    const [sortBy, setSortBy] = useState('name');
-    const [sortOrder, setSortOrder] = useState('asc');
+    const [sortBy, setSortBy] = useState('match');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [hasSearched, setHasSearched] = useState(false);
+    const [onlyFullMatches, setOnlyFullMatches] = useState(false);
     const [peopleList, setPeopleList] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
     const [totalResults, setTotalResults] = useState(0);
+    // Metric filters
+    const [hIndexOp, setHIndexOp] = useState('>=');
+    const [hIndexVal, setHIndexVal] = useState('');
+    const [i10Op, setI10Op] = useState('>=');
+    const [i10Val, setI10Val] = useState('');
     // const navigate = useNavigate();
 
     // useEffect(() => {
@@ -73,27 +93,98 @@ function SearchInterface() {
     const [institutionLoading, setInstitutionLoading] = useState(false);
     const instLastQueryRef = useRef("");
 
+    // Name suggestions state
+    const [nameInput, setNameInput] = useState("");
+    const [nameInputFocused, setNameInputFocused] = useState(false);
+    const [nameSuggestions, setNameSuggestions] = useState([]);
+    const [nameLoading, setNameLoading] = useState(false);
+    const nameLastQueryRef = useRef("");
+
+    // Stable callbacks for modals (prevents unnecessary prop identity changes)
+    const handleCountryClose = useCallback(() => setShowCountryModal(false), []);
+    const handleCountrySelect = useCallback((countryObj) => {
+        setSelectedCountries(sel => sel.includes(countryObj.search_tag)
+            ? sel.filter(c => c !== countryObj.search_tag)
+            : [...sel, countryObj.search_tag]
+        );
+    }, []);
+    const handleInstitutionClose = useCallback(() => setShowInstitutionModal(false), []);
+    const handleFieldClose = useCallback(() => setShowFieldModal(false), []);
+    const handleFieldSelect = useCallback((value) => {
+        setSelectedFields(prev => {
+            const isTopic = typeof value === 'string' && value.includes(' > ');
+            if (isTopic) {
+                const [fieldName] = value.split(' > ');
+                // If the field is selected, ignore topic selection
+                if (prev.includes(fieldName)) return prev;
+                // Toggle topic
+                const willSelect = !prev.includes(value);
+                // update topicIds if we have mapping
+                const id = topicKeyToId[value];
+                if (id) {
+                    setSelectedTopicIds(ids => willSelect ? (ids.includes(id) ? ids : [...ids, id]) : ids.filter(x => x !== id));
+                }
+                return willSelect ? [...prev, value] : prev.filter(v => v !== value);
+            } else {
+                const fieldName = value;
+                const already = prev.includes(fieldName);
+                if (already) {
+                    // Unselect field: restore previously hidden topics
+                    const toRestore = (hiddenTopicsRef.current && hiddenTopicsRef.current[fieldName]) || [];
+                    const withoutField = prev.filter(v => v !== fieldName);
+                    const merged = [...withoutField, ...toRestore.filter(t => !withoutField.includes(t))];
+                    // clear cache for this field
+                    setHiddenTopicsByField(h => {
+                        const next = { ...(h || {}) };
+                        delete next[fieldName];
+                        return next;
+                    });
+                    // restore topic ids for restored topics if we have mapping
+                    setSelectedTopicIds(ids => {
+                        const addIds = toRestore.map(k => topicKeyToId[k]).filter(Boolean);
+                        const set = new Set(ids);
+                        addIds.forEach(x => set.add(x));
+                        return Array.from(set);
+                    });
+                    return merged;
+                }
+                // Select field: remove any topics under this field
+                const topicsUnderField = prev.filter(v => typeof v === 'string' && v.startsWith(fieldName + ' > '));
+                if (topicsUnderField.length) {
+                    setHiddenTopicsByField(h => ({ ...(h || {}), [fieldName]: topicsUnderField }));
+                }
+                const pruned = prev.filter(v => !topicsUnderField.includes(v));
+                // also remove associated topic ids while keeping mapping for potential restore
+                setSelectedTopicIds(ids => ids.filter(id => !topicsUnderField.some(k => topicKeyToId[k] === id)));
+                return [...pruned, fieldName];
+            }
+        });
+    }, [topicKeyToId]);
+
+    // uniform error message mapping for UI display
+    const formatError = useCallback((err) => {
+        const status = err?.response?.status ?? err?.status;
+        const serverMessage = err?.response?.data?.message || err?.message;
+        if (err?.request && !err?.response) return 'Network error. Please check your connection.';
+        if (status === 401) return 'Please log in to continue.';
+        if (status === 403) return 'You do not have permission to perform this action.';
+        if (status === 404) return serverMessage || 'Requested resource was not found.';
+        if (status >= 500) return 'Server error. Please try again later.';
+        return serverMessage || 'Something went wrong while searching.';
+    }, []);
+
+    // Stable callbacks for CountryModal to avoid prop identity changes
+
     const hasFilters = useMemo(() => {
         return (
             (selectedCountries && selectedCountries.length > 0) ||
             (selectedFields && selectedFields.length > 0) ||
             (selectedInstitutions && selectedInstitutions.length > 0) ||
+            (String(nameInput || '').trim().length > 0) ||
             (fieldSearch && fieldSearch.trim().length > 0) ||
             (countrySearch && countrySearch.trim().length > 0)
         );
-    }, [selectedCountries, selectedFields, selectedInstitutions, fieldSearch, countrySearch]);
-
-
-    const COUNTRY_LIST = [
-        'United States of America', 'China', 'Brazil', 'India', 'Germany',
-        'United Kingdom of Great Britain and Northern Ireland', 'Indonesia', 'Japan', 'France', 'Russian Federation', 'Spain',
-        // ... add more countries as needed
-    ];
-    const FIELD_LIST = [
-        'Aviation', 'Psychology', 'Mechanical Engineering', 'Food Nutrition', 'Software Testing',
-        'Data Science', 'Civil Engineering', 'Business Administration', 'Physics', 'Mathematics',
-        // ... add more fields as needed
-    ];
+    }, [selectedCountries, selectedFields, selectedInstitutions, nameInput, fieldSearch, countrySearch]);
 
     // // ============ Test load countries data ===========
     // async function loadTest() {
@@ -132,449 +223,145 @@ function SearchInterface() {
     // search(filters)
     // // =================================================
 
-    function SortModal({ selected, onSelect, onClose }) {
-        const modalRef = useRef(null);
-        useEffect(() => {
-            function handleClickOutside(event) {
-                if (modalRef.current && !modalRef.current.contains(event.target)) {
-                    onClose();
-                }
+// SortModal moved to components/SortModal.jsx
+
+
+
+    // FieldModal moved to module scope above
+
+    // Load all fields once on first expertise search usage
+    useEffect(() => {
+        if (!expertiseInputFocused) return;
+        if (allFields.length) return;
+        (async () => {
+            try {
+                const list = await loadAllFields();
+                setAllFields(list || []);
+            } catch (e) {
+                console.error("loadAllFields (inline) error:", e);
+                setAllFields([]);
             }
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, [onClose]);
-        return (
-            <div
-                ref={modalRef}
-                className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-6"
-            >
-                <div className="text-[#6A6A6A] text-md mb-2">Sort by:</div>
-                <hr className="mb-4" />
-                <div className="flex flex-col gap-4">
-                    <label className="flex items-center gap-5 cursor-pointer rounded-lg transition-colors hover:bg-gray-100 px-2 py-2">
-                        <img src={scoreIcon} alt="Score" className="w-6 h-6" />
-                        <span className="flex-1">Ranking score</span>
-                        <input
-                            type="radio"
-                            name="sort"
-                            checked={selected === 'ranking'}
-                            onChange={() => onSelect('ranking')}
-                            className="sr-only"
-                        />
-                    </label>
-                    <label className="flex items-center gap-5 cursor-pointer rounded-lg transition-colors hover:bg-gray-100 px-2 py-2">
-                        <img src={citationIcon} alt="Citations" className="w-6 h-6" />
-                        <span className="flex-1">Citations count</span>
-                        <input
-                            type="radio"
-                            name="sort"
-                            checked={selected === 'citations'}
-                            onChange={() => onSelect('citations')}
-                            className="sr-only"
-                        />
-                    </label>
-                    <label className="flex items-center gap-5 cursor-pointer rounded-lg transition-colors hover:bg-gray-100 px-2 py-2">
-                        <img src={documentIcon} alt="Publications" className="w-6 h-6" />
-                        <span className="flex-1">Publications count</span>
-                        <input
-                            type="radio"
-                            name="sort"
-                            checked={selected === 'publications'}
-                            onChange={() => onSelect('publications')}
-                            className="sr-only"
-                        />
-                    </label>
-                    <label className="flex items-center gap-5 cursor-pointer rounded-lg transition-colors hover:bg-gray-100 px-2 py-2">
-                        <img src={nameIcon} alt="Name" className="w-6 h-6" />
-                        <span className="flex-1">Name</span>
-                        <input
-                            type="radio"
-                            name="sort"
-                            checked={selected === 'name'}
-                            onChange={() => onSelect('name')}
-                            className="sr-only"
-                        />
-                    </label>
-                </div>
-            </div>
-        );
-    }
+        })();
+    }, [expertiseInputFocused]);
 
-    function CountryModal({ open, onClose, selected, onSelect }) {
-        const modalRef = useRef(null);
-        const [countries, setCountries] = useState([]);
-        const [q, setQ] = useState("");
-        const [loading, setLoading] = useState(false);
-
-        useEffect(() => {
-            function handleClickOutside(event) {
-                if (modalRef.current && !modalRef.current.contains(event.target)) {
-                    onClose();
-                }
-            }
-            if (open) document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, [onClose, open]);
-
-        // load countries once when modal opens
-        useEffect(() => {
-            if (!open) return;
-            setLoading(true);
-            setCountries([]);
-            (async () => {
-                try {
-                    // loadCountriesFilter -> returns [{ search_tag, display_name }, ...]
-                    const list = await loadCountriesFilter();
-                    // ensure array of objects with { search_tag, display_name }
-                    const normalized = (list || []).map(item => {
-                        if (!item) return null;
-                        if (typeof item === 'string') return { search_tag: item, display_name: item };
-                        return { search_tag: item.search_tag || item._id || item.code || item.id || item.value || "", display_name: item.display_name || item.name || item.label || item.display || "" };
-                    }).filter(Boolean);
-                    setCountries(normalized);
-                } catch (err) {
-                    console.error("loadCountriesFilter error:", err);
-                    setCountries([]);
-                } finally {
-                    setLoading(false);
-                }
-            })();
-        }, [open]);
-
-        const filtered = (countries || []).filter(c => (c.display_name || "").toLowerCase().includes((q || "").toLowerCase()));
-
-        return open ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
-                <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
-                    <input
-                        type="text"
-                        placeholder="Search institution countries"
-                        className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
-                        value={q}
-                        onChange={e => setQ(e.target.value)}
-                    />
-                    <div className="text-gray-500 text-sm mb-2">All countries ({countries.length})</div>
-                    <div className="border-b mb-2"></div>
-                    <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
-                        {loading && <div className="text-center py-4 text-gray-500">Loading countries…</div>}
-                        {!loading && filtered.map((country) => (
-                            <label key={country.search_tag} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.includes(country.search_tag)}
-                                    onChange={() => onSelect(country)}
-                                    className="w-5 h-5 accent-[#E60028]"
-                                />
-                                <span>{country.display_name}</span>
-                            </label>
-                        ))}
-                        {!loading && filtered.length === 0 && <div className="text-gray-400 text-center py-8">No countries found</div>}
-                    </div>
-                </div>
-            </div>
-        ) : null;
-    }
-
-    // REPLACED FieldModal: load all fields once, lazy-load topics per-field on expand
-    function FieldModal({ open, onClose, selected, onSelect, search, onSearch }) {
-        const modalRef = useRef(null);
-        const [fields, setFields] = useState([]); // [{ _id, display_name }]
-        const [loadingFields, setLoadingFields] = useState(false);
-        const [topicsMap, setTopicsMap] = useState({}); // { fieldIdKey: { topics: [], total } }
-        const [loadingTopics, setLoadingTopics] = useState({}); // { fieldIdKey: boolean }
-        const [expandedSet, setExpandedSet] = useState(new Set()); // store fieldId keys that are expanded
-
-        useEffect(() => {
-            function handleClickOutside(event) {
-                if (modalRef.current && !modalRef.current.contains(event.target)) {
-                    onClose();
-                }
-            }
-            if (open) document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, [onClose, open]);
-
-        // load all fields once when modal opens
-        useEffect(() => {
-            if (!open) return;
-            setFields([]);
-            setTopicsMap({});
-            setExpandedSet(new Set());
-            setLoadingFields(true);
-            loadAllFields()
-                .then(list => setFields(list))
-                .catch(err => console.error("loadAllFields error:", err))
-                .finally(() => setLoadingFields(false));
-        }, [open]);
-
-        function toggleField(fieldName) {
-            onSelect(fieldName);
+    // Debounced search for field/topic suggestions in the left UI
+    useEffect(() => {
+        const q = (expertiseInput || "").trim();
+        expertiseLastQueryRef.current = q;
+        if (!expertiseInputFocused || !q) {
+            setExpertiseResults([]);
+            setExpertiseLoading(false);
+            return;
         }
-
-        // toggle topic selection using a synthetic key "Field > Topic"
-        function toggleTopic(fieldName, topicName) {
-            const key = `${fieldName} > ${topicName}`;
-            onSelect(key);
-        }
-
-        function toggleExpand(field) {
-            const fieldIdKey = field._id ? String(field._id) : `null`;
-            setExpandedSet(prev => {
-                const next = new Set(prev);
-                if (next.has(fieldIdKey)) next.delete(fieldIdKey);
-                else next.add(fieldIdKey);
-                return next;
-            });
-
-            // if topics not loaded yet, fetch them
-            if (!topicsMap[fieldIdKey]) {
-                setLoadingTopics(prev => ({ ...prev, [fieldIdKey]: true }));
-                const fetchId = field._id ? field._id : "null";
-                loadTopicsForField(fetchId, 0, 5000, "") // limit large enough to pull all topics for that field
-                    .then(res => {
-                        setTopicsMap(prev => ({ ...prev, [fieldIdKey]: { topics: res.topics || [], total: res.total || 0 } }));
-                    })
-                    .catch(err => {
-                        console.error("loadTopicsForField error:", err);
-                        setTopicsMap(prev => ({ ...prev, [fieldIdKey]: { topics: [], total: 0 } }));
-                    })
-                    .finally(() => setLoadingTopics(prev => ({ ...prev, [fieldIdKey]: false })));
-            }
-        }
-
-        return open ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
-                <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
-                    <input
-                        type="text"
-                        placeholder="Search fields or topics"
-                        className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
-                        value={search}
-                        onChange={e => onSearch(e.target.value)}
-                    />
-                    <div className="text-gray-500 text-sm mb-2">Fields ({fields.length})</div>
-                    <div className="border-b mb-2"></div>
-                    <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
-                        {loadingFields && <div className="text-center py-4 text-gray-500">Loading fields…</div>}
-                        {!loadingFields && fields.map((f) => {
-                            const fieldIdKey = f._id ? String(f._id) : `null`;
-                            const fieldSelected = selected.includes(f.display_name);
-                            const isExpanded = expandedSet.has(fieldIdKey);
-                            const topicEntry = topicsMap[fieldIdKey];
-                            return (
-                                <div key={fieldIdKey} className="py-2 px-2 border-b last:border-b-0">
-                                    <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-3 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={fieldSelected}
-                                                onChange={() => toggleField(f.display_name)}
-                                                className="w-5 h-5 accent-[#E60028]"
-                                            />
-                                            <span className="font-medium">{f.display_name}</span>
-                                            <span className="text-sm text-gray-400 ml-2">({
-                                                // prefer server-provided count from loadAllFields,
-                                                // fallback to already-loaded topics total, otherwise show '...'
-                                                f.topics_count !== undefined && f.topics_count !== null
-                                                    ? f.topics_count
-                                                    : (topicEntry ? topicEntry.total : '...')
-                                            })</span>
-                                        </label>
-                                        <button
-                                            className="text-sm text-gray-600 hover:text-gray-800 px-2 py-1"
-                                            onClick={() => toggleExpand(f)}
-                                            aria-expanded={isExpanded}
-                                            aria-controls={`topics_${fieldIdKey}`}
-                                        >
-                                            <span style={{ display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>▸</span>
-                                        </button>
-                                    </div>
-
-                                    {/* Collapsible topics */}
-                                    <div id={`topics_${fieldIdKey}`} className={`ml-8 mt-2 flex flex-col gap-1 transition-all ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                                        {isExpanded ? (
-                                            loadingTopics[fieldIdKey] ? (
-                                                <div className="text-sm text-gray-500">Loading topics…</div>
-                                            ) : (Array.isArray(topicEntry?.topics) && topicEntry.topics.length ? topicEntry.topics.map((t, ti) => {
-                                                const topicKey = `${f.display_name} > ${t.display_name}`;
-                                                const topicChecked = selected.includes(topicKey);
-                                                return (
-                                                    <label key={`${String(t._id)}_${ti}`} className={`flex items-center gap-3 text-sm ${fieldSelected ? 'opacity-50' : ''}`}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={topicChecked}
-                                                            disabled={fieldSelected}
-                                                            onChange={() => toggleTopic(f.display_name, t.display_name)}
-                                                            className="w-4 h-4 accent-[#E60028]"
-                                                        />
-                                                        <span>{t.display_name}</span>
-                                                    </label>
-                                                );
-                                            }) : <div className="text-sm text-gray-400">No topics</div>)
-                                        ) : null}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {!loadingFields && fields.length === 0 && <div className="text-gray-400 text-center py-8">No fields found</div>}
-                    </div>
-                </div>
-            </div>
-        ) : null;
-    }
-
-    function InstitutionModal({ open, onClose, selected, onSelect }) {
-        const modalRef = useRef(null);
-        const [query, setQuery] = useState("");
-        const [items, setItems] = useState([]);
-        const [offset, setOffset] = useState(0);
-        const [hasMore, setHasMore] = useState(true);
-        const [loading, setLoading] = useState(false);
-        const sentinelRef = useRef(null);
-        const PAGE_SIZE = 50;
-        const lastQueryRef = useRef("");
-
-        useEffect(() => {
-            function handleClickOutside(event) {
-                if (modalRef.current && !modalRef.current.contains(event.target)) {
-                    onClose();
-                }
-            }
-            if (open) document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, [onClose, open]);
-
-        // load initial page when modal opens and no query
-        useEffect(() => {
-            if (!open) return;
-            setItems([]);
-            setOffset(0);
-            setHasMore(true);
-            setQuery("");
-            lastQueryRef.current = "";
-
-            (async () => {
-                setLoading(true);
-                try {
-                    const page = await listInstitutions(0, PAGE_SIZE);
-                    setItems(page);
-                    setOffset(page.length);
-                    setHasMore(page.length === PAGE_SIZE);
-                } catch (error) {
-                    console.error("listInstitutions error:", error);
-                } finally {
-                    setLoading(false);
-                }
-            })();
-
-        }, [open]);
-
-        //debounced search when query changes
-        useEffect(() => {
-            const q = (query || "").trim();
-            lastQueryRef.current = q;
-            const timer = setTimeout(async () => {
-                if (!open) return;
-                if (!q) {
-                    // when query cleared, reload initial list
-                    setLoading(true);
+        const timer = setTimeout(async () => {
+            setExpertiseLoading(true);
+            // Helper to ensure fields list
+            async function ensureFields() {
+                let fieldsList = allFields;
+                if (!fieldsList || !fieldsList.length) {
                     try {
-                        const page = await listInstitutions(0, PAGE_SIZE);
-                        setItems(page);
-                        setOffset(page.length);
-                        setHasMore(page.length === PAGE_SIZE);
-                    } catch (error) {
-                        console.error("listInstitutions error:", error);
-                    } finally {
-                        setLoading(false);
+                        fieldsList = await loadAllFields();
+                        setAllFields(fieldsList || []);
+                    } catch (e) {
+                        fieldsList = [];
                     }
-                    return;
                 }
+                return fieldsList || [];
+            }
 
-                setLoading(true);
-                try {
-                    const results = await searchInstitutions(q);
-                    if (lastQueryRef.current !== q) return;
-                    setItems(results);
-                    setOffset(results.length);
-                    setHasMore(false);
-                } catch (error) {
-                    console.error("searchInstitutions error", error);
-                } finally {
-                    setLoading(false);
-                }
-            }, 350);
-            return () => clearTimeout(timer);
-        }, [query, open]);
+            try {
+                // Try Atlas topics endpoint first
+                const [fieldsList, topicHits] = await Promise.all([
+                    ensureFields(),
+                    searchTopicsAutocomplete(q, 50)
+                ]);
+                if (expertiseLastQueryRef.current !== q) return;
 
-        useEffect(() => {
-            if (!open) return;
-            if (query && query.trim()) return;  // don't infinite-scroll while searching
-            const el = sentinelRef.current;
-            if (!el) return;
-            const obs = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting && hasMore && !loading) {
-                        (async () => {
-                            setLoading(true);
+                const qlow = q.toLowerCase();
+                const nameMatchSet = new Set(
+                    (fieldsList || [])
+                        .filter(f => (f.display_name || "").toLowerCase().includes(qlow))
+                        .map(f => String(f._id))
+                );
+
+                // If no hits from Atlas, fallback to per-field topic query
+                let effectiveTopicHits = topicHits;
+                if (!effectiveTopicHits || effectiveTopicHits.length === 0) {
+                    try {
+                        const perField = await Promise.all((fieldsList || []).map(async (f) => {
                             try {
-                                const page = await listInstitutions(offset, PAGE_SIZE);
-                                setItems(prev => [...prev, ...page]);
-                                setOffset(prev => prev + page.length);
-                                setHasMore(page.length === PAGE_SIZE);
-                            } catch (err) {
-                                console.error("listInstitutions (more) error", err);
-                            } finally {
-                                setLoading(false);
+                                const res = await loadTopicsForField(f._id ? f._id : "null", 0, 200, q);
+                                const topics = res?.topics || [];
+                                return topics.map(t => ({ ...t, field_id: f._id, field_display_name: f.display_name }));
+                            } catch {
+                                return [];
                             }
-                        })();
+                        }));
+                        effectiveTopicHits = perField.flat();
+                    } catch {}
+                }
+
+                // Group topic hits by field_id
+                const byFieldId = new Map();
+                (effectiveTopicHits || []).forEach(t => {
+                    const fid = t.field_id === null || t.field_id === undefined ? 'null' : String(t.field_id);
+                    if (!byFieldId.has(fid)) byFieldId.set(fid, { topics: [], fieldDisplayName: t.field_display_name });
+                    const entry = byFieldId.get(fid);
+                    entry.topics.push({ _id: t._id, display_name: t.display_name });
+                    if (!entry.fieldDisplayName && t.field_display_name) entry.fieldDisplayName = t.field_display_name;
+                });
+
+                // Build result list merging name-matched fields and topic-matched fields
+                const idToField = new Map((fieldsList || []).map(f => [String(f._id), f]));
+                const results = [];
+
+                // From topic matches
+                for (const [fid, entry] of byFieldId.entries()) {
+                    const field = fid === 'null'
+                        ? { _id: null, display_name: 'Uncategorized' }
+                        : (idToField.get(fid) || { _id: fid, display_name: entry.fieldDisplayName || 'Unknown' });
+                    const nameMatch = nameMatchSet.has(fid);
+                    results.push({ field, topics: entry.topics, nameMatch });
+                }
+
+                // Include fields with nameMatch but no topic hits
+                (fieldsList || []).forEach(f => {
+                    const fid = String(f._id);
+                    if (nameMatchSet.has(fid) && !byFieldId.has(fid)) {
+                        results.push({ field: f, topics: [], nameMatch: true });
                     }
                 });
-            }, { root: null, rootMargin: "0px", threshold: 1.0 });
 
-            obs.observe(el);
-            return () => obs.disconnect();
-        }, [open, offset, hasMore, loading, query])
-
-        const filtered = items;
-        return open ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40">
-                <div ref={modalRef} className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] p-6 pr-10 pt-8 relative flex flex-col">
-                    <button type="button" className="absolute top-1 right-4 text-2xl text-gray-400 hover:text-gray-600" onClick={onClose} aria-label="Close">&times;</button>
-                    <input
-                        type="text"
-                        placeholder="Search institutions..."
-                        className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring"
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                    />
-                    <div className="text-gray-500 text-sm mb-2">All institutions ({items.length})</div>
-                    <div className="border-b mb-2"></div>
-                    <div className="overflow-y-auto flex-1 pr-2" style={{ maxHeight: '50vh' }}>
-                        {filtered.map((item) => {
-                            const checked = selected.some(s => s.search_tag === item.search_tag); // compare by search_tag
-                            return (
-                                <label key={item.search_tag} className="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer hover:bg-gray-100">
-                                    <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => onSelect(item)} // pass the item object; parent toggles by search_tag
-                                        className="w-5 h-5 accent-[#E60028]"
-                                    />
-                                    <span>{item.display_name}</span>
-                                </label>
-                            );
-                        })}
-                        {filtered.length === 0 && !loading && <div className="text-gray-400 text-center py-8">No institutions found</div>}
-                        {loading && <div className="text-center py-4 text-gray-500">Loading...</div>}
-                        <div ref={sentinelRef} style={{ height: 1 }} />
-                    </div>
-                </div>
-            </div>
-        ) : null;
-    }
+                // Filter to keep same semantics
+                const filtered = results.filter(r => r.nameMatch || (r.topics && r.topics.length));
+                setExpertiseResults(filtered);
+            } catch (err) {
+                // Fallback to existing per-field search
+                try {
+                    const fieldsList = await ensureFields();
+                    const qlow = q.toLowerCase();
+                    const promises = (fieldsList || []).map(async (f) => {
+                        const nameMatch = (f.display_name || "").toLowerCase().includes(qlow);
+                        let topics = [];
+                        try {
+                            const res = await loadTopicsForField(f._id ? f._id : "null", 0, 1000, q);
+                            topics = res?.topics || [];
+                        } catch (e) { topics = []; }
+                        return { field: f, topics, nameMatch };
+                    });
+                    const results = await Promise.all(promises);
+                    if (expertiseLastQueryRef.current !== q) return;
+                    const filtered = results.filter(r => r.nameMatch || (r.topics && r.topics.length));
+                    setExpertiseResults(filtered);
+                } catch (e2) {
+                    if (expertiseLastQueryRef.current === q) setExpertiseResults([]);
+                }
+            } finally {
+                if (expertiseLastQueryRef.current === q) setExpertiseLoading(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [expertiseInput, expertiseInputFocused, allFields]);
 
     // debounced suggestion fetch using searchInstitutions
     useEffect(() => {
@@ -599,6 +386,14 @@ function SearchInterface() {
         return () => clearTimeout(timer);
     }, [institutionInput]);
 
+    // re-run search when sort or full-match toggle changes (after initial search)
+    useEffect(() => {
+        if (!hasSearched) return;
+        // reset to first page on sort change
+        loadResults({ page: 1, limit: perPage });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortBy, sortOrder, onlyFullMatches]);
+
     // helper: toggle selection by search_tag
     function toggleInstitutionSelection(item) {
         setSelectedInstitutions(prev => {
@@ -616,9 +411,12 @@ function SearchInterface() {
     }
 
     // reset all filters and results
-    function handleReset() {
+function handleReset() {
         setSelectedCountries([]);
         setSelectedFields([]);
+        setHiddenTopicsByField({});
+        setSelectedTopicIds([]);
+        setTopicKeyToId({});
         setSelectedInstitutions([]);
         setInstitutionInput("");
         setInstitutionSuggestions([]);
@@ -629,21 +427,68 @@ function SearchInterface() {
         setPeopleList([]);
         setHasSearched(false);
         setIsSearching(false);
+        setSearchError(null);
         setShowCountryModal(false);
         setShowFieldModal(false);
         setShowInstitutionModal(false);
-        setSortBy('name');
-        setSortOrder('asc');
+        setSortBy('match');
+        setSortOrder('desc');
+        setOnlyFullMatches(false);
+        setNameInput("");
+        setNameSuggestions([]);
+        setNameInputFocused(false);
+        setHIndexOp('>='); setHIndexVal('');
+        setI10Op('>='); setI10Val('');
     }
 
     // central loader for search results supporting pagination
-    async function loadResults({ page = 1, limit = perPage } = {}) {
+async function loadResults({ page = 1, limit = perPage } = {}) {
         setIsSearching(true);
+        setSearchError(null);
+        // Resolve field IDs for selectedFields (which hold display names and topic labels)
+        let fieldIds = [];
+        try {
+            let fieldsList = allFields;
+            if (!fieldsList || fieldsList.length === 0) {
+                fieldsList = await loadAllFields();
+                setAllFields(fieldsList || []);
+            }
+            const nameToId = new Map((fieldsList || []).map(f => [String(f.display_name || ""), String(f._id || "")]));
+            fieldIds = (selectedFields || [])
+                .filter(v => typeof v === 'string' && !v.includes(' > ')) // only pure field selections
+                .map(name => nameToId.get(String(name)))
+                .filter(Boolean);
+        } catch (e) {
+            // If fields cannot be resolved, proceed without field filter
+            console.warn('Could not resolve field IDs for search payload:', e);
+            fieldIds = [];
+        }
+
+        // derive sort field mapping for API
+        function mapSortField(key) {
+            switch (key) {
+                case 'match': return 'match_count';
+                case 'name': return 'name';
+                case 'h_index': return 'h_index';
+                case 'i10_index': return 'i10_index';
+                case 'citations': return 'total_citations';
+                case 'works': return 'total_works';
+                default: return 'match_count';
+            }
+        }
+
         // build payload from UI state
         const payload = buildFilterPayload({
             selectedInstitutions,
-            selectedFields,
+            selectedFields: fieldIds,
+            selectedTopics: selectedTopicIds,
             selectedCountries,
+            name: nameInput,
+            sort_field: mapSortField(sortBy),
+            sort_order: sortOrder,
+            require_full_match: onlyFullMatches,
+            hIndex: (hIndexVal !== '' && hIndexVal !== null ? { operator: hIndexOp, value: Number(hIndexVal) } : null),
+            i10Index: (i10Val !== '' && i10Val !== null ? { operator: i10Op, value: Number(i10Val) } : null),
             page,
             limit
         });
@@ -663,6 +508,7 @@ function SearchInterface() {
             setPeopleList([]);
             setTotalResults(0);
             setHasSearched(true);
+            setSearchError(formatError(err));
         } finally {
             setIsSearching(false);
         }
@@ -697,6 +543,133 @@ function SearchInterface() {
         return () => { mounted = false; };
     }, []);
 
+    // Persist search UI state and results for restoring after login redirect
+    useEffect(() => {
+        if (restorePlannedRef.current && !restoredRef.current) return;
+        const snapshot = {
+            selectedCountries,
+            selectedFields,
+            selectedInstitutions,
+            selectedTopicIds,
+            topicKeyToId,
+            hIndexOp,
+            hIndexVal,
+            i10Op,
+            i10Val,
+            peopleList,
+            currentPage,
+            perPage,
+            totalResults,
+            sortBy,
+            sortOrder,
+            hasSearched,
+            nameInput,
+            onlyFullMatches,
+        };
+        try { sessionStorage.setItem('searchInterfaceState', JSON.stringify(snapshot)); } catch {}
+    }, [selectedCountries, selectedFields, selectedInstitutions, selectedTopicIds, topicKeyToId, hIndexOp, hIndexVal, i10Op, i10Val, peopleList, currentPage, perPage, totalResults, sortBy, sortOrder, hasSearched, nameInput]);
+
+    // Restore state after login redirect (when bookmark was clicked)
+    useEffect(() => {
+        const shouldRestore = (() => { try { return sessionStorage.getItem('restoreSearchState') === '1'; } catch { return false; } })();
+        const raw = (() => { try { return sessionStorage.getItem('searchInterfaceState'); } catch { return null; } })();
+        if (shouldRestore && raw) {
+            try {
+                const s = JSON.parse(raw);
+                if (s) {
+                    setSelectedCountries(s.selectedCountries || []);
+                    setSelectedFields(s.selectedFields || []);
+                    setSelectedInstitutions(s.selectedInstitutions || []);
+                    setSelectedTopicIds(s.selectedTopicIds || []);
+                    setTopicKeyToId(s.topicKeyToId || {});
+                    setHIndexOp(s.hIndexOp || '>=');
+                    setHIndexVal(s.hIndexVal || '');
+                    setI10Op(s.i10Op || '>=');
+                    setI10Val(s.i10Val || '');
+                    setPeopleList(s.peopleList || []);
+                    setCurrentPage(Number(s.currentPage || 1));
+                    setPerPage(Number(s.perPage || 10));
+                    setTotalResults(Number(s.totalResults || 0));
+                    setSortBy(s.sortBy || 'match');
+                    setSortOrder(s.sortOrder || 'desc');
+                    setHasSearched(Boolean(s.hasSearched));
+                    setNameInput(s.nameInput || '');
+                    if (typeof s.onlyFullMatches === 'boolean') setOnlyFullMatches(s.onlyFullMatches);
+                    // mark restored to allow subsequent snapshot writes
+                    restoredRef.current = true;
+                }
+            } catch {}
+            try { sessionStorage.removeItem('restoreSearchState'); } catch {}
+        }
+    }, []);
+
+    // Bootstrap from SearchStart (apply initial selection and auto-run)
+    useEffect(() => {
+        const raw = (() => { try { return sessionStorage.getItem('searchInterfaceBootstrap'); } catch { return null; } })();
+        const rawPayload = (() => { try { return sessionStorage.getItem('searchInterfaceBootstrapPayload'); } catch { return null; } })();
+        if (!raw && !rawPayload) return;
+        try {
+            const b = raw ? (JSON.parse(raw) || {}) : {};
+            // Apply incoming bootstrap filters
+            if (Array.isArray(b.selectedCountries)) setSelectedCountries(b.selectedCountries);
+            if (Array.isArray(b.selectedFields)) setSelectedFields(b.selectedFields);
+            if (Array.isArray(b.selectedInstitutions)) setSelectedInstitutions(b.selectedInstitutions);
+            if (Array.isArray(b.selectedTopicIds)) setSelectedTopicIds(b.selectedTopicIds.map(String));
+            if (b.topicKeyToId && typeof b.topicKeyToId === 'object') setTopicKeyToId(b.topicKeyToId);
+            if (typeof b.nameInput === 'string') setNameInput(b.nameInput);
+        } catch {}
+        try { sessionStorage.removeItem('searchInterfaceBootstrap'); } catch {}
+
+        // Run search, preferring a prebuilt payload if present
+        setTimeout(async () => {
+            try {
+                setIsSearching(true);
+                if (rawPayload) {
+                    const payload = JSON.parse(rawPayload);
+                    const results = await searchResearchers(payload);
+                    const list = results?.researchers || results?.items || results?.results || [];
+                    const total = results?.total || results?.count || results?.total_count || list.length;
+                    setPeopleList(list);
+                    setTotalResults(Number(total || 0));
+                    setCurrentPage(Number(payload?.page || 1));
+                    setHasSearched(true);
+                } else {
+                    await loadResults({ page: 1, limit: perPage });
+                }
+            } catch (err) {
+                console.error('bootstrap search error:', err);
+                setPeopleList([]);
+                setTotalResults(0);
+                setHasSearched(true);
+                setSearchError(formatError(err));
+            } finally {
+                setIsSearching(false);
+                try { sessionStorage.removeItem('searchInterfaceBootstrapPayload'); } catch {}
+            }
+        }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Debounced name suggestions
+    useEffect(() => {
+        const q = (nameInput || "").trim();
+        nameLastQueryRef.current = q;
+        const timer = setTimeout(async () => {
+            if (!q) { setNameSuggestions([]); return; }
+            setNameLoading(true);
+            try {
+                const results = await searchResearcherNames(q, 10);
+                if (nameLastQueryRef.current !== q) return;
+                setNameSuggestions(results || []);
+            } catch (err) {
+                console.error("searchResearcherNames error", err);
+            } finally {
+                setNameLoading(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [nameInput]);
+
     // common display names to show when no selection exists (order matters)
     const COMMON_COUNTRY_DISPLAY_NAMES = [
         'Vietnam',
@@ -715,11 +688,13 @@ function SearchInterface() {
 
     return (
         <div>
-            <Header />
-            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20'>
+            <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
+                <Header />
+            </div>
+            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20 pt-24'>
                 <form>
                     {/* Left side: filter */}
-                    <div className='w-fit min-w-[390px] h-auto flex justify-center'>
+                    <div className='w-[390px] h-auto flex justify-center'>
                         <div className='w-full bg-white py-10 pl-8 pr-10 h-full border border-[#D9D9D9]'>
                             <div className='flex items-center mb-5'>
                                 <img src={filterIcon} alt='Filter' className='w-4 h-4 mr-4' />
@@ -750,21 +725,51 @@ function SearchInterface() {
 
                             {/* Subsection: Academics name */}
                             <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
-                            <input type="text" className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500' placeholder='e.g. Michael' />
+                            <div className='w-full relative'>
+                                <input
+                                    type="text"
+                                    className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500'
+                                    placeholder='e.g. Michael'
+                                    value={nameInput}
+                                    onChange={e => setNameInput(e.target.value)}
+                                    onFocus={() => setNameInputFocused(true)}
+                                    onBlur={() => setNameInputFocused(false)}
+                                />
+                                <InlineNameDropdown
+                                    show={nameInputFocused && !!nameInput.trim()}
+                                    loading={nameLoading}
+                                    suggestions={nameSuggestions}
+                                    onSelect={(s) => { setNameInput(s.name); setNameSuggestions([]); }}
+                                />
+                            </div>
 
                             {/* Subsection: Research-based metrics */}
                             <div className='mt-16'>
                                 <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
                                 <div className='flex items-center justify-between '>
                                     <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
-                                        <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
-                                            <option value="equals" >equals</option>
-                                            <option value="less-than">less than</option>
-                                            <option value="larger-than">larger than</option>
+                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
+                                        <select
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            style={{ textAlign: 'center', textAlignLast: 'center' }}
+                                            value={hIndexOp}
+                                            onChange={e => setHIndexOp(e.target.value)}
+                                            aria-label="h-index operator"
+                                        >
+                                            <option value="=">=</option>
+                                            <option value="<">&lt;</option>
+                                            <option value="<=">&le;</option>
+                                            <option value=">">&gt;</option>
+                                            <option value=">=">&ge;</option>
                                         </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                            <input type='number' id="hIndex" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                        <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                            <input
+                                                type='number'
+                                                className='w-full focus:outline-0 text-center px-3'
+                                                min={0}
+                                                value={hIndexVal}
+                                                onChange={e => setHIndexVal(e.target.value)}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -774,14 +779,28 @@ function SearchInterface() {
 
                                 <div className='flex items-center justify-between'>
                                     <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
-                                        <select name="comparison" className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-500'>
-                                            <option value="equals" >equals</option>
-                                            <option value="less-than">less than</option>
-                                            <option value="larger-than">larger than</option>
+                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
+                                        <select
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            style={{ textAlign: 'center', textAlignLast: 'center' }}
+                                            value={i10Op}
+                                            onChange={e => setI10Op(e.target.value)}
+                                            aria-label="i10-index operator"
+                                        >
+                                            <option value="=">=</option>
+                                            <option value="<">&lt;</option>
+                                            <option value="<=">&le;</option>
+                                            <option value=">">&gt;</option>
+                                            <option value=">=">&ge;</option>
                                         </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
-                                            <input type='number' id="i10Index" className='w-30 focus:outline-0 text-end px-3' min={0} />
+                                        <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                            <input
+                                                type='number'
+                                                className='w-full focus:outline-0 text-center px-3'
+                                                min={0}
+                                                value={i10Val}
+                                                onChange={e => setI10Val(e.target.value)}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -795,7 +814,7 @@ function SearchInterface() {
                                         type="button"
                                         className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
                                         style={{ visibility: selectedFields.length > 0 ? 'visible' : 'hidden' }}
-                                        onClick={() => setSelectedFields([])}
+                                        onClick={() => { setSelectedFields([]); setHiddenTopicsByField({}); setSelectedTopicIds([]); setTopicKeyToId({}); }}
                                     >
                                         Clear filter
                                     </button>
@@ -819,39 +838,36 @@ function SearchInterface() {
                                                 onBlur={() => setTimeout(() => setExpertiseInputFocused(false), 150)}
                                             />
                                         </div>
-                                        {/* Dropdown for suggestions */}
-                                        {expertiseInputFocused && expertiseInput.trim() && (
-                                            <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
-                                                {FIELD_LIST.filter(f => f.toLowerCase().includes(expertiseInput.toLowerCase()) && !selectedFields.includes(f)).slice(0, 4).map(f => (
-                                                    <div
-                                                        key={f}
-                                                        className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
-                                                        onMouseDown={() => {
-                                                            setSelectedFields([...selectedFields, f]);
-                                                            setExpertiseInput("");
-                                                        }}
-                                                    >
-                                                        {f}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                        <InlineFieldDropdown
+                                            show={expertiseInputFocused && !!expertiseInput.trim()}
+                                            loading={expertiseLoading}
+                                            results={expertiseResults}
+                                            selectedFields={selectedFields}
+                                            onSelectField={(name) => { handleFieldSelect(name); setExpertiseInput(""); setExpertiseResults([]); }}
+                                            onSelectTopic={(payload) => {
+                                                const { key, id } = payload || {};
+                                                if (!key || !id) { return; }
+                                                setTopicKeyToId(map => ({ ...(map || {}), [key]: String(id) }));
+                                                // Determine selection toggle before calling handler
+                                                const willSelect = !selectedFields.includes(key);
+                                                setSelectedTopicIds(ids => willSelect ? (ids.includes(String(id)) ? ids : [...ids, String(id)]) : ids.filter(x => String(x) !== String(id)));
+                                                handleFieldSelect(key);
+                                                setExpertiseInput(""); setExpertiseResults([]);
+                                            }}
+                                        />
                                     </div>
                                 </div>
-                                <div className='flex flex-col gap-3 mt-4'>
-                                    {selectedFields.map(field => (
-                                        <div key={field} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
-                                            <button
-                                                type="button"
-                                                className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
-                                                onClick={() => setSelectedFields(selectedFields.filter(f => f !== field))}
-                                            >
-                                                ×
-                                            </button>
-                                            {field}
-                                        </div>
-                                    ))}
-                                </div>
+                                <SelectedFieldChips
+                                    items={selectedFields}
+                                    onRemove={(field) => {
+                                        setSelectedFields(prev => prev.filter(f => f !== field));
+                                        // If it's a topic chip, also remove its id
+                                        if (typeof field === 'string' && field.includes(' > ')) {
+                                            const id = topicKeyToId[field];
+                                            if (id) setSelectedTopicIds(ids => ids.filter(x => String(x) !== String(id)));
+                                        }
+                                    }}
+                                />
                             </div>
 
                             {/* Subsection: Institution */}
@@ -886,42 +902,19 @@ function SearchInterface() {
                                                 onBlur={() => setInstitutionInputFocused(false)}
                                             />
                                         </div>
-                                        {/* Dropdown for suggestions for institutions */}
-                                        {institutionInputFocused && institutionInput.trim() && (
-                                            <div className='absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-20'>
-                                                {institutionLoading && (
-                                                    <div className='px-4 py-2 text-sm text-gray-500'>Searching…</div>
-                                                )}
-                                                {!institutionLoading && institutionSuggestions.length === 0 && (
-                                                    <div className='px-4 py-2 text-sm text-gray-500'>No institutions found</div>
-                                                )}
-                                                {!institutionLoading && institutionSuggestions.map(item => (
-                                                    <div
-                                                        key={item.search_tag}
-                                                        className='px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-800'
-                                                        onMouseDown={() => addInstitutionSelection(item)} // pass whole item
-                                                    >
-                                                        {item.display_name}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                        <InlineInstitutionsDropdown
+                                            show={institutionInputFocused && !!institutionInput.trim()}
+                                            loading={institutionLoading}
+                                            suggestions={institutionSuggestions}
+                                            selected={selectedInstitutions}
+                                            onSelect={addInstitutionSelection}
+                                        />
                                     </div>
                                 </div>
-                                <div className='flex flex-col gap-3 mt-4'>
-                                    {selectedInstitutions.map(inst => (
-                                        <div key={inst.search_tag} className='flex items-center bg-gray-300 text-[#6A6A6A] pl-3 pr-6 py-2 rounded-lg w-max text-md font-normal gap-2'>
-                                            <button
-                                                type="button"
-                                                className='text-2xl text-gray-500 hover:text-gray-700 focus:outline-none mr-2'
-                                                onClick={() => setSelectedInstitutions(prev => prev.filter(s => s.search_tag !== inst.search_tag))}
-                                            >
-                                                ×
-                                            </button>
-                                            {inst.display_name}
-                                        </div>
-                                    ))}
-                                </div>
+                                <SelectedInstitutionChips
+                                    items={selectedInstitutions}
+                                    onRemove={(inst) => setSelectedInstitutions(prev => prev.filter(s => s.search_tag !== inst.search_tag))}
+                                />
                             </div>
 
                             {/* Subsection: Institution country */}
@@ -991,6 +984,16 @@ function SearchInterface() {
                                 <h3 className='font-semibold text-xl mb-2'>Searching…</h3>
                                 <p className="text-sm text-gray-500">Looking for researchers that match your filters</p>
                             </div>
+                        ) : searchError ? (
+                            <div className="w-full mb-6">
+                                <div className='bg-red-50 border border-red-200 text-red-700 rounded-md p-4 flex justify-between items-start'>
+                                    <div>
+                                        <h3 className='font-semibold mb-1'>Search failed</h3>
+                                        <p className='text-sm'>{searchError}</p>
+                                    </div>
+                                    <button type="button" className='text-red-700 underline text-sm' onClick={() => setSearchError(null)}>Dismiss</button>
+                                </div>
+                            </div>
                         ) : !hasSearched ? (
                             <div className="flex flex-col items-center justify-center h-[400px]">
                                 <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
@@ -1000,26 +1003,68 @@ function SearchInterface() {
                                 </p>
                             </div>
                         ) : (hasSearched && peopleList.length === 0) ? (
-                            <div className="flex flex-col items-center justify-center h-[400px]">
-                                <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
-                                <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
-                                <p className="text-md text-gray-500 text-center mt-2">
-                                    We couldn't find anyone matching your filter. <br />
-                                    Try changing your search criteria.
-                                </p>
-                            </div>
+                            <>
+                                <div className='w-full flex flex-col gap-3 mb-10'>
+                                    <div className='w-full flex items-center justify-between gap-4'>
+                                        <div className='flex-1'>
+                                            <SortBar
+                                                sortBy={sortBy}
+                                                sortOrder={sortOrder}
+                                                onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
+                                            />
+                                        </div>
+                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                            <input
+                                                type='checkbox'
+                                                className='w-4 h-4 accent-[#E60028]'
+                                                checked={onlyFullMatches}
+                                                onChange={(e) => setOnlyFullMatches(e.target.checked)}
+                                            />
+                                            Only full matches
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center justify-center h-[300px]">
+                                    <img src={noResultImage} alt="No results" className="w-24 h-24 mb-4" />
+                                    <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
+                                    <p className="text-md text-gray-500 text-center mt-2">
+                                        We couldn't find anyone matching your filter. <br />
+                                        Try changing your search criteria.
+                                    </p>
+                                </div>
+                            </>
                         ) : (
                             <>
                                 {/* Max results per page */}
-                                <div className='w-full flex justify-between items-center mb-10'>
-                                    <p>
-                                        Showing <b>
-                                            {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
-                                            -
-                                            {Math.min(currentPage * perPage, totalResults)}
-                                        </b> in <b>{totalResults.toLocaleString()}</b>
-                                    </p>
-                                    <div className='flex items-center gap-2'>
+                                <div className='w-full flex flex-col gap-3 mb-10'>
+                                    <div className='w-full flex items-center justify-between gap-4'>
+                                        <div className='flex-1'>
+                                            <SortBar
+                                                sortBy={sortBy}
+                                                sortOrder={sortOrder}
+                                                onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
+                                            />
+                                        </div>
+                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                            <input
+                                                type='checkbox'
+                                                className='w-4 h-4 accent-[#E60028]'
+                                                checked={onlyFullMatches}
+                                                onChange={(e) => setOnlyFullMatches(e.target.checked)}
+                                            />
+                                            Only full matches
+                                        </label>
+                                    </div>
+                                    {/* Results toolbar */}
+                                    <div className='w-full flex justify-between items-center relative'>
+                                        <p>
+                                            Showing <b>
+                                                {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
+                                                -
+                                                {Math.min(currentPage * perPage, totalResults)}
+                                            </b> in <b>{totalResults.toLocaleString()}</b>
+                                        </p>
+                                    <div className='flex items-center gap-4'>
                                         <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
                                         <select
                                             name="resultsPerPage"
@@ -1038,121 +1083,113 @@ function SearchInterface() {
                                             <option value="50">50</option>
                                         </select>
                                     </div>
+                                    </div>
                                 </div>
 
                                 {/* People List */}
-                                {peopleList.map((person, index) => (
-                                    <div className='w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
-                                        <div className='w-full'>
-                                            <div className='flex gap-6 justify-between w-full'>
-                                                <div>
-                                                    <div className='flex gap-3 items-end mb-1'>
-                                                        <p className='font-bold text-xl'>{person.name}</p>
-                                                        <img src={Dot} alt='Dot' className='w-2 h-2 self-center' />
-                                                        <p className='text-[#6A6A6A] text-md'>{person.institution}</p>
-                                                    </div>
+                                {peopleList.map((person, index) => {
+                                    const name = person.name || person.basic_info?.name || '';
+                                    const institution = person.institution || (Array.isArray(person.last_known_affiliations) ? person.last_known_affiliations.filter(Boolean).join(', ') : '');
+                                    const hIndex = person.hIndex ?? person.research_metrics?.h_index ?? '';
+                                    const i10Index = person.i10Index ?? person.research_metrics?.i10_index ?? '';
+                                    const fieldsArr = Array.isArray(person.fields) && person.fields.length
+                                        ? person.fields.filter(Boolean)
+                                        : (person.field ? [person.field] : []);
+                                    const totalCitations = person.research_metrics?.total_citations ?? '';
+                                    const totalWorks = person.research_metrics?.total_works ?? '';
+                                    const fmt = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v))) ? '' : Number(v).toLocaleString();
+                                    const slug = person.slug || '';
+                                    const researcherId = person._id || person.id || person.slug;
+                                    return (
+                                        <div className='relative w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
+                                            <div className='absolute top-0 right-3'>
+                                                <BookmarkIcon size={32} className='m-0 p-0' researcherId={String(researcherId || '')} researcherName={name} />
+                                            </div>
+                                            <div className='w-full'>
+                                                <div className='flex gap-6 justify-between items-start w-full pr-5'>
+                                                    <div className='flex-1 min-w-0'>
+                                                        <div className='flex items-center gap-3 mb-1 min-w-0'>
+                                                            <p className='font-bold text-xl whitespace-nowrap'>{name}</p>
+                                                            <img src={Dot} alt='Dot' className='w-2 h-2' />
+                                                            <p className='text-[#6A6A6A] text-md truncate min-w-0 flex-1' title={institution}>{institution}</p>
+                                                        </div>
 
-                                                    <div className='flex-col justify-center'>
-                                                        <span className='text-sm text-[#6A6A6A]'>h-index: {person.hIndex}</span>
-                                                        <br />
-                                                        <span className='text-sm text-[#6A6A6A]'>i10-index: {person.i10Index}</span>
+                                                        <div className='grid grid-cols-2 gap-x-8 gap-y-1 items-start justify-start'>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={letterH} alt='H' className='w-4 h-4' />
+                                                                <span>h-index: {fmt(hIndex)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={documentIcon} alt='Works' className='w-4 h-4' />
+                                                                <span>Total works: {fmt(totalWorks)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={scholarHat} alt='i10' className='w-4 h-4' />
+                                                                <span>i10-index: {fmt(i10Index)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={citationIcon} alt='Citations' className='w-4 h-4' />
+                                                                <span>Total citations: {fmt(totalCitations)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className='shrink-0 self-start flex items-center gap-3'>
+                                                        <button
+                                                            className='whitespace-nowrap text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed'
+                                                            onClick={() => { try { sessionStorage.setItem('restoreSearchState','1'); } catch {} if (slug) navigate(`/researcher-profile/${slug}`); }}
+                                                            disabled={!slug}
+                                                        >
+                                                            View profile
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <button className='h-fit text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline'>View profile</button>
+
+                                                <div className='mt-6'>
+                                                    {(() => {
+                                                        const matchObj = person.match || {};
+                                                        const matchedCount = Number(matchObj.matchCount || 0);
+                                                        const totalFilters = Number(matchObj.totalFilters || 0);
+                                                        const matched = Array.isArray(matchObj.matched) ? matchObj.matched.filter(Boolean) : [];
+                                                        const unmatched = Array.isArray(matchObj.unmatched) ? matchObj.unmatched.filter(Boolean) : [];
+                                                        return (
+                                                            <div>
+                                                                {(() => {
+                                                                    const full = totalFilters > 0 && matchedCount === totalFilters;
+                                                                    const chipClass = full
+                                                                        ? 'bg-green-100 text-green-700 border border-green-200'
+                                                                        : 'bg-gray-100 text-gray-700 border border-gray-200';
+                                                                    return (
+                                                                        <div className={`inline-flex items-center py-1 px-3 rounded-full text-sm font-medium ${chipClass}`}>
+                                                                            Matches {matchedCount}/{totalFilters} filters
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {matched.length > 0 && !(totalFilters > 0 && matchedCount === totalFilters) && (
+                                                                    <div className='mt-2 text-xs text-gray-700'>
+                                                                        <span className='font-medium mr-1'>Matched:</span>
+                                                                        <span>{matched.join(', ')}</span>
+                                                                    </div>
+                                                                )}
+                                                                {unmatched.length > 0 && (
+                                                                    <div className='mt-1 text-xs text-gray-600'>
+                                                                        <span className='font-medium mr-1'>Not matched:</span>
+                                                                        <span>{unmatched.join(', ')}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
-
-                                            <div className='w-max py-1 px-8 rounded-full font-semibold bg-white border border-[#d2e4f4] text-[#3C72A5] text-sm mt-6'>{person.field}</div>
                                         </div>
-                                    </div>
-                                ))}
-                                {/* dynamic pagination */}
-                                {totalResults > 0 && (
-                                    (() => {
-                                        const totalPages = Math.max(1, Math.ceil(totalResults / perPage));
-                                        // show a simple windowed pagination (max 7 page links)
-                                        const windowSize = 7;
-                                        let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
-                                        let end = Math.min(totalPages, start + windowSize - 1);
-                                        if (end - start + 1 < windowSize) start = Math.max(1, end - windowSize + 1);
-
-                                        const pages = [];
-                                        for (let p = start; p <= end; p++) pages.push(p);
-
-                                        return (
-                                            <Pagination>
-                                                <PaginationContent>
-                                                    <PaginationItem>
-                                                        <PaginationPrevious
-                                                            href="#"
-                                                            onClick={async (e) => {
-                                                                e?.preventDefault?.();
-                                                                if (currentPage > 1) await loadResults({ page: currentPage - 1, limit: perPage });
-                                                            }}
-                                                        />
-                                                    </PaginationItem>
-
-                                                    {/* first page + leading ellipsis */}
-                                                    {start > 1 && (
-                                                        <>
-                                                            <PaginationItem>
-                                                                <PaginationLink
-                                                                    href="#"
-                                                                    onClick={async (e) => {
-                                                                        e?.preventDefault?.();
-                                                                        await loadResults({ page: 1, limit: perPage });
-                                                                    }}
-                                                                >1</PaginationLink>
-                                                            </PaginationItem>
-                                                            <PaginationItem><PaginationEllipsis /></PaginationItem>
-                                                        </>
-                                                    )}
-
-                                                    {pages.map(p => (
-                                                        <PaginationItem key={p}>
-                                                            <PaginationLink
-                                                                href="#"
-                                                                isActive={p === currentPage}
-                                                                onClick={async (e) => {
-                                                                    e?.preventDefault?.();
-                                                                    if (p === currentPage) return;
-                                                                    await loadResults({ page: p, limit: perPage });
-                                                                }}
-                                                            >
-                                                                {p}
-                                                            </PaginationLink>
-                                                        </PaginationItem>
-                                                    ))}
-
-                                                    {/* trailing ellipsis + last page */}
-                                                    {end < totalPages && (
-                                                        <>
-                                                            <PaginationItem><PaginationEllipsis /></PaginationItem>
-                                                            <PaginationItem>
-                                                                <PaginationLink
-                                                                    href="#"
-                                                                    onClick={async (e) => {
-                                                                        e?.preventDefault?.();
-                                                                        await loadResults({ page: totalPages, limit: perPage });
-                                                                    }}
-                                                                >{totalPages}</PaginationLink>
-                                                            </PaginationItem>
-                                                        </>
-                                                    )}
-
-                                                    <PaginationItem>
-                                                        <PaginationNext
-                                                            href="#"
-                                                            onClick={async (e) => {
-                                                                e?.preventDefault?.();
-                                                                if (currentPage < totalPages) await loadResults({ page: currentPage + 1, limit: perPage });
-                                                            }}
-                                                        />
-                                                    </PaginationItem>
-                                                </PaginationContent>
-                                            </Pagination>
-                                        );
-                                    })()
-                                )}
+                                    );
+                                })}
+                                <PaginationBar
+                                    currentPage={currentPage}
+                                    perPage={perPage}
+                                    totalResults={totalResults}
+                                    onGoToPage={(p) => loadResults({ page: p, limit: perPage })}
+                                />
                             </>
                         )}
                     </div>
@@ -1160,36 +1197,23 @@ function SearchInterface() {
 
             </div>
 
-            <CountryModal
-                open={showCountryModal}
-                onClose={() => setShowCountryModal(false)}
-                selected={selectedCountries}
-                onSelect={(countryObj) => {
-                    // toggle by search_tag but DO NOT close modal here
-                    setSelectedCountries(sel => sel.includes(countryObj.search_tag) ? sel.filter(c => c !== countryObj.search_tag) : [...sel, countryObj.search_tag]);
-                }}
-            />
-            <FieldModal
+            <CountryModalComp open={showCountryModal} onClose={handleCountryClose} selected={selectedCountries} onSelect={handleCountrySelect} />
+            <FieldModalComp
                 open={showFieldModal}
-                onClose={() => setShowFieldModal(false)}
-                fields={FIELD_LIST}
+                onClose={handleFieldClose}
                 selected={selectedFields}
-                onSelect={field => {
-                    // toggle selection (field is a string or synthetic topic key)
-                    setSelectedFields(sel => sel.includes(field) ? sel.filter(f => f !== field) : [...sel, field]);
-                    // keep modal open for multi-select; if you want to close after selecting uncomment next line:
-                    // setShowFieldModal(false);
+                onSelect={handleFieldSelect}
+                onSelectTopic={({ key, id }) => {
+                    if (!key || !id) return;
+                    setTopicKeyToId(map => ({ ...(map || {}), [key]: String(id) }));
+                    const willSelect = !selectedFields.includes(key);
+                    setSelectedTopicIds(ids => willSelect ? (ids.includes(String(id)) ? ids : [...ids, String(id)]) : ids.filter(x => String(x) !== String(id)));
                 }}
                 search={fieldSearch}
                 onSearch={setFieldSearch}
             />
 
-            <InstitutionModal
-                open={showInstitutionModal}
-                onClose={() => setShowInstitutionModal(false)}
-                selected={selectedInstitutions}
-                onSelect={(item) => toggleInstitutionSelection(item)}
-            />
+            <InstitutionModalComp open={showInstitutionModal} onClose={handleInstitutionClose} selected={selectedInstitutions} onSelect={toggleInstitutionSelection} />
             <Footer />
         </div>
     );

@@ -35,7 +35,7 @@ function App() {
           <Route path="/cv-verification" element={<CVVerification />} />
           <Route path="/search-tool" element={<SearchStart />} />
           <Route path="/search-interface" element={<SearchInterface />} />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/landing-page" element={<LandingPage />} />
 
           <Route
