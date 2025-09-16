@@ -38,16 +38,22 @@ export const AuthProvider = ({ children }) => {
       }
       throw new Error("Refresh failed");
     } catch (error) {
-      console.error("Error refreshing token:", error);
+      // Suppress noisy logs for public/expired sessions
       logout();
       return false;
     }
   };
 
   useEffect(() => {
-    // Check if user is logged in by trying to get current user
-    // Cookies will be sent automatically if they exist
-    checkAuthStatus();
+    // Only probe session if we have previously logged in
+    const hasSession = (() => {
+      try { return localStorage.getItem('hasSession') === '1'; } catch { return false; }
+    })();
+    if (hasSession) {
+      checkAuthStatus();
+    } else {
+      setLoading(false);
+    }
 
     return () => {
       if (refreshTimerRef.current) {
@@ -93,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.success) {
+        try { localStorage.setItem('hasSession', '1'); } catch {}
         await checkAuthStatus();
         setupRefreshTimer();
         return { success: true };
@@ -139,6 +146,7 @@ export const AuthProvider = ({ children }) => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
+      try { localStorage.removeItem('hasSession'); } catch {}
       setUser(null);
     }
   };

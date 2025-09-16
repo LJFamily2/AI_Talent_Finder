@@ -71,6 +71,8 @@ const ResearcherSchema = new mongoose.Schema(
 
 ResearcherSchema.index({ name: 1 });
 ResearcherSchema.index({ slug: 1 });
+// Speed up search by tags (multikey index)
+ResearcherSchema.index({ search_tags: 1 });
 ResearcherSchema.index({ "research_metrics.h_index": 1 });
 ResearcherSchema.index({ "research_metrics.i10_index": 1 });
 ResearcherSchema.index({ "research_metrics.total_citations": 1 });

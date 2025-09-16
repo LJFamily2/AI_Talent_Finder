@@ -59,6 +59,7 @@ async function getResearcherProfile(req, res) {
 
     // Transform data to match PDF exporter expected structure
     const transformedData = {
+      _id: researcher._id,
       basic_info: {
         name: researcher.name || "Unknown",
         affiliations: researcher.affiliations.map((aff) => ({

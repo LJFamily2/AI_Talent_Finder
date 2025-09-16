@@ -21,6 +21,8 @@ import {
   exportResearcherProfile,
 } from "../services/api";
 import { exportResearcherById } from "../services/pdfExportService";
+import BookmarkIcon from "../components/BookmarkIcon";
+
 export default function ResearcherProfile() {
   const { slug } = useParams();
   const [researcher, setResearcher] = useState(null);
@@ -129,13 +131,6 @@ export default function ResearcherProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, researcher]);
 
-  // Effect to fetch works when page changes
-  useEffect(() => {
-    if (researcher && slug) {
-      fetchWorksPage(currentPage);
-    }
-  }, [currentPage, researcher, slug, fetchWorksPage]);
-
   if (loading) {
     return (
       <div className="bg-gray-100 min-h-screen">
@@ -219,7 +214,6 @@ export default function ResearcherProfile() {
       institution: currentInst = "",
       display_name: currentInstDisplayName = "",
     } = {},
-    current_affiliations = [],
   } = researcher;
 
   // derive topics from fields if present, otherwise fall back to legacy topics
@@ -343,9 +337,21 @@ export default function ResearcherProfile() {
       {/* Profile Section */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 mx-10">
         {/* LEFT Column (8 cols) */}
-        <div className="md:col-span-8 space-y-4">
+        <div className="md:col-span-8 spae-y-4">
           {/* Researcher Info Card */}
-          <div className="bg-white p-4 rounded-md shadow space-y-4 self-start">
+          <div className="bg-white p-4 rounded-md shadow space-y-4 self-start relative">
+            {/* Bookmark Icon */}
+            <div className="absolute top-4 right-4">
+              <BookmarkIcon
+                researcherId={researcher._id}
+                researcherName={name}
+                size={28}
+                onBookmarkChange={(newStatus) => {
+                  console.log("Bookmark status changed:", newStatus);
+                }}
+              />
+            </div>
+
             {/* Top: Name + ORCID */}
             <div className="flex flex-col space-y-2">
               <h2 className="text-2xl font-semibold">{name}</h2>
@@ -367,7 +373,7 @@ export default function ResearcherProfile() {
             {/* Line break */}
             <hr className="my-5 border-gray-300" />
 
-            {/* Bottom: 2-column layout: Left = Affils, Right = Research Areas */}
+            {/* Bottom: 2-column layout: Left = Affiliations, Right = Research Areas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left column: Affiliations */}
               <div className="space-y-10 pr-4">
@@ -433,7 +439,6 @@ export default function ResearcherProfile() {
                           className="flex justify-between text-sm text-gray-700 border-b"
                         >
                           <span>{topic.display_name}</span>
-                          {/* <span>{topic.count}</span> */}
                         </div>
                       ))}
                     </div>
