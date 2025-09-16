@@ -295,6 +295,60 @@ async function verifyCV(file, prioritySource, options = {}) {
         progress: 95,
         step: "aggregation_complete",
       });
+
+    // Second-stage author verification: Check if aggregated author details match candidate
+    let secondStageAuthorMatch = false;
+    if (
+      aggregatedAuthorDetails &&
+      aggregatedAuthorDetails.author &&
+      aggregatedAuthorDetails.author.name
+    ) {
+      secondStageAuthorMatch = checkAuthorNameMatch(candidateName, [
+        aggregatedAuthorDetails.author.name,
+      ]);
+      console.log(
+        `[CV Verification] Second-stage author verification: ${
+          secondStageAuthorMatch ? "MATCH" : "NO MATCH"
+        }`
+      );
+      console.log(
+        `[CV Verification] Candidate: "${candidateName}", Aggregated Author: "${aggregatedAuthorDetails.author.name}"`
+      );
+    } else {
+      console.log(
+        "[CV Verification] Second-stage author verification: NO AGGREGATED AUTHOR DATA"
+      );
+    }
+
+    // If second stage fails (no aggregated data OR name mismatch), update all verified publications
+    if (!secondStageAuthorMatch) {
+      const beforeCount = verificationResults.filter(
+        (r) => r.verification.displayData.status === "verified"
+      ).length;
+      console.log(
+        `[CV Verification] Second-stage failed - updating ${beforeCount} verified publications status`
+      );
+
+      verificationResults.forEach((result) => {
+        if (result.verification.displayData.status === "verified") {
+          result.verification.displayData.status =
+            "verified but not same author name";
+          console.log(
+            `[CV Verification] Updated publication "${result.publication.title}" status to "verified but not same author name"`
+          );
+        }
+      });
+
+      const afterCount = verificationResults.filter(
+        (r) =>
+          r.verification.displayData.status ===
+          "verified but not same author name"
+      ).length;
+      console.log(
+        `[CV Verification] Second-stage verification complete: ${afterCount} publications now marked as "verified but not same author name"`
+      );
+    }
+
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 100, step: "done" });
     return {
