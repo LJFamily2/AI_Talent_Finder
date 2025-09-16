@@ -174,32 +174,34 @@ const FieldModal = React.memo(function FieldModal({ open, onClose, selected, onS
                   </button>
                 </div>
 
-                <div id={`topics_${fieldIdKey}`} className={`ml-8 mt-2 flex flex-col gap-1 transition-all ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                <div id={`topics_${fieldIdKey}`} className="ml-4 mt-2">
                   {isExpanded ? (
-                    (() => {
-                      const list = (isSearchActive ? (searchTopicsByField[fieldIdKey] || []) : (topicEntry?.topics || []));
-                      if (isSearchActive && searchLoading && !(searchTopicsByField[fieldIdKey])) {
-                        return (
-                          <div className="py-2 flex justify-center"><CircularProgress size={24} /></div>
-                        );
-                      }
-                      // Non-search path: show loading while first fetch is in progress
-                      if (!isSearchActive && loadingTopics[fieldIdKey] && !topicEntry) {
-                        return (
-                          <div className="py-2 flex justify-center"><CircularProgress size={24} /></div>
-                        );
-                      }
-                      return list && list.length ? list.map((t, ti) => {
-                        const topicKey = `${f.display_name} > ${t.display_name}`;
-                        const topicChecked = selected.includes(topicKey);
-                        return (
-                          <label key={`${String(t._id ?? ti)}_${ti}`} className={`flex items-center gap-3 text-sm ${fieldSelected ? 'opacity-50' : ''}`}>
-                            <input type="checkbox" checked={topicChecked} disabled={fieldSelected} onChange={() => toggleTopic(f.display_name, t)} className="w-4 h-4 accent-[#E60028]" />
-                            <span>{t.display_name}</span>
-                          </label>
-                        );
-                      }) : (isSearchActive ? null : <div className="text-sm text-gray-400">No topics</div>);
-                    })()
+                    <div className="bg-white rounded-md p-2 pr-3 max-h-60 overflow-y-auto">
+                      {(() => {
+                        const list = (isSearchActive ? (searchTopicsByField[fieldIdKey] || []) : (topicEntry?.topics || []));
+                        if (isSearchActive && searchLoading && !(searchTopicsByField[fieldIdKey])) {
+                          return (
+                            <div className="py-2 flex justify-center"><CircularProgress size={24} /></div>
+                          );
+                        }
+                        // Non-search path: show loading while first fetch is in progress
+                        if (!isSearchActive && loadingTopics[fieldIdKey] && !topicEntry) {
+                          return (
+                            <div className="py-2 flex justify-center"><CircularProgress size={24} /></div>
+                          );
+                        }
+                        return list && list.length ? list.map((t, ti) => {
+                          const topicKey = `${f.display_name} > ${t.display_name}`;
+                          const topicChecked = selected.includes(topicKey);
+                          return (
+                            <label key={`${String(t._id ?? ti)}_${ti}`} className={`flex items-center gap-3 py-1 text-sm ${fieldSelected ? 'opacity-50' : ''}`}>
+                              <input type="checkbox" checked={topicChecked} disabled={fieldSelected} onChange={() => toggleTopic(f.display_name, t)} className="w-4 h-4 accent-[#E60028]" />
+                              <span>{t.display_name}</span>
+                            </label>
+                          );
+                        }) : (isSearchActive ? null : <div className="text-sm text-gray-400">No topics</div>);
+                      })()}
+                    </div>
                   ) : null}
                 </div>
               </div>
