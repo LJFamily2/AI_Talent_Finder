@@ -24,15 +24,14 @@ const apiRequest = async (endpoint, options = {}) => {
     },
     ...options,
   };
+
   try {
     const response = await fetch(url, fetchOptions);
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
     }
-    const contentType = (
-      response.headers.get("content-type") || ""
-    ).toLowerCase();
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
     if (contentType.includes("application/json")) {
       const json = await response.json();
       if (Object.prototype.hasOwnProperty.call(json, "success")) {
@@ -57,10 +56,7 @@ const apiRequest = async (endpoint, options = {}) => {
  * @returns {Promise<Object>} Researcher profile data
  */
 export const getResearcherProfile = async (researcherId) => {
-  const response = await fetch(`/api/researcher/${researcherId}`);
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  const result = await response.json();
-  return result.data; // Only return the researcher document
+  return await apiRequest(`/api/researcher/${encodeURIComponent(researcherId)}`);
 };
 
 /**
@@ -70,12 +66,10 @@ export const getResearcherProfile = async (researcherId) => {
  * @param {number} perPage - Number of works per page (default: 20)
  * @returns {Promise<Object>} Researcher works data from OpenAlex
  */
-export const getResearcherWorks = async (researcherId, page, perPage) => {
-  const response = await fetch(
-    `/api/researcher/${researcherId}/works?page=${page}&perPage=${perPage}`
+export const getResearcherWorks = async (researcherId, page = 1, perPage = 20) => {
+  return await apiRequest(
+    `/api/researcher/${encodeURIComponent(researcherId)}/works?page=${Number(page)}&perPage=${Number(perPage)}`
   );
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  return await response.json();
 };
 
 /**
@@ -87,12 +81,8 @@ export const exportResearcherProfile = async (researcherId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/export/excel`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        researcherIds: [researcherId],
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ researcherIds: [researcherId] }),
     });
 
     if (!response.ok) {
