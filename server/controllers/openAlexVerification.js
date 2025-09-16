@@ -53,7 +53,7 @@ const verifyWithOpenAlex = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 5
+  maxResultsToCheck = 3
 ) => {
   try {
     // Step 1: Search OpenAlex for the publication
@@ -110,17 +110,19 @@ const searchOpenAlex = async (title, maxResults) => {
   try {
     // Add api_key parameter using the OPENALEX_API_KEY from environment variables
     const apiKey = process.env.OPENALEX_API_KEY;
-    const openAlexApiUrl = `https://api.openalex.org/works?search=${encodeURIComponent(
+    const openAlexApiUrl = `https://api.openalex.org/works?per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics&filter=title.search:${encodeURIComponent(
       title
-    )}&per_page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics&api_key=${apiKey}`;
+    )}&api_key=${apiKey}`;
 
-    const { data: openAlexResult } = await axios.get(openAlexApiUrl);
+    const { data: openAlexResult } = await axios.get(openAlexApiUrl, {
+      timeout: 2000,
+    });
     return openAlexResult;
   } catch (err) {
     console.error("❌ [OpenAlex] Search error:", err.message);
     return { results: [] };
   }
-}; 
+};
 
 /**
  * Finds a matching publication in OpenAlex search results

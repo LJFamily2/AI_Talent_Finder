@@ -11,6 +11,7 @@ function CVUpload() {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
+  const [errorInfo, setErrorInfo] = useState(null); // {message, retryable, code}
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
@@ -19,6 +20,7 @@ function CVUpload() {
       setProcessing(true);
       setProgress(0);
       setProgressPhase("upload");
+      setErrorInfo(null); // Clear any previous error
 
       try {
         const formData = new FormData();
@@ -72,14 +74,25 @@ function CVUpload() {
         socketRef.current.on("error", (data) => {
           setProcessing(false);
           setProgress(0);
-          alert(
-            "Error during CV verification: " + (data.error || "Unknown error")
-          );
+          setErrorInfo({
+            message:
+              data.error ||
+              "An unexpected error occurred during CV verification.",
+            retryable: data.retryable || false,
+            code: data.code,
+          });
         });
       } catch (error) {
         console.error("Error verifying CV:", error);
         setProcessing(false);
         setProgress(0);
+        setErrorInfo({
+          message:
+            error.response?.data?.error ||
+            error.message ||
+            "Failed to start verification.",
+          retryable: false,
+        });
       }
     },
     [navigate]
@@ -121,6 +134,24 @@ function CVUpload() {
       <Header />
       <div className="flex flex-col items-center w-full h-lvh mt-15">
         <h2 className="text-3xl font-bold mb-7">Verify Candidate CV</h2>
+        {errorInfo && (
+          <div className="w-2/3 mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm">
+            <p className="font-semibold mb-1">Verification Error</p>
+            <p>{errorInfo.message}</p>
+            {errorInfo.retryable && (
+              <p className="mt-2 text-xs">
+                The AI model was temporarily unavailable (code: {errorInfo.code}
+                ). Please wait a moment and try uploading your CV again.
+              </p>
+            )}
+            <button
+              className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs"
+              onClick={() => setErrorInfo(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         <div
           className={`${
             isDragActive ? "bg-blue-100" : "bg-white"

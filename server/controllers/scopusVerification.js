@@ -48,7 +48,7 @@ const verifyWithScopus = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 5
+  maxResultsToCheck = 3
 ) => {
   try {
     // Step 1: Search Scopus database for the publication
@@ -101,22 +101,31 @@ const verifyWithScopus = async (
  * @private
  */
 const searchScopusDatabase = async (title, maxResults) => {
-  const scopusAPIKey = process.env.SCOPUS_API_KEY;
-  const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
-  const scopusQuery = title;
+  try {
+    const scopusAPIKey = process.env.SCOPUS_API_KEY;
+    const scopusInsttoken = process.env.SCOPUS_INSTTOKEN;
+    const scopusQuery = title;
 
-  const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
-    scopusQuery
-  )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResults}`;
+    const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
+      scopusQuery
+    )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResults}`;
 
-  const { data: scopusResult } = await axios.get(scopusApiUrl);
-  const entries = scopusResult?.["search-results"]?.entry || [];
+    const { data: scopusResult } = await axios.get(scopusApiUrl, { timeout: 1500 });
+    const entries = scopusResult?.["search-results"]?.entry || [];
 
-  return {
-    entries,
-    rawResult: scopusResult,
-    apiUrl: scopusApiUrl,
-  };
+    return {
+      entries,
+      rawResult: scopusResult,
+      apiUrl: scopusApiUrl,
+    };
+  } catch (err) {
+    console.error("❌ [Scopus] Search error:", err.message);
+    return {
+      entries: [],
+      rawResult: null,
+      apiUrl: null,
+    };
+  }
 };
 
 /**

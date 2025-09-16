@@ -183,7 +183,8 @@ const checkAuthorNameMatch = (candidateName, authorList) => {
       tryExactMatch(candidate, author) ||
       tryLastNameAndInitialMatch(candidate, author) ||
       tryBothInitialsMatch(candidate, author) ||
-      tryFullNameMatch(candidate, author)
+      tryFullNameMatch(candidate, author) ||
+      trySurnameInitialsMatch(candidate, author, authorName)
     ) {
       return true;
     }
@@ -292,6 +293,61 @@ const tryFullNameMatch = (candidate, author) => {
     // Use flexible matching for middle names - allows one to have middle names and other not
     return true;
   }
+  return false;
+};
+
+/**
+ * Attempts matching for PubMed-style "Surname InitialsWithoutSpaces" format
+ * Handles cases like "Chris Rawson" vs "Rawson CA"
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @param {string} originalAuthorName - Original unparsed author name
+ * @returns {boolean} True if match found
+ * @private
+ */
+const trySurnameInitialsMatch = (candidate, author, originalAuthorName) => {
+  const trimmedAuthor = originalAuthorName.trim();
+  const parts = trimmedAuthor.split(" ");
+
+  // Check if this looks like "Surname InitialsWithoutSpaces" format
+  // e.g., "Rawson CA", "Smith JD", "Johnson ABC"
+  if (parts.length === 2) {
+    const potentialSurname = parts[0];
+    const potentialInitials = parts[1];
+
+    // Check if second part looks like initials (2-4 capital letters, no spaces)
+    if (/^[A-Z]{1,4}$/.test(potentialInitials)) {
+      // Parse the initials
+      const initials = potentialInitials.split("");
+      const firstInitial = initials[0];
+      const middleInitials = initials.slice(1);
+
+      // Check if surname matches
+      if (candidate.lastName.toLowerCase() === potentialSurname.toLowerCase()) {
+        // Check if first initial matches
+        if (
+          candidate.firstInitial.toLowerCase() === firstInitial.toLowerCase()
+        ) {
+          // If candidate has middle initials, they should match
+          if (
+            candidate.middleInitials.length > 0 &&
+            middleInitials.length > 0
+          ) {
+            const candidateMiddleStr = candidate.middleInitials
+              .join("")
+              .toLowerCase();
+            const authorMiddleStr = middleInitials.join("").toLowerCase();
+            return candidateMiddleStr === authorMiddleStr;
+          }
+
+          // If one has middle initials and the other doesn't, still allow match
+          // This handles cases where CV has "Chris A. Rawson" but PubMed has "Rawson C"
+          return true;
+        }
+      }
+    }
+  }
+
   return false;
 };
 
