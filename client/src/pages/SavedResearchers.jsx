@@ -8,7 +8,9 @@ import {
   FaFilePdf,
   FaSortUp,
   FaSortDown,
+  FaTimes,
 } from "react-icons/fa";
+import { RiFolderSharedFill } from "react-icons/ri";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
@@ -19,7 +21,7 @@ import {
   ButtonGroup,
   Button,
 } from "@mui/material";
-import { getBookmarks, removeBookmark, moveResearchersBetweenFolders, renameFolder, deleteFolder, createFolder } from "../services/bookmarkService";
+import { getBookmarks, removeBookmark, moveResearchersBetweenFolders, renameFolder, deleteFolder, createFolder, updateResearchersInFolder } from "../services/bookmarkService";
 import { exportResearchersToExcel } from "../services/exportService";
 import { exportResearchersWithFullData } from "../services/pdfExportService";
 import SavedResearchCard from '../components/SavedResearchCard';
@@ -34,6 +36,9 @@ export default function SavedResearchers() {
   const [targetResearcher, setTargetResearcher] = useState(null);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [moveTargetResearcher, setMoveTargetResearcher] = useState(null);
+  // Bulk actions state
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // folders are unique by name; structure: { name, researcherIds: [] }
   const [folders, setFolders] = useState([]);
@@ -200,6 +205,108 @@ export default function SavedResearchers() {
   const closeMoveModal = () => {
     setMoveTargetResearcher(null);
     setMoveModalOpen(false);
+  };
+
+  // Helper to normalize id
+  const getIdStr = (obj) => {
+    if (!obj) return null;
+    return (
+      (obj._id && obj._id.toString && obj._id.toString()) ||
+      (obj.id && obj.id.toString && obj.id.toString()) ||
+      obj.slug ||
+      (typeof obj === 'string' ? obj : null)
+    );
+  };
+
+  const openBulkMove = () => {
+    if (selectedResearchers.length === 0) return;
+    setBulkMoveOpen(true);
+  };
+
+  const openBulkDelete = () => {
+    if (selectedResearchers.length === 0) return;
+    setBulkDeleteOpen(true);
+  };
+
+  const performBulkMoveToFolder = async (dstFolderName) => {
+    try {
+      const ids = selectedResearchers.map((id) => String(id));
+      if (!ids.length) return;
+      if (!currentFolderId || currentFolderId === dstFolderName) {
+        showToast('Please choose a different destination folder', 'warning');
+        return;
+      }
+      // Determine which IDs already exist in destination and skip them
+      const dstFolder = folders.find(f => f.name === dstFolderName);
+      const dstSet = new Set((dstFolder?.researcherIds || []).map((item) => {
+        const val = (item && typeof item === 'object')
+          ? ((item._id && item._id.toString && item._id.toString()) || item.id || item.slug)
+          : item;
+        return String(val);
+      }));
+      const toMove = ids.filter(id => !dstSet.has(String(id)));
+      const skipped = ids.filter(id => dstSet.has(String(id)));
+      const idToName = new Map(savedResearchers.map(r => {
+        const rid = (r._id && r._id.toString && r._id.toString()) || r.id || r.slug || (r.__raw && (r.__raw._id || r.__raw.id));
+        const nm = r.basic_info?.name || r.name || r.display_name || r.slug || String(rid);
+        return [String(rid), nm];
+      }));
+      const movedNames = toMove.map(id => idToName.get(String(id)) || String(id));
+      const skippedNames = skipped.map(id => idToName.get(String(id)) || String(id));
+
+      if (!toMove.length) {
+        // Nothing to move: only skipped
+        const msg = skippedNames.length
+          ? `${skippedNames.join(', ')} already exist in "${dstFolderName}" and were not moved.`
+          : 'Nothing to move.';
+        showToast(msg, skippedNames.length ? 'warning' : 'info');
+        setBulkMoveOpen(false);
+        return;
+      }
+
+      setLoading(true);
+      await moveResearchersBetweenFolders(currentFolderId, dstFolderName, toMove);
+      // Refresh folders and selection
+      await fetchBookmarks();
+      setSelectedResearchers([]);
+      setSelectMode(false);
+      // Combined message for moved + skipped (if any)
+      const movedPart = `Moved ${movedNames.join(', ')} to "${dstFolderName}".`;
+      const skippedPart = skippedNames.length ? ` ${skippedNames.join(', ')} already exist in "${dstFolderName}" and were not moved.` : '';
+      showToast(`${movedPart}${skippedPart}`, 'success');
+    } catch (err) {
+      console.error('Bulk move failed:', err);
+      showToast('Failed to move selected researchers', 'error');
+    } finally {
+      setLoading(false);
+      setBulkMoveOpen(false);
+    }
+  };
+
+  const performBulkDelete = async () => {
+    try {
+      const ids = selectedResearchers.map((id) => String(id));
+      const idToName = new Map(savedResearchers.map(r => {
+        const rid = (r._id && r._id.toString && r._id.toString()) || r.id || r.slug || (r.__raw && (r.__raw._id || r.__raw.id));
+        const nm = r.basic_info?.name || r.name || r.display_name || r.slug || String(rid);
+        return [String(rid), nm];
+      }));
+      const names = ids.map(id => idToName.get(String(id)) || String(id));
+      if (!ids.length) return;
+      setLoading(true);
+      // Use bulk remove endpoint for efficiency
+      await updateResearchersInFolder(currentFolderId, { remove: ids });
+      await fetchBookmarks();
+      setSelectedResearchers([]);
+      setSelectMode(false);
+      showToast(`Removed ${names.join(', ')} from "${currentFolderId}"`, 'success');
+    } catch (err) {
+      console.error('Bulk remove failed:', err);
+      showToast('Failed to remove selected researchers', 'error');
+    } finally {
+      setLoading(false);
+      setBulkDeleteOpen(false);
+    }
   };
 
   const handleMoveToFolder = async (folder) => {
@@ -533,9 +640,11 @@ export default function SavedResearchers() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <div className="w-full flex-grow mx-auto py-10 bg-gray-100">
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
+        <Header />
+      </div>
+      <div className="w-full flex-grow mx-auto py-10 pt-24">
         <div className="w-7/8 mx-auto flex gap-6">
           {/* Left: folders navigation (transparent background, subtle hover, active highlight) */}
           <FolderSidebar
@@ -595,21 +704,44 @@ export default function SavedResearchers() {
                     {selectMode ? "Cancel" : "Select"}
                   </button>
 
-                  <ButtonGroup variant="contained" color="primary">
-                    <Button
-                      onClick={handleExportMenuClick}
-                      endIcon={<FaDownload />}
-                      disabled={
-                        loading || (selectMode && selectedResearchers.length === 0)
-                      }
-                    >
-                      {loading
-                        ? "Exporting..."
-                        : selectMode
-                          ? `Export Selected (${selectedResearchers.length})`
-                          : "Export All"}
-                    </Button>
-                  </ButtonGroup>
+                  {selectMode && (
+                    <>
+                      <button
+                        onClick={openBulkMove}
+                        disabled={selectedResearchers.length === 0}
+                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                      >
+                        <RiFolderSharedFill />
+                        Move
+                      </button>
+                      <button
+                        onClick={openBulkDelete}
+                        disabled={selectedResearchers.length === 0}
+                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                      >
+                        <FaTimes />
+                        Delete
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={(e) => handleExportMenuClick(e)}
+                    disabled={loading || (selectMode && selectedResearchers.length === 0)}
+                    className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${
+                      loading || (selectMode && selectedResearchers.length === 0)
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                    title="Export"
+                  >
+                    <FaDownload />
+                    {loading
+                      ? "Exporting..."
+                      : selectMode
+                        ? `Export Selected (${selectedResearchers.length})`
+                        : "Export All"}
+                  </button>
                   <Menu
                     anchorEl={exportAnchorEl}
                     open={exportMenuOpen}
@@ -817,6 +949,55 @@ export default function SavedResearchers() {
               >
                 No
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0" onClick={() => setBulkDeleteOpen(false)} />
+          <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-fit max-w-full">
+            {(() => {
+              const idToName = new Map(savedResearchers.map(r => {
+                const rid = (r._id && r._id.toString && r._id.toString()) || r.id || r.slug || (r.__raw && (r.__raw._id || r.__raw.id));
+                const nm = r.basic_info?.name || r.name || r.display_name || r.slug || String(rid);
+                return [String(rid), nm];
+              }));
+              const names = selectedResearchers.map(id => idToName.get(String(id)) || String(id));
+              return (
+                <p className="text-xl font-semibold text-gray-800 mb-6 text-center">
+                  Remove {names.join(', ')} from <span className="text-blue-700 font-bold">"{currentFolderId}"</span>?
+                </p>
+              );
+            })()}
+            <div className="flex justify-center gap-4">
+              <button onClick={performBulkDelete} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition">Yes</button>
+              <button onClick={() => setBulkDeleteOpen(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition">No</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Move Modal */}
+      {bulkMoveOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0" onClick={() => setBulkMoveOpen(false)} />
+          <div className="relative bg-white p-6 rounded-2xl shadow-2xl z-60 w-[400px] max-w-full">
+            <h3 className="text-lg font-semibold mb-2 text-center">Move {selectedResearchers.length} selected {selectedResearchers.length > 1 ? 'researchers' : 'researcher'}</h3>
+            <div className="text-center text-gray-500 text-sm mb-4">
+              Current Folder: <span className="font-semibold text-blue-700">"{currentFolderId}"</span>
+            </div>
+            <div className="flex flex-col gap-3 max-h-60 overflow-y-auto mb-4">
+              {folders.filter(f => f.name !== currentFolderId).map(folder => (
+                <button key={folder.name} onClick={() => performBulkMoveToFolder(folder.name)} className="text-left px-4 py-2 rounded hover:bg-gray-100 border">
+                  {folder.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setBulkMoveOpen(false)} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
             </div>
           </div>
         </div>
