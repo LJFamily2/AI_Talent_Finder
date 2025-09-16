@@ -26,7 +26,7 @@ const {
 //=============================================================================
 
 /** Minimum similarity threshold for title matching */
-const TITLE_SIMILARITY_THRESHOLD = 95;
+const TITLE_SIMILARITY_THRESHOLD = 90;
 
 /** Minimum title length ratio for valid matches */
 const MIN_TITLE_LENGTH_RATIO = 0.8;
@@ -68,7 +68,7 @@ const verifyWithGoogleScholar = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 5
+  maxResultsToCheck = 3
 ) => {
   try {
     // Step 1: Search Google Scholar for the publication
@@ -133,19 +133,26 @@ const verifyWithGoogleScholar = async (
  * @private
  */
 const searchGoogleScholar = async (title, maxResults) => {
-  const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
-  const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
-    title
-  )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
+  try {
+    const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
+    const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
+      title
+    )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
 
-  const { data: scholarResult } = await axios.get(scholarApiUrl);
-  const organicResults =
-    scholarResult?.organic_results || scholarResult?.items || [];
+    const { data: scholarResult } = await axios.get(scholarApiUrl, { timeout: 1500 });
+    const organicResults =
+      scholarResult?.organic_results || scholarResult?.items || [];
 
-  return {
-    organicResults,
-    rawResult: scholarResult,
-  };
+    return {
+      organicResults,
+      rawResult: scholarResult,
+    };
+  } catch (err) {
+    return {
+      organicResults: [],
+      rawResult: {},
+    };
+  }
 };
 
 /**

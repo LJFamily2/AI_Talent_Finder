@@ -20,10 +20,9 @@
  */
 
 const { getTitleSimilarity } = require("./textUtils");
-const { SimpleHeaderClassifier } = require("../ml/simpleHeaderClassifier");
+const { initializeHeaderClassifier } = require("./headerClassifierUtils");
 const fs = require("fs");
 const path = require("path");
-const { getFilteredHeaders } = require("./headerFilterUtils");
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
@@ -48,21 +47,7 @@ try {
 }
 
 // Initialize header classifier
-let headerClassifier = null;
-
-function getHeaderClassifier() {
-  if (!headerClassifier) {
-    headerClassifier = new SimpleHeaderClassifier();
-    try {
-      headerClassifier.load(
-        path.join(__dirname, "../ml/header_classifier.json")
-      );
-    } catch (error) {
-      console.warn("Could not load header classifier model:", error.message);
-    }
-  }
-  return headerClassifier;
-}
+const headerClassifier = initializeHeaderClassifier("AI Helpers");
 
 /**
  * Maximum size for text chunks when processing with AI
@@ -74,7 +59,7 @@ const MAX_CHUNK_SIZE = 8000;
  * Similarity threshold for duplicate publication detection
  * @constant {number}
  */
-const DUPLICATE_SIMILARITY_THRESHOLD = 80;
+const DUPLICATE_SIMILARITY_THRESHOLD = 95;
 
 //=============================================================================
 // CANDIDATE NAME EXTRACTION
@@ -331,9 +316,12 @@ const extractPublicationsFromCV = async (model, cvText) => {
     const isDuplicate = uniquePublications.some((existingPub) => {
       if (!existingPub.title) return false;
 
+
       const similarity = getTitleSimilarity(pub.title, existingPub.title);
       return similarity > DUPLICATE_SIMILARITY_THRESHOLD;
     });
+
+    console.log(isDuplicate, pub.title, "filteredCount:", filteredCount);
     if (!isDuplicate) {
       uniquePublications.push(pub);
     } else {
@@ -376,11 +364,9 @@ function extractHeadersFromText(cvText) {
     // Try ML model first, fall back to regex rules
     let isHeader = false;
 
-    const classifier = getHeaderClassifier();
-
-    if (classifier && classifier.trained) {
+    if (headerClassifier && headerClassifier.trained) {
       try {
-        isHeader = classifier.predict(line, i, lines.length);
+        isHeader = headerClassifier.predict(line, i, lines.length);
       } catch (error) {
         console.warn("Error using ML header detection:", error.message);
       }
@@ -395,14 +381,7 @@ function extractHeadersFromText(cvText) {
     }
   }
 
-  // Filter headers using publication pattern logic
-  const filteredHeaders = getFilteredHeaders(
-    headers,
-    getHeaderClassifier(),
-    lines
-  );
-
-  return filteredHeaders;
+  return headers;
 }
 
 //=============================================================================

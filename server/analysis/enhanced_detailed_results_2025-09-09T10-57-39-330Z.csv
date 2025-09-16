@@ -1,0 +1,681 @@
+CV Name,Method,Success,Processing Time (ms),Time Per Publication (ms),Total Publications,Verified Publications,Verified With Author Match,Precision,Recall,F1 Score,Verification Accuracy,Publication Count Accuracy,Link Provision Rate,Citation Count Availability,Metadata Richness,Input Tokens,Output Tokens,Total Tokens,API Calls,Ground Truth CV Size,Ground Truth Publications,Error,,,,,Method,Processing Time (ms)
+1-page-PG,Traditional,TRUE,1738.78,,,,,1,1,1,1,1,0,0,0,,,,,2669,,,,,,,Traditional,1738.78
+1-page-PG,Gemini AI,TRUE,1698.79,1698.79,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2669,,,,,,,Gemini AI,1698.79
+1-page-PG,Claude AI,TRUE,4599.83,4599.83,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2669,,,,,,,Claude AI,4599.83
+1-page-PG,ChatGPT AI,TRUE,3469.12,3469.12,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2669,,,,,,,ChatGPT AI,3469.12
+1-page-PG,Grok AI,TRUE,16581.12,16581.12,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2669,,,,,,,Grok AI,16581.12
+1-page-UG,Traditional,TRUE,1572.96,,,,,1,1,1,1,1,0,0,0,,,,,4023,,,,,,,Traditional,1572.96
+1-page-UG,Gemini AI,TRUE,1891.58,1891.58,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,4023,,,,,,,Gemini AI,1891.58
+1-page-UG,Claude AI,TRUE,5372.62,5372.62,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,4023,,,,,,,Claude AI,5372.62
+1-page-UG,ChatGPT AI,TRUE,3347.16,3347.16,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,4023,,,,,,,ChatGPT AI,3347.16
+1-page-UG,Grok AI,TRUE,14968.92,14968.92,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,4023,,,,,,,Grok AI,14968.92
+2-page-PG,Traditional,TRUE,1280.43,,,,,1,1,1,1,1,0,0,0,,,,,4812,,,,,,,Traditional,1280.43
+2-page-PG,Gemini AI,TRUE,1479.46,,,,,1,1,1,1,1,0,0,0,,,,,4812,,,,,,,Gemini AI,1479.46
+2-page-PG,Claude AI,TRUE,4370.37,,,,,1,1,1,1,1,0,0,0,,,,,4812,,,,,,,Claude AI,4370.37
+2-page-PG,ChatGPT AI,TRUE,4841.19,1613.73,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,4812,,,,,,,ChatGPT AI,4841.19
+2-page-PG,Grok AI,TRUE,13217.31,6608.65,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,4812,,,,,,,Grok AI,13217.31
+2-page-UG,Traditional,TRUE,1678.06,,,,,1,1,1,1,1,0,0,0,,,,,3874,,,,,,,Traditional,1678.06
+2-page-UG,Gemini AI,TRUE,1677.28,,,,,1,1,1,1,1,0,0,0,,,,,3874,,,,,,,Gemini AI,1677.28
+2-page-UG,Claude AI,TRUE,3256.09,,,,,1,1,1,1,1,0,0,0,,,,,3874,,,,,,,Claude AI,3256.09
+2-page-UG,ChatGPT AI,TRUE,2201.53,,,,,1,1,1,1,1,0,0,0,,,,,3874,,,,,,,ChatGPT AI,2201.53
+2-page-UG,Grok AI,TRUE,11896.54,,,,,1,1,1,1,1,0,0,0,,,,,3874,,,,,,,Grok AI,11896.54
+2232,Traditional,TRUE,3370.78,3370.78,1,1,1,0,1,0,0,0,1,0,0.4,180,120,300,2,,,,,,,,Traditional,3370.78
+2232,Gemini AI,TRUE,4190.41,1047.6,4,1,1,0,1,0,0,0,1,0,0.4,1400,600,2000,1,,,,,,,,Gemini AI,4190.41
+2232,Claude AI,TRUE,10407.92,2601.98,4,,,0,1,0,0,0,1,0,0.4,1400,600,2000,1,,,,,,,,Claude AI,10407.92
+2232,ChatGPT AI,TRUE,4167.39,4167.39,1,1,,0,1,0,0,0,1,0,0.4,350,150,500,1,,,,,,,,ChatGPT AI,4167.39
+2232,Grok AI,TRUE,19773.96,4943.49,4,,,0,1,0,0,0,1,0,0.4,1400,600,2000,1,,,,,,,,Grok AI,19773.96
+academics-rmit-edu-au-ahmad-abareshi-publications...,Traditional,TRUE,34803.1,1450.13,24,21,21,0.875,0.913,0.894,0.917,1,1,0,0.4,4320,2880,7200,48,8174,24,,,,,,Traditional,34803.1
+academics-rmit-edu-au-ahmad-abareshi-publications...,Gemini AI,TRUE,19198.58,799.94,24,24,24,0.958,1,0.979,0.958,1,1,0,0.4,8400,3600,12000,5,8174,24,,,,,,Gemini AI,19198.58
+academics-rmit-edu-au-ahmad-abareshi-publications...,Claude AI,TRUE,62889.37,2620.39,24,24,24,0.958,1,0.979,0.958,1,1,0,0.4,8400,3600,12000,5,8174,24,,,,,,Claude AI,62889.37
+academics-rmit-edu-au-ahmad-abareshi-publications...,ChatGPT AI,TRUE,121176.62,5049.03,24,22,22,0.917,0.957,0.936,0.958,1,1,0,0.4,8400,3600,12000,5,8174,24,,,,,,ChatGPT AI,121176.62
+academics-rmit-edu-au-ahmad-abareshi-publications...,Grok AI,TRUE,45449.13,1893.71,24,24,24,0.958,1,0.979,0.958,1,1,0,0.4,8400,3600,12000,5,8174,24,,,,,,Grok AI,45449.13
+academics-rmit-edu-au-aleksandra-acker-publications...,Traditional,TRUE,33637.4,1345.5,25,18,17,0.72,0.857,0.783,0.88,1,1,0,0.4,4500,3000,7500,50,5630,25,,,,,,Traditional,33637.4
+academics-rmit-edu-au-aleksandra-acker-publications...,Gemini AI,TRUE,15955.13,638.21,25,22,22,0.84,1,0.913,0.96,1,1,0,0.4,8750,3750,12500,5,5630,25,,,,,,Gemini AI,15955.13
+academics-rmit-edu-au-aleksandra-acker-publications...,Claude AI,TRUE,51973.5,2078.94,25,21,21,0.84,1,0.913,1,1,1,0,0.4,8750,3750,12500,5,5630,25,,,,,,Claude AI,51973.5
+academics-rmit-edu-au-aleksandra-acker-publications...,ChatGPT AI,TRUE,36571.86,1462.87,25,20,20,0.8,0.952,0.87,0.96,1,1,0,0.4,8750,3750,12500,5,5630,25,,,,,,ChatGPT AI,36571.86
+academics-rmit-edu-au-aleksandra-acker-publications...,Grok AI,TRUE,33106.47,1324.26,25,22,22,0.84,1,0.913,0.96,1,1,0,0.4,8750,3750,12500,5,5630,25,,,,,,Grok AI,33106.47
+academics-rmit-edu-au-amanda-abraham-publications... (1),Traditional,TRUE,36715.42,1468.62,25,25,25,0.96,1,0.98,0.96,1,1,0,0.4,4500,3000,7500,50,7420,25,,,,,,Traditional,36715.42
+academics-rmit-edu-au-amanda-abraham-publications... (1),Gemini AI,TRUE,17526.18,701.05,25,25,24,0.96,1,0.98,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Gemini AI,17526.18
+academics-rmit-edu-au-amanda-abraham-publications... (1),Claude AI,TRUE,142653.32,5706.13,25,23,22,0.92,0.958,0.939,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Claude AI,142653.32
+academics-rmit-edu-au-amanda-abraham-publications... (1),ChatGPT AI,TRUE,189009.26,7560.37,25,21,17,0.84,0.875,0.857,0.88,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,ChatGPT AI,189009.26
+academics-rmit-edu-au-amanda-abraham-publications... (1),Grok AI,TRUE,53913.61,2156.54,25,23,18,0.92,0.958,0.939,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Grok AI,53913.61
+academics-rmit-edu-au-amanda-abraham-publications... (2),Traditional,TRUE,32804.86,1312.19,25,25,24,0.96,1,0.98,0.96,1,1,0,0.4,4500,3000,7500,50,7420,25,,,,,,Traditional,32804.86
+academics-rmit-edu-au-amanda-abraham-publications... (2),Gemini AI,TRUE,18529.85,741.19,25,25,24,0.96,1,0.98,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Gemini AI,18529.85
+academics-rmit-edu-au-amanda-abraham-publications... (2),Claude AI,TRUE,62717.76,2508.71,25,23,22,0.92,0.958,0.939,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Claude AI,62717.76
+academics-rmit-edu-au-amanda-abraham-publications... (2),ChatGPT AI,TRUE,72291.68,2891.67,25,21,21,0.84,0.875,0.857,0.88,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,ChatGPT AI,72291.68
+academics-rmit-edu-au-amanda-abraham-publications... (2),Grok AI,TRUE,46295.09,1851.8,25,25,19,0.96,1,0.98,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Grok AI,46295.09
+academics-rmit-edu-au-amanda-abraham-publications...,Traditional,TRUE,32800.54,1312.02,25,25,25,0.96,1,0.98,0.96,1,1,0,0.4,4500,3000,7500,50,7420,25,,,,,,Traditional,32800.54
+academics-rmit-edu-au-amanda-abraham-publications...,Gemini AI,TRUE,19192.32,767.69,25,25,24,0.96,1,0.98,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Gemini AI,19192.32
+academics-rmit-edu-au-amanda-abraham-publications...,Claude AI,TRUE,71915.18,2876.61,25,23,22,0.92,0.958,0.939,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Claude AI,71915.18
+academics-rmit-edu-au-amanda-abraham-publications...,ChatGPT AI,TRUE,127024.15,5080.97,25,22,17,0.88,0.917,0.898,0.92,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,ChatGPT AI,127024.15
+academics-rmit-edu-au-amanda-abraham-publications...,Grok AI,TRUE,67891.29,2715.65,25,25,19,0.96,1,0.98,0.96,1,1,0,0.4,8750,3750,12500,5,7420,25,,,,,,Grok AI,67891.29
+academics-rmit-edu-au-babak-abbasi-publications,Traditional,TRUE,9998.54,,,,,1,1,1,1,1,0,0,0,,,,,8379,,,,,,,Traditional,9998.54
+academics-rmit-edu-au-babak-abbasi-publications,Gemini AI,TRUE,20311.29,812.45,25,25,18,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,8379,,,,,,,Gemini AI,20311.29
+academics-rmit-edu-au-babak-abbasi-publications,Claude AI,TRUE,64871.9,2594.88,25,25,24,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,8379,,,,,,,Claude AI,64871.9
+academics-rmit-edu-au-babak-abbasi-publications,ChatGPT AI,TRUE,143445.53,5737.82,25,22,16,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,8379,,,,,,,ChatGPT AI,143445.53
+academics-rmit-edu-au-babak-abbasi-publications,Grok AI,TRUE,53355.2,2134.21,25,25,18,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,8379,,,,,,,Grok AI,53355.2
+academics-rmit-edu-au-behzad-abbasnejad-publications...,Traditional,TRUE,33355.66,1516.17,22,20,20,0.909,0.909,0.909,0.909,1,1,0,0.4,3960,2640,6600,44,7053,22,,,,,,Traditional,33355.66
+academics-rmit-edu-au-behzad-abbasnejad-publications...,Gemini AI,TRUE,17778.39,846.59,21,21,20,1,0.955,0.977,1,0.955,1,0,0.4,7350,3150,10500,5,7053,22,,,,,,Gemini AI,17778.39
+academics-rmit-edu-au-behzad-abbasnejad-publications...,Claude AI,TRUE,89891.92,4280.57,21,17,17,0.81,0.773,0.791,0.81,0.955,1,0,0.4,7350,3150,10500,5,7053,22,,,,,,Claude AI,89891.92
+academics-rmit-edu-au-behzad-abbasnejad-publications...,ChatGPT AI,TRUE,45951.43,2188.16,21,17,17,0.81,0.773,0.791,0.81,0.955,1,0,0.4,7350,3150,10500,5,7053,22,,,,,,ChatGPT AI,45951.43
+academics-rmit-edu-au-behzad-abbasnejad-publications...,Grok AI,TRUE,49871.19,2374.82,21,21,18,1,0.955,0.977,1,0.955,1,0,0.4,7350,3150,10500,5,7053,22,,,,,,Grok AI,49871.19
+academics-rmit-edu-au-golnoush-abaei-publications...,Traditional,TRUE,34299.7,1429.15,24,24,22,1,1,1,1,1,1,0,0.4,4320,2880,7200,48,6772,24,,,,,,Traditional,34299.7
+academics-rmit-edu-au-golnoush-abaei-publications...,Gemini AI,TRUE,17189.76,747.38,23,23,21,1,0.958,0.979,1,0.958,1,0,0.4,8050,3450,11500,5,6772,24,,,,,,Gemini AI,17189.76
+academics-rmit-edu-au-golnoush-abaei-publications...,Claude AI,TRUE,73320.46,3187.85,23,22,22,0.957,0.917,0.936,0.957,0.958,1,0,0.4,8050,3450,11500,5,6772,24,,,,,,Claude AI,73320.46
+academics-rmit-edu-au-golnoush-abaei-publications...,ChatGPT AI,TRUE,51161.74,2224.42,23,22,21,0.957,0.917,0.936,0.957,0.958,1,0,0.4,8050,3450,11500,5,6772,24,,,,,,ChatGPT AI,51161.74
+academics-rmit-edu-au-golnoush-abaei-publications...,Grok AI,TRUE,45361.3,1972.23,23,23,21,1,0.958,0.979,1,0.958,1,0,0.4,8050,3450,11500,5,6772,24,,,,,,Grok AI,45361.3
+academics-rmit-edu-au-kathleen-adams-publications... (1),Traditional,TRUE,17172.06,1431.01,12,4,,0.25,1,0.4,0.917,1,1,0,0.4,2160,1440,3600,24,3807,12,,,,,,Traditional,17172.06
+academics-rmit-edu-au-kathleen-adams-publications... (1),Gemini AI,TRUE,9618.17,801.51,12,12,11,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Gemini AI,9618.17
+academics-rmit-edu-au-kathleen-adams-publications... (1),Claude AI,TRUE,27469,2289.08,12,12,,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Claude AI,27469
+academics-rmit-edu-au-kathleen-adams-publications... (1),ChatGPT AI,TRUE,86147.78,7178.98,12,10,10,0.25,1,0.4,0.417,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,ChatGPT AI,86147.78
+academics-rmit-edu-au-kathleen-adams-publications... (1),Grok AI,TRUE,50072.01,4172.67,12,12,,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Grok AI,50072.01
+academics-rmit-edu-au-kathleen-adams-publications...,Traditional,TRUE,14883.97,1240.33,12,8,,0.25,1,0.4,0.583,1,1,0,0.4,2160,1440,3600,24,3807,12,,,,,,Traditional,14883.97
+academics-rmit-edu-au-kathleen-adams-publications...,Gemini AI,TRUE,9367.12,780.59,12,12,11,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Gemini AI,9367.12
+academics-rmit-edu-au-kathleen-adams-publications...,Claude AI,TRUE,45215.08,3767.92,12,12,,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Claude AI,45215.08
+academics-rmit-edu-au-kathleen-adams-publications...,ChatGPT AI,TRUE,24064.57,2005.38,12,3,2,0.25,1,0.4,1,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,ChatGPT AI,24064.57
+academics-rmit-edu-au-kathleen-adams-publications...,Grok AI,TRUE,36259.87,3021.66,12,12,11,0.25,1,0.4,0.25,1,1,0,0.4,4200,1800,6000,3,3807,12,,,,,,Grok AI,36259.87
+academics-rmit-edu-au-lisanne-adam-publications... (1),Traditional,TRUE,11979.31,1996.55,6,4,4,0.667,1,0.8,1,1,1,0,0.4,1080,720,1800,12,1953,6,,,,,,Traditional,11979.31
+academics-rmit-edu-au-lisanne-adam-publications... (1),Gemini AI,TRUE,4061.6,676.93,6,,,0,0,0,0.333,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Gemini AI,4061.6
+academics-rmit-edu-au-lisanne-adam-publications... (1),Claude AI,TRUE,17377.32,2896.22,6,5,5,0.667,1,0.8,0.833,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Claude AI,17377.32
+academics-rmit-edu-au-lisanne-adam-publications... (1),ChatGPT AI,TRUE,13179.05,2196.51,6,4,4,0.667,1,0.8,1,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,ChatGPT AI,13179.05
+academics-rmit-edu-au-lisanne-adam-publications... (1),Grok AI,TRUE,17408.65,2901.44,6,5,5,0.667,1,0.8,0.833,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Grok AI,17408.65
+academics-rmit-edu-au-lisanne-adam-publications...,Traditional,TRUE,14570.26,2428.38,6,6,6,0.667,1,0.8,0.667,1,1,0,0.4,1080,720,1800,12,1953,6,,,,,,Traditional,14570.26
+academics-rmit-edu-au-lisanne-adam-publications...,Gemini AI,TRUE,4909.99,818.33,6,,,0,0,0,0.333,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Gemini AI,4909.99
+academics-rmit-edu-au-lisanne-adam-publications...,Claude AI,TRUE,47291.34,7881.89,6,5,5,0.667,1,0.8,0.833,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Claude AI,47291.34
+academics-rmit-edu-au-lisanne-adam-publications...,ChatGPT AI,TRUE,11726.17,1954.36,6,5,5,0.667,1,0.8,0.833,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,ChatGPT AI,11726.17
+academics-rmit-edu-au-lisanne-adam-publications...,Grok AI,TRUE,17411.12,2901.85,6,5,5,0.667,1,0.8,0.833,1,1,0,0.4,2100,900,3000,2,1953,6,,,,,,Grok AI,17411.12
+academics-rmit-edu-au-luise-adams-publications...,Traditional,TRUE,6320.65,2106.88,3,1,1,0.333,0.5,0.4,0.667,1,1,0,0.4,540,360,900,6,1446,3,,,,,,Traditional,6320.65
+academics-rmit-edu-au-luise-adams-publications...,Gemini AI,TRUE,4510.9,1503.63,3,3,3,0.667,1,0.8,0.667,1,1,0,0.4,1050,450,1500,1,1446,3,,,,,,Gemini AI,4510.9
+academics-rmit-edu-au-luise-adams-publications...,Claude AI,TRUE,21287.91,7095.97,3,3,3,0.667,1,0.8,0.667,1,1,0,0.4,1050,450,1500,1,1446,3,,,,,,Claude AI,21287.91
+academics-rmit-edu-au-luise-adams-publications...,ChatGPT AI,TRUE,7186.38,2395.46,3,2,2,0.667,1,0.8,1,1,1,0,0.4,1050,450,1500,1,1446,3,,,,,,ChatGPT AI,7186.38
+academics-rmit-edu-au-luise-adams-publications...,Grok AI,TRUE,13224.78,4408.26,3,3,3,0.667,1,0.8,0.667,1,1,0,0.4,1050,450,1500,1,1446,3,,,,,,Grok AI,13224.78
+academics-rmit-edu-au-mali-abdollahian-publications...,Traditional,TRUE,36081.84,1443.27,25,23,23,0.92,0.958,0.939,0.96,1,1,0,0.4,4500,3000,7500,50,8634,25,,,,,,Traditional,36081.84
+academics-rmit-edu-au-mali-abdollahian-publications...,Gemini AI,TRUE,15485.92,619.44,25,4,1,0.16,0.167,0.163,0.2,1,1,0,0.4,8750,3750,12500,5,8634,25,,,,,,Gemini AI,15485.92
+academics-rmit-edu-au-mali-abdollahian-publications...,Claude AI,TRUE,70481.04,2819.24,25,10,7,0.4,0.417,0.408,0.44,1,1,0,0.4,8750,3750,12500,5,8634,25,,,,,,Claude AI,70481.04
+academics-rmit-edu-au-mali-abdollahian-publications...,ChatGPT AI,TRUE,53192.91,2127.72,25,15,4,0.6,0.625,0.612,0.64,1,1,0,0.4,8750,3750,12500,5,8634,25,,,,,,ChatGPT AI,53192.91
+academics-rmit-edu-au-mali-abdollahian-publications...,Grok AI,TRUE,51233.48,2049.34,25,20,9,0.8,0.833,0.816,0.84,1,1,0,0.4,8750,3750,12500,5,8634,25,,,,,,Grok AI,51233.48
+academics-rmit-edu-au-muhammad-abdulrahman-publications...,Traditional,TRUE,37611.48,1504.46,25,22,21,0.88,1,0.936,1,1,1,0,0.4,4500,3000,7500,50,7151,25,,,,,,Traditional,37611.48
+academics-rmit-edu-au-muhammad-abdulrahman-publications...,Gemini AI,TRUE,16773.54,729.28,23,19,16,0.826,0.864,0.844,0.946,0.92,1,0,0.4,8050,3450,11500,5,7151,25,,,,,,Gemini AI,16773.54
+academics-rmit-edu-au-muhammad-abdulrahman-publications...,Claude AI,TRUE,111057,4442.28,25,25,25,0.88,1,0.936,0.88,1,1,0,0.4,8750,3750,12500,5,7151,25,,,,,,Claude AI,111057
+academics-rmit-edu-au-muhammad-abdulrahman-publications...,ChatGPT AI,TRUE,136078.44,5443.14,25,24,24,0.88,1,0.936,0.92,1,1,0,0.4,8750,3750,12500,5,7151,25,,,,,,ChatGPT AI,136078.44
+academics-rmit-edu-au-muhammad-abdulrahman-publications...,Grok AI,TRUE,37107.32,1613.36,23,23,19,0.957,1,0.978,0.88,0.92,1,0,0.4,8050,3450,11500,5,7151,25,,,,,,Grok AI,37107.32
+academics-rmit-edu-au-robab-abdolkhani-publications...,Traditional,TRUE,21359.2,2373.24,9,8,8,0.889,0.889,0.889,0.889,1,1,0,0.4,1620,1080,2700,18,3100,9,,,,,,Traditional,21359.2
+academics-rmit-edu-au-robab-abdolkhani-publications...,Gemini AI,TRUE,8122.26,902.47,9,9,7,1,1,1,1,1,1,0,0.4,3150,1350,4500,2,3100,9,,,,,,Gemini AI,8122.26
+academics-rmit-edu-au-robab-abdolkhani-publications...,Claude AI,TRUE,75320.69,8368.97,9,9,9,1,1,1,1,1,1,0,0.4,3150,1350,4500,2,3100,9,,,,,,Claude AI,75320.69
+academics-rmit-edu-au-robab-abdolkhani-publications...,ChatGPT AI,TRUE,20540.43,2282.27,9,9,7,1,1,1,1,1,1,0,0.4,3150,1350,4500,2,3100,9,,,,,,ChatGPT AI,20540.43
+academics-rmit-edu-au-robab-abdolkhani-publications...,Grok AI,TRUE,21332.91,2370.32,9,9,9,1,1,1,1,1,1,0,0.4,3150,1350,4500,2,3100,9,,,,,,Grok AI,21332.91
+academics-rmit-edu-au-sol-abdulhak-publications...,Traditional,TRUE,4772.03,2386.01,2,1,,0.5,0.5,0.5,0.5,1,1,0,0.4,360,240,600,4,1485,2,,,,,,Traditional,4772.03
+academics-rmit-edu-au-sol-abdulhak-publications...,Gemini AI,TRUE,3738.93,1869.46,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1485,2,,,,,,Gemini AI,3738.93
+academics-rmit-edu-au-sol-abdulhak-publications...,Claude AI,TRUE,10294.37,5147.18,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1485,2,,,,,,Claude AI,10294.37
+academics-rmit-edu-au-sol-abdulhak-publications...,ChatGPT AI,TRUE,5790.33,2895.16,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1485,2,,,,,,ChatGPT AI,5790.33
+academics-rmit-edu-au-sol-abdulhak-publications...,Grok AI,TRUE,27979.51,13989.76,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1485,2,,,,,,Grok AI,27979.51
+academics-rmit-edu-au-sylvester-abanteriba-publications,Traditional,TRUE,14861.38,4953.79,3,3,,0,0,0,0,1,1,0,0.4,540,360,900,6,11505,3,,,,,,Traditional,14861.38
+academics-rmit-edu-au-sylvester-abanteriba-publications,Gemini AI,TRUE,19331.84,773.27,25,25,19,0,0,0,0,0.12,1,0,0.4,8750,3750,12500,5,11505,3,,,,,,Gemini AI,19331.84
+academics-rmit-edu-au-sylvester-abanteriba-publications,Claude AI,TRUE,79085.99,3163.44,25,24,24,0,0,0,0.04,0.12,1,0,0.4,8750,3750,12500,5,11505,3,,,,,,Claude AI,79085.99
+academics-rmit-edu-au-sylvester-abanteriba-publications,ChatGPT AI,TRUE,116424.57,4656.98,25,24,22,0,0,0,0.04,0.12,1,0,0.4,8750,3750,12500,5,11505,3,,,,,,ChatGPT AI,116424.57
+academics-rmit-edu-au-sylvester-abanteriba-publications,Grok AI,TRUE,57409.46,2296.38,25,23,18,0,0,0,0.08,0.12,1,0,0.4,8750,3750,12500,5,11505,3,,,,,,Grok AI,57409.46
+academics-rmit-edu-au-tor-helge-aas-publications...,Traditional,TRUE,5416.16,2708.08,2,2,2,1,1,1,1,1,1,0,0.4,360,240,600,4,1001,2,,,,,,Traditional,5416.16
+academics-rmit-edu-au-tor-helge-aas-publications...,Gemini AI,TRUE,4391.7,2195.85,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1001,2,,,,,,Gemini AI,4391.7
+academics-rmit-edu-au-tor-helge-aas-publications...,Claude AI,TRUE,11682.97,5841.49,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1001,2,,,,,,Claude AI,11682.97
+academics-rmit-edu-au-tor-helge-aas-publications...,ChatGPT AI,TRUE,6413.84,3206.92,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1001,2,,,,,,ChatGPT AI,6413.84
+academics-rmit-edu-au-tor-helge-aas-publications...,Grok AI,TRUE,11380.65,5690.32,2,2,2,1,1,1,1,1,1,0,0.4,700,300,1000,1,1001,2,,,,,,Grok AI,11380.65
+academics-rmit-edu-au-trevor-abbott-publications,Traditional,TRUE,10778.58,,,,,1,1,1,1,1,0,0,0,,,,,7839,,,,,,,Traditional,10778.58
+academics-rmit-edu-au-trevor-abbott-publications,Gemini AI,TRUE,18336.22,733.45,25,25,17,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,7839,,,,,,,Gemini AI,18336.22
+academics-rmit-edu-au-trevor-abbott-publications,Claude AI,TRUE,120942.72,4837.71,25,25,25,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,7839,,,,,,,Claude AI,120942.72
+academics-rmit-edu-au-trevor-abbott-publications,ChatGPT AI,TRUE,178642.01,7145.68,25,25,19,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,7839,,,,,,,ChatGPT AI,178642.01
+academics-rmit-edu-au-trevor-abbott-publications,Grok AI,TRUE,54118.58,2164.74,25,25,17,0,1,0,0,0,1,0,0.4,8750,3750,12500,5,7839,,,,,,,Grok AI,54118.58
+academic_cv_example_template_iconic,Traditional,TRUE,6188.69,,,,,1,1,1,1,1,0,0,0,,,,,2112,,,,,,,Traditional,6188.69
+academic_cv_example_template_iconic,Gemini AI,TRUE,5091.52,1018.3,5,,,0,1,0,0,0,1,0,0.4,1750,750,2500,1,2112,,,,,,,Gemini AI,5091.52
+academic_cv_example_template_iconic,Claude AI,TRUE,9385.56,3128.52,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,2112,,,,,,,Claude AI,9385.56
+academic_cv_example_template_iconic,ChatGPT AI,TRUE,8436.47,2109.12,4,,,0,1,0,0,0,1,0,0.4,1400,600,2000,1,2112,,,,,,,ChatGPT AI,8436.47
+academic_cv_example_template_iconic,Grok AI,TRUE,12684.64,,,,,1,1,1,1,1,0,0,0,,,,,2112,,,,,,,Grok AI,12684.64
+ADV_Sample_CV_MaryAskov_TenureTrack,Traditional,TRUE,17928.79,1494.07,12,2,,0,0,0,0.833,1,1,0,0.4,2160,1440,3600,24,11058,12,,,,,,Traditional,17928.79
+ADV_Sample_CV_MaryAskov_TenureTrack,Gemini AI,TRUE,21602.05,1350.13,16,7,7,0,0,0,0.563,0.75,1,0,0.4,5600,2400,8000,4,11058,12,,,,,,Gemini AI,21602.05
+ADV_Sample_CV_MaryAskov_TenureTrack,Claude AI,TRUE,53687.56,4473.96,12,,,0,0,0,1,1,1,0,0.4,4200,1800,6000,3,11058,12,,,,,,Claude AI,53687.56
+ADV_Sample_CV_MaryAskov_TenureTrack,ChatGPT AI,TRUE,34822.41,2901.87,12,,,0,0,0,1,1,1,0,0.4,4200,1800,6000,3,11058,12,,,,,,ChatGPT AI,34822.41
+ADV_Sample_CV_MaryAskov_TenureTrack,Grok AI,TRUE,32001.04,2000.07,16,6,6,0,0,0,0.625,0.75,1,0,0.4,5600,2400,8000,4,11058,12,,,,,,Grok AI,32001.04
+amitabhchandra,Traditional,TRUE,118501.07,1377.92,86,42,35,0.488,0.636,0.553,0.721,1,1,0,0.4,15480,10320,25800,172,40974,86,,,,,,Traditional,118501.07
+amitabhchandra,Gemini AI,TRUE,73948.41,506.5,146,131,131,0.452,1,0.623,0.87,0.589,1,0,0.4,51100,21900,73000,30,40974,86,,,,,,Gemini AI,73948.41
+amitabhchandra,Claude AI,FALSE,300006.59,,,,,0,0,0,0.233,0,,,,,,,,40974,86,Timeout,,,,,Claude AI,300006.59
+amitabhchandra,ChatGPT AI,FALSE,300003.18,,,,,0,0,0,0.233,0,,,,,,,,40974,86,Timeout,,,,,ChatGPT AI,300003.18
+amitabhchandra,Grok AI,TRUE,174381.69,1417.74,123,121,118,0.537,1,0.698,0.784,0.699,1,0,0.4,43050,18450,61500,25,40974,86,,,,,,Grok AI,174381.69
+arnoldhowitt,Traditional,TRUE,95236.35,1442.98,66,8,6,0.121,0.533,0.198,0.894,1,1,0,0.4,11880,7920,19800,132,106746,66,,,,,,Traditional,95236.35
+arnoldhowitt,Gemini AI,TRUE,104761.32,392.36,267,83,83,0.056,1,0.106,0.916,0.247,1,0,0.4,93450,40050,133500,54,106746,66,,,,,,Gemini AI,104761.32
+arnoldhowitt,Claude AI,FALSE,300002.1,,,,,0,0,0,0.773,0,,,,,,,,106746,66,Timeout,,,,,Claude AI,300002.1
+arnoldhowitt,ChatGPT AI,FALSE,300013.24,,,,,0,0,0,0.773,0,,,,,,,,106746,66,Timeout,,,,,ChatGPT AI,300013.24
+arnoldhowitt,Grok AI,TRUE,175064.07,1316.27,133,77,77,0.113,1,0.203,0.648,0.496,1,0,0.4,46550,19950,66500,27,106746,66,,,,,,Grok AI,175064.07
+arthurbrooks,Traditional,TRUE,17519.21,,,,,1,1,1,1,1,0,0,0,,,,,57833,,,,,,,Traditional,17519.21
+arthurbrooks,Gemini AI,TRUE,33587.57,,,,,1,1,1,1,1,0,0,0,,,,,57833,,,,,,,Gemini AI,33587.57
+arthurbrooks,Claude AI,TRUE,73994.7,3523.56,21,20,20,0,1,0,0,0,1,0,0.4,7350,3150,10500,5,57833,,,,,,,Claude AI,73994.7
+arthurbrooks,ChatGPT AI,TRUE,201185.64,,,,,1,1,1,1,1,0,0,0,,,,,57833,,,,,,,ChatGPT AI,201185.64
+arthurbrooks,Grok AI,TRUE,44748.43,1945.58,23,23,23,0,1,0,0,0,1,0,0.4,8050,3450,11500,5,57833,,,,,,,Grok AI,44748.43
+asimijazkhwaja,Traditional,TRUE,51864.14,1329.85,39,29,29,0.744,0.784,0.763,0.795,1,1,0,0.4,7020,4680,11700,78,21087,39,,,,,,Traditional,51864.14
+asimijazkhwaja,Gemini AI,TRUE,27640.21,552.8,50,39,39,0.74,1,0.851,0.831,0.78,1,0,0.4,17500,7500,25000,10,21087,39,,,,,,Gemini AI,27640.21
+asimijazkhwaja,Claude AI,TRUE,101639.73,2606.15,39,34,34,0.872,0.919,0.895,0.923,1,1,0,0.4,13650,5850,19500,8,21087,39,,,,,,Claude AI,101639.73
+asimijazkhwaja,ChatGPT AI,TRUE,286177.97,5723.56,50,31,30,0.62,0.838,0.713,0.671,0.78,1,0,0.4,17500,7500,25000,10,21087,39,,,,,,ChatGPT AI,286177.97
+asimijazkhwaja,Grok AI,TRUE,114358.18,2287.16,50,37,37,0.74,1,0.851,0.791,0.78,1,0,0.4,17500,7500,25000,10,21087,39,,,,,,Grok AI,114358.18
+assistant-professor-resume-example,Traditional,TRUE,4382.11,,,,,1,1,1,1,1,0,0,0,,,,,2127,,,,,,,Traditional,4382.11
+assistant-professor-resume-example,Gemini AI,TRUE,5049.44,5049.44,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2127,,,,,,,Gemini AI,5049.44
+assistant-professor-resume-example,Claude AI,TRUE,8738.95,4369.47,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,2127,,,,,,,Claude AI,8738.95
+assistant-professor-resume-example,ChatGPT AI,TRUE,6637.16,6637.16,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2127,,,,,,,ChatGPT AI,6637.16
+assistant-professor-resume-example,Grok AI,TRUE,19426.23,19426.23,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2127,,,,,,,Grok AI,19426.23
+associate-professor-resume-example,Traditional,TRUE,3989.59,,,,,1,1,1,1,1,0,0,0,,,,,2012,,,,,,,Traditional,3989.59
+associate-professor-resume-example,Gemini AI,TRUE,4211.01,4211.01,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2012,,,,,,,Gemini AI,4211.01
+associate-professor-resume-example,Claude AI,TRUE,8823.96,8823.96,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2012,,,,,,,Claude AI,8823.96
+associate-professor-resume-example,ChatGPT AI,TRUE,7594.75,3797.38,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,2012,,,,,,,ChatGPT AI,7594.75
+associate-professor-resume-example,Grok AI,TRUE,18398.63,18398.63,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2012,,,,,,,Grok AI,18398.63
+Benjamin F GoldFarb,Traditional,TRUE,5213.54,1737.85,3,1,,0,0,0,0.667,1,1,0,0.4,540,360,900,6,6854,3,,,,,,Traditional,5213.54
+Benjamin F GoldFarb,Gemini AI,TRUE,6218.27,690.92,9,1,1,0,0,0,0.889,0.333,1,0,0.4,3150,1350,4500,2,6854,3,,,,,,Gemini AI,6218.27
+Benjamin F GoldFarb,Claude AI,TRUE,9905.45,3301.82,3,1,1,0,0,0,0.667,1,1,0,0.4,1050,450,1500,1,6854,3,,,,,,Claude AI,9905.45
+Benjamin F GoldFarb,ChatGPT AI,TRUE,5116.7,1705.57,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,6854,3,,,,,,ChatGPT AI,5116.7
+Benjamin F GoldFarb,Grok AI,TRUE,19946.19,6648.73,3,1,1,0,0,0,0.667,1,1,0,0.4,1050,450,1500,1,6854,3,,,,,,Grok AI,19946.19
+bobbehn,Traditional,TRUE,199498.9,1295.45,154,38,33,0.201,1,0.335,0.955,1,1,0,0.4,27720,18480,46200,308,57598,154,,,,,,Traditional,199498.9
+bobbehn,Gemini AI,TRUE,118723.21,,,,,0,0,0,0.799,0,0,0,0,,,,,57598,154,,,,,,Gemini AI,118723.21
+bobbehn,Claude AI,FALSE,300007.8,,,,,0,0,0,0.799,0,,,,,,,,57598,154,Timeout,,,,,Claude AI,300007.8
+bobbehn,ChatGPT AI,FALSE,300014.34,,,,,0,0,0,0.799,0,,,,,,,,57598,154,Timeout,,,,,ChatGPT AI,300014.34
+bobbehn,Grok AI,TRUE,253011.91,988.33,256,187,187,0.121,1,0.216,0.471,0.602,1,0,0.4,89600,38400,128000,52,57598,154,,,,,,Grok AI,253011.91
+brianiammartino,Traditional,TRUE,6146.57,2048.86,3,1,,0.333,0.5,0.4,0.667,1,1,0,0.4,540,360,900,6,8222,3,,,,,,Traditional,6146.57
+brianiammartino,Gemini AI,TRUE,5409.36,1352.34,4,4,3,0.5,1,0.667,0.667,0.75,1,0,0.4,1400,600,2000,1,8222,3,,,,,,Gemini AI,5409.36
+brianiammartino,Claude AI,TRUE,15871.34,3967.83,4,3,2,0.5,1,0.667,0.917,0.75,1,0,0.4,1400,600,2000,1,8222,3,,,,,,Claude AI,15871.34
+brianiammartino,ChatGPT AI,TRUE,12468.2,3117.05,4,2,1,0.5,1,0.667,0.833,0.75,1,0,0.4,1400,600,2000,1,8222,3,,,,,,ChatGPT AI,12468.2
+brianiammartino,Grok AI,TRUE,14017.44,3504.36,4,4,4,0.5,1,0.667,0.667,0.75,1,0,0.4,1400,600,2000,1,8222,3,,,,,,Grok AI,14017.44
+CHRIS J. SMITH,Traditional,TRUE,4013.3,2006.65,2,,,0,0,0,1,1,1,0,0.4,360,240,600,4,4883,2,,,,,,Traditional,4013.3
+CHRIS J. SMITH,Gemini AI,TRUE,4027.39,2013.7,2,1,1,0,0,0,0.5,1,1,0,0.4,700,300,1000,1,4883,2,,,,,,Gemini AI,4027.39
+CHRIS J. SMITH,Claude AI,TRUE,36756.7,18378.35,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,4883,2,,,,,,Claude AI,36756.7
+CHRIS J. SMITH,ChatGPT AI,TRUE,4986.48,2493.24,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,4883,2,,,,,,ChatGPT AI,4986.48
+CHRIS J. SMITH,Grok AI,TRUE,14164.77,7082.38,2,2,2,0,0,0,0,1,1,0,0.4,700,300,1000,1,4883,2,,,,,,Grok AI,14164.77
+christopheravery,Traditional,TRUE,51129.5,1278.24,40,35,34,0.875,1,0.933,1,1,1,0,0.4,7200,4800,12000,80,7742,40,,,,,,Traditional,51129.5
+christopheravery,Gemini AI,TRUE,22229.61,555.74,40,40,40,0.875,1,0.933,0.875,1,1,0,0.4,14000,6000,20000,8,7742,40,,,,,,Gemini AI,22229.61
+christopheravery,Claude AI,TRUE,90968.39,2274.21,40,40,40,0.875,1,0.933,0.875,1,1,0,0.4,14000,6000,20000,8,7742,40,,,,,,Claude AI,90968.39
+christopheravery,ChatGPT AI,TRUE,200359.14,5008.98,40,38,37,0.875,1,0.933,0.925,1,1,0,0.4,14000,6000,20000,8,7742,40,,,,,,ChatGPT AI,200359.14
+christopheravery,Grok AI,TRUE,44215.7,1133.74,39,38,38,0.897,1,0.946,0.901,0.975,1,0,0.4,13650,5850,19500,8,7742,40,,,,,,Grok AI,44215.7
+claudebruderlein,Traditional,TRUE,45089.75,1326.17,34,12,11,0.353,0.6,0.444,0.765,1,1,0,0.4,6120,4080,10200,68,48037,34,,,,,,Traditional,45089.75
+claudebruderlein,Gemini AI,TRUE,33233.1,405.28,82,27,24,0.244,1,0.392,0.741,0.415,1,0,0.4,28700,12300,41000,17,48037,34,,,,,,Gemini AI,33233.1
+claudebruderlein,Claude AI,TRUE,201146.7,2453.01,82,27,24,0.244,1,0.392,0.741,0.415,1,0,0.4,28700,12300,41000,17,48037,34,,,,,,Claude AI,201146.7
+claudebruderlein,ChatGPT AI,TRUE,113757.16,1387.28,82,17,17,0.207,0.85,0.333,0.619,0.415,1,0,0.4,28700,12300,41000,17,48037,34,,,,,,ChatGPT AI,113757.16
+claudebruderlein,Grok AI,TRUE,100852.27,1420.45,71,65,62,0.282,1,0.44,0.673,0.479,1,0,0.4,24850,10650,35500,15,48037,34,,,,,,Grok AI,100852.27
+college-professor-1596084798-pdf,Traditional,TRUE,6241.39,,,,,1,1,1,1,1,0,0,0,,,,,2831,,,,,,,Traditional,6241.39
+college-professor-1596084798-pdf,Gemini AI,TRUE,6127.22,,,,,1,1,1,1,1,0,0,0,,,,,2831,,,,,,,Gemini AI,6127.22
+college-professor-1596084798-pdf,Claude AI,TRUE,8207.7,,,,,1,1,1,1,1,0,0,0,,,,,2831,,,,,,,Claude AI,8207.7
+college-professor-1596084798-pdf,ChatGPT AI,TRUE,5891.32,,,,,1,1,1,1,1,0,0,0,,,,,2831,,,,,,,ChatGPT AI,5891.32
+college-professor-1596084798-pdf,Grok AI,TRUE,11819.21,,,,,1,1,1,1,1,0,0,0,,,,,2831,,,,,,,Grok AI,11819.21
+college-professor-1596085717-pdf,Traditional,TRUE,6293.98,,,,,1,1,1,1,1,0,0,0,,,,,2717,,,,,,,Traditional,6293.98
+college-professor-1596085717-pdf,Gemini AI,TRUE,6401.21,,,,,1,1,1,1,1,0,0,0,,,,,2717,,,,,,,Gemini AI,6401.21
+college-professor-1596085717-pdf,Claude AI,TRUE,7468.72,,,,,1,1,1,1,1,0,0,0,,,,,2717,,,,,,,Claude AI,7468.72
+college-professor-1596085717-pdf,ChatGPT AI,TRUE,5905.33,,,,,1,1,1,1,1,0,0,0,,,,,2717,,,,,,,ChatGPT AI,5905.33
+college-professor-1596085717-pdf,Grok AI,TRUE,13177.97,,,,,1,1,1,1,1,0,0,0,,,,,2717,,,,,,,Grok AI,13177.97
+Creating-Your-Academic-CV-11-13,Traditional,TRUE,5712.71,1904.24,3,2,,0.667,0.667,0.667,0.667,1,1,0,0.4,540,360,900,6,5693,3,,,,,,Traditional,5712.71
+Creating-Your-Academic-CV-11-13,Gemini AI,TRUE,8092.18,505.76,16,3,3,0.188,1,0.316,0.188,0.188,1,0,0.4,5600,2400,8000,4,5693,3,,,,,,Gemini AI,8092.18
+Creating-Your-Academic-CV-11-13,Claude AI,TRUE,18426.16,3071.03,6,,,0,0,0,0,0.5,1,0,0.4,2100,900,3000,2,5693,3,,,,,,Claude AI,18426.16
+Creating-Your-Academic-CV-11-13,ChatGPT AI,TRUE,12429.14,2071.52,6,,,0,0,0,0,0.5,1,0,0.4,2100,900,3000,2,5693,3,,,,,,ChatGPT AI,12429.14
+Creating-Your-Academic-CV-11-13,Grok AI,TRUE,18866.05,1179.13,16,3,3,0.188,1,0.316,0.188,0.188,1,0,0.4,5600,2400,8000,4,5693,3,,,,,,Grok AI,18866.05
+Creating-Your-Academic-CV-14-16,Traditional,TRUE,1583.55,,,,,1,1,1,1,1,0,0,0,,,,,6773,,,,,,,Traditional,1583.55
+Creating-Your-Academic-CV-14-16,Gemini AI,TRUE,480.73,,,,,1,1,1,1,1,0,0,0,,,,,6773,,,,,,,Gemini AI,480.73
+Creating-Your-Academic-CV-14-16,Claude AI,TRUE,8285.19,1657.04,5,,,0,1,0,0,0,1,0,0.4,1750,750,2500,1,6773,,,,,,,Claude AI,8285.19
+Creating-Your-Academic-CV-14-16,ChatGPT AI,TRUE,7769.74,1942.44,4,,,0,1,0,0,0,1,0,0.4,1400,600,2000,1,6773,,,,,,,ChatGPT AI,7769.74
+Creating-Your-Academic-CV-14-16,Grok AI,TRUE,21423.68,2677.96,8,1,1,0,1,0,0,0,1,0,0.4,2800,1200,4000,2,6773,,,,,,,Grok AI,21423.68
+Creating-Your-Academic-CV-17-19,Traditional,TRUE,7807.39,1561.48,5,,,0,0,0,1,1,1,0,0.4,900,600,1500,10,7260,5,,,,,,Traditional,7807.39
+Creating-Your-Academic-CV-17-19,Gemini AI,TRUE,29624.27,,,,,0,0,0,1,0,0,0,0,,,,,7260,5,,,,,,Gemini AI,29624.27
+Creating-Your-Academic-CV-17-19,Claude AI,TRUE,15836.07,3167.21,5,,,0,0,0,1,1,1,0,0.4,1750,750,2500,1,7260,5,,,,,,Claude AI,15836.07
+Creating-Your-Academic-CV-17-19,ChatGPT AI,TRUE,8168.57,1633.71,5,,,0,0,0,1,1,1,0,0.4,1750,750,2500,1,7260,5,,,,,,ChatGPT AI,8168.57
+Creating-Your-Academic-CV-17-19,Grok AI,TRUE,20175.14,4035.03,5,,,0,0,0,1,1,1,0,0.4,1750,750,2500,1,7260,5,,,,,,Grok AI,20175.14
+Creating-Your-Academic-CV-6-10,Traditional,TRUE,3454.76,3454.76,1,,,0,0,0,1,1,1,0,0.4,180,120,300,2,11577,1,,,,,,Traditional,3454.76
+Creating-Your-Academic-CV-6-10,Gemini AI,TRUE,4311.94,431.19,10,1,,0,0,0,0.9,0.1,1,0,0.4,3500,1500,5000,2,11577,1,,,,,,Gemini AI,4311.94
+Creating-Your-Academic-CV-6-10,Claude AI,TRUE,10035.99,3345.33,3,,,0,0,0,1,0.333,1,0,0.4,1050,450,1500,1,11577,1,,,,,,Claude AI,10035.99
+Creating-Your-Academic-CV-6-10,ChatGPT AI,TRUE,5353.55,1784.52,3,,,0,0,0,1,0.333,1,0,0.4,1050,450,1500,1,11577,1,,,,,,ChatGPT AI,5353.55
+Creating-Your-Academic-CV-6-10,Grok AI,TRUE,22549.47,2254.95,10,1,,0,0,0,0.9,0.1,1,0,0.4,3500,1500,5000,2,11577,1,,,,,,Grok AI,22549.47
+curriculum_vitae,Traditional,TRUE,1676.5,,,,,1,1,1,1,1,0,0,0,,,,,2676,,,,,,,Traditional,1676.5
+curriculum_vitae,Gemini AI,TRUE,2271.58,757.19,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,2676,,,,,,,Gemini AI,2271.58
+curriculum_vitae,Claude AI,TRUE,3782.19,,,,,1,1,1,1,1,0,0,0,,,,,2676,,,,,,,Claude AI,3782.19
+curriculum_vitae,ChatGPT AI,TRUE,1661.66,,,,,1,1,1,1,1,0,0,0,,,,,2676,,,,,,,ChatGPT AI,1661.66
+curriculum_vitae,Grok AI,TRUE,22321.11,7440.37,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,2676,,,,,,,Grok AI,22321.11
+cv,Traditional,TRUE,86959.48,1402.57,62,39,38,0.629,0.722,0.672,0.758,1,1,0,0.4,11160,7440,18600,124,52749,62,,,,,,Traditional,86959.48
+cv,Gemini AI,TRUE,101910.98,445.03,229,110,58,0.236,1,0.382,0.609,0.271,1,0,0.4,80150,34350,114500,46,52749,62,,,,,,Gemini AI,101910.98
+cv,Claude AI,TRUE,296619.84,3707.75,80,61,58,0.675,1,0.806,0.892,0.775,1,0,0.4,28000,12000,40000,16,52749,62,,,,,,Claude AI,296619.84
+cv,ChatGPT AI,FALSE,300006.24,,,,,0,0,0,0.129,0,,,,,,,,52749,62,Timeout,,,,,ChatGPT AI,300006.24
+cv,Grok AI,TRUE,189960.04,1958.35,97,95,88,0.557,1,0.715,0.892,0.639,1,0,0.4,33950,14550,48500,20,52749,62,,,,,,Grok AI,189960.04
+d,Traditional,TRUE,3283.52,3283.52,1,,,0,0,0,1,1,1,0,0.4,180,120,300,2,2791,1,,,,,,Traditional,3283.52
+d,Gemini AI,TRUE,2579.17,2579.17,1,1,1,0,0,0,0,1,1,0,0.4,350,150,500,1,2791,1,,,,,,Gemini AI,2579.17
+d,Claude AI,TRUE,9972.15,2493.04,4,,,0,0,0,1,0.25,1,0,0.4,1400,600,2000,1,2791,1,,,,,,Claude AI,9972.15
+d,ChatGPT AI,TRUE,4869.35,4869.35,1,1,,0,0,0,0,1,1,0,0.4,350,150,500,1,2791,1,,,,,,ChatGPT AI,4869.35
+d,Grok AI,TRUE,30636.67,7659.17,4,,,0,0,0,1,0.25,1,0,0.4,1400,600,2000,1,2791,1,,,,,,Grok AI,30636.67
+DanielAdams,Traditional,TRUE,4536.95,2268.47,2,,,0,0,0,1,1,1,0,0.4,360,240,600,4,2563,2,,,,,,Traditional,4536.95
+DanielAdams,Gemini AI,TRUE,3219.93,804.98,4,1,,0,0,0,0.75,0.5,1,0,0.4,1400,600,2000,1,2563,2,,,,,,Gemini AI,3219.93
+DanielAdams,Claude AI,TRUE,8443.33,4221.67,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,2563,2,,,,,,Claude AI,8443.33
+DanielAdams,ChatGPT AI,TRUE,3901.37,1950.68,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,2563,2,,,,,,ChatGPT AI,3901.37
+DanielAdams,Grok AI,TRUE,11460.49,2865.12,4,,,0,0,0,1,0.5,1,0,0.4,1400,600,2000,1,2563,2,,,,,,Grok AI,11460.49
+davidking,Traditional,TRUE,41992.76,1615.11,26,16,13,0.615,0.842,0.711,0.885,1,1,0,0.4,4680,3120,7800,52,24386,26,,,,,,Traditional,41992.76
+davidking,Gemini AI,TRUE,41580.83,381.48,109,67,55,0.174,1,0.297,0.884,0.239,1,0,0.4,38150,16350,54500,22,24386,26,,,,,,Gemini AI,41580.83
+davidking,Claude AI,TRUE,286433.31,2702.2,106,31,31,0.179,1,0.304,0.562,0.245,1,0,0.4,37100,15900,53000,22,24386,26,,,,,,Claude AI,286433.31
+davidking,ChatGPT AI,TRUE,279036.41,2632.42,106,43,30,0.179,1,0.304,0.675,0.245,1,0,0.4,37100,15900,53000,22,24386,26,,,,,,ChatGPT AI,279036.41
+davidking,Grok AI,TRUE,124952.22,1542.62,81,45,45,0.235,1,0.38,0.825,0.321,1,0,0.4,28350,12150,40500,17,24386,26,,,,,,Grok AI,124952.22
+deborahhugheshallett,Traditional,TRUE,45253.02,1257.03,36,12,5,0.111,1,0.2,0.778,1,1,0,0.4,6480,4320,10800,72,8984,36,,,,,,Traditional,45253.02
+deborahhugheshallett,Gemini AI,TRUE,31614.44,,,,,0,0,0,0.889,0,0,0,0,,,,,8984,36,,,,,,Gemini AI,31614.44
+deborahhugheshallett,Claude AI,TRUE,69819.98,1939.44,36,23,23,0.111,1,0.2,0.472,1,1,0,0.4,12600,5400,18000,8,8984,36,,,,,,Claude AI,69819.98
+deborahhugheshallett,ChatGPT AI,TRUE,55897.45,1552.71,36,18,18,0.111,1,0.2,0.611,1,1,0,0.4,12600,5400,18000,8,8984,36,,,,,,ChatGPT AI,55897.45
+deborahhugheshallett,Grok AI,TRUE,50409.97,1482.65,34,34,34,0.118,1,0.211,0.111,0.944,1,0,0.4,11900,5100,17000,7,8984,36,,,,,,Grok AI,50409.97
+desmondang,Traditional,TRUE,15910.04,2272.86,7,6,6,0.857,0.857,0.857,0.857,1,1,0,0.4,1260,840,2100,14,6622,7,,,,,,Traditional,15910.04
+desmondang,Gemini AI,TRUE,8974.54,690.35,13,8,8,0.538,1,0.7,0.615,0.538,1,0,0.4,4550,1950,6500,3,6622,7,,,,,,Gemini AI,8974.54
+desmondang,Claude AI,TRUE,34413.67,2647.21,13,9,9,0.538,1,0.7,0.692,0.538,1,0,0.4,4550,1950,6500,3,6622,7,,,,,,Claude AI,34413.67
+desmondang,ChatGPT AI,TRUE,16618.5,1846.5,9,6,6,0.667,0.857,0.75,0.667,0.778,1,0,0.4,3150,1350,4500,2,6622,7,,,,,,ChatGPT AI,16618.5
+desmondang,Grok AI,TRUE,37255.71,2865.82,13,11,11,0.538,1,0.7,0.846,0.538,1,0,0.4,4550,1950,6500,3,6622,7,,,,,,Grok AI,37255.71
+ed9d7a441d97f0c71e672dabbf04cf06,Traditional,TRUE,13007.63,1858.23,7,4,4,0.571,0.667,0.615,0.714,1,1,0,0.4,1260,840,2100,14,2007,7,,,,,,Traditional,13007.63
+ed9d7a441d97f0c71e672dabbf04cf06,Gemini AI,TRUE,8892.82,1270.4,7,7,7,0.857,1,0.923,0.857,1,1,0,0.4,2450,1050,3500,2,2007,7,,,,,,Gemini AI,8892.82
+ed9d7a441d97f0c71e672dabbf04cf06,Claude AI,TRUE,26782.13,3826.02,7,7,7,0.857,1,0.923,0.857,1,1,0,0.4,2450,1050,3500,2,2007,7,,,,,,Claude AI,26782.13
+ed9d7a441d97f0c71e672dabbf04cf06,ChatGPT AI,TRUE,28779.46,4111.35,7,7,7,0.857,1,0.923,0.857,1,1,0,0.4,2450,1050,3500,2,2007,7,,,,,,ChatGPT AI,28779.46
+ed9d7a441d97f0c71e672dabbf04cf06,Grok AI,TRUE,26969.4,3852.77,7,7,7,0.857,1,0.923,0.857,1,1,0,0.4,2450,1050,3500,2,2007,7,,,,,,Grok AI,26969.4
+efefef,Traditional,TRUE,5086.02,2543.01,2,1,1,0.5,1,0.667,1,1,1,0,0.4,360,240,600,4,6746,2,,,,,,Traditional,5086.02
+efefef,Gemini AI,TRUE,6928.15,769.79,9,1,1,0.111,1,0.2,0.611,0.222,1,0,0.4,3150,1350,4500,2,6746,2,,,,,,Gemini AI,6928.15
+efefef,Claude AI,TRUE,10760.09,3586.7,3,1,1,0.333,1,0.5,0.833,0.667,1,0,0.4,1050,450,1500,1,6746,2,,,,,,Claude AI,10760.09
+efefef,ChatGPT AI,TRUE,6103.54,2034.51,3,,,0,0,0,0.5,0.667,1,0,0.4,1050,450,1500,1,6746,2,,,,,,ChatGPT AI,6103.54
+efefef,Grok AI,TRUE,14702.61,4900.87,3,1,1,0.333,1,0.5,0.833,0.667,1,0,0.4,1050,450,1500,1,6746,2,,,,,,Grok AI,14702.61
+elianalaferrara,Traditional,TRUE,70670.65,1239.84,57,43,40,0.754,0.956,0.843,0.965,1,1,0,0.4,10260,6840,17100,114,21542,57,,,,,,Traditional,70670.65
+elianalaferrara,Gemini AI,TRUE,29616.27,519.58,57,49,49,0.789,1,0.882,0.93,1,1,0,0.4,19950,8550,28500,12,21542,57,,,,,,Gemini AI,29616.27
+elianalaferrara,Claude AI,TRUE,154227.41,2487.54,62,51,51,0.726,1,0.841,0.967,0.919,1,0,0.4,21700,9300,31000,13,21542,57,,,,,,Claude AI,154227.41
+elianalaferrara,ChatGPT AI,TRUE,215675.36,3478.63,62,42,42,0.677,0.933,0.785,0.888,0.919,1,0,0.4,21700,9300,31000,13,21542,57,,,,,,ChatGPT AI,215675.36
+elianalaferrara,Grok AI,TRUE,95294.33,2324.25,41,39,39,0.951,0.867,0.907,0.838,0.719,1,0,0.4,14350,6150,20500,9,21542,57,,,,,,Grok AI,95294.33
+ELLEN R. JOSEPH,Traditional,TRUE,9259.4,1543.23,6,5,,0,0,0,0.167,1,1,0,0.4,1080,720,1800,12,8125,6,,,,,,Traditional,9259.4
+ELLEN R. JOSEPH,Gemini AI,TRUE,7278.41,1213.07,6,5,5,0,0,0,0.167,1,1,0,0.4,2100,900,3000,2,8125,6,,,,,,Gemini AI,7278.41
+ELLEN R. JOSEPH,Claude AI,TRUE,14357.65,2392.94,6,,,0,0,0,1,1,1,0,0.4,2100,900,3000,2,8125,6,,,,,,Claude AI,14357.65
+ELLEN R. JOSEPH,ChatGPT AI,TRUE,15147.05,2524.51,6,,,0,0,0,1,1,1,0,0.4,2100,900,3000,2,8125,6,,,,,,ChatGPT AI,15147.05
+ELLEN R. JOSEPH,Grok AI,TRUE,20687.22,3447.87,6,6,6,0,0,0,0,1,1,0,0.4,2100,900,3000,2,8125,6,,,,,,Grok AI,20687.22
+engineering-cv-edited,Traditional,TRUE,4031.17,2015.59,2,,,0,0,0,1,1,1,0,0.4,360,240,600,4,14236,2,,,,,,Traditional,4031.17
+engineering-cv-edited,Gemini AI,TRUE,4606.2,2303.1,2,2,2,0,0,0,0,1,1,0,0.4,700,300,1000,1,14236,2,,,,,,Gemini AI,4606.2
+engineering-cv-edited,Claude AI,TRUE,8330.43,4165.22,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,14236,2,,,,,,Claude AI,8330.43
+engineering-cv-edited,ChatGPT AI,TRUE,10065.43,5032.72,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,14236,2,,,,,,ChatGPT AI,10065.43
+engineering-cv-edited,Grok AI,TRUE,9112.89,4556.44,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,14236,2,,,,,,Grok AI,9112.89
+english-professor-resume-example,Traditional,TRUE,4323.09,,,,,1,1,1,1,1,0,0,0,,,,,2219,,,,,,,Traditional,4323.09
+english-professor-resume-example,Gemini AI,TRUE,4812.63,4812.63,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2219,,,,,,,Gemini AI,4812.63
+english-professor-resume-example,Claude AI,TRUE,8840.46,8840.46,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2219,,,,,,,Claude AI,8840.46
+english-professor-resume-example,ChatGPT AI,TRUE,5363.51,5363.51,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2219,,,,,,,ChatGPT AI,5363.51
+english-professor-resume-example,Grok AI,TRUE,16541.83,,,,,1,1,1,1,1,0,0,0,,,,,2219,,,,,,,Grok AI,16541.83
+ericachenoweth,Traditional,TRUE,50958.36,3184.9,16,4,3,0.25,1,0.4,1,1,1,0,0.4,2880,1920,4800,32,128370,16,,,,,,Traditional,50958.36
+ericachenoweth,Gemini AI,TRUE,78352.54,,,,,0,0,0,0.75,0,0,0,0,,,,,128370,16,,,,,,Gemini AI,78352.54
+ericachenoweth,Claude AI,FALSE,300003.52,,,,,0,0,0,0.75,0,,,,,,,,128370,16,Timeout,,,,,Claude AI,300003.52
+ericachenoweth,ChatGPT AI,FALSE,300003.17,,,,,0,0,0,0.75,0,,,,,,,,128370,16,Timeout,,,,,ChatGPT AI,300003.17
+ericachenoweth,Grok AI,TRUE,286547.91,3331.95,86,62,57,0.047,1,0.089,0.529,0.186,1,0,0.4,30100,12900,43000,18,128370,16,,,,,,Grok AI,286547.91
+hannahbowles,Traditional,TRUE,146573.18,1252.76,117,31,28,0.265,0.608,0.369,0.829,1,1,0,0.4,21060,14040,35100,234,46533,117,,,,,,Traditional,146573.18
+hannahbowles,Gemini AI,TRUE,86502.31,460.12,188,70,56,0.271,1,0.427,0.936,0.622,1,0,0.4,65800,28200,94000,38,46533,117,,,,,,Gemini AI,86502.31
+hannahbowles,Claude AI,FALSE,300006.77,,,,,0,0,0,0.564,0,,,,,,,,46533,117,Timeout,,,,,Claude AI,300006.77
+hannahbowles,ChatGPT AI,TRUE,222420.08,1853.5,120,71,59,0.425,1,0.596,0.844,0.975,1,0,0.4,42000,18000,60000,24,46533,117,,,,,,ChatGPT AI,222420.08
+hannahbowles,Grok AI,TRUE,264394.36,2081.85,127,105,81,0.402,1,0.573,0.609,0.921,1,0,0.4,44450,19050,63500,26,46533,117,,,,,,Grok AI,264394.36
+irisbohnet,Traditional,TRUE,12528.47,6264.23,2,,,0,0,0,1,1,1,0,0.4,360,240,600,4,27388,2,,,,,,Traditional,12528.47
+irisbohnet,Gemini AI,TRUE,33635.11,,,,,0,0,0,1,0,0,0,0,,,,,27388,2,,,,,,Gemini AI,33635.11
+irisbohnet,Claude AI,TRUE,194456.77,97228.38,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,27388,2,,,,,,Claude AI,194456.77
+irisbohnet,ChatGPT AI,FALSE,300005.14,,,,,0,0,0,1,0,,,,,,,,27388,2,Timeout,,,,,ChatGPT AI,300005.14
+irisbohnet,Grok AI,TRUE,61257.28,1038.26,59,55,55,0,0,0,0.068,0.034,1,0,0.4,20650,8850,29500,12,27388,2,,,,,,Grok AI,61257.28
+jacquelinebhabha,Traditional,TRUE,119731.75,1345.3,89,18,8,0.067,1,0.126,0.865,1,1,0,0.4,16020,10680,26700,178,68267,89,,,,,,Traditional,119731.75
+jacquelinebhabha,Gemini AI,TRUE,30942.61,,,,,0,0,0,0.933,0,0,0,0,,,,,68267,89,,,,,,Gemini AI,30942.61
+jacquelinebhabha,Claude AI,FALSE,300015.25,,,,,0,0,0,0.933,0,,,,,,,,68267,89,Timeout,,,,,Claude AI,300015.25
+jacquelinebhabha,ChatGPT AI,FALSE,300004.37,,,,,0,0,0,0.933,0,,,,,,,,68267,89,Timeout,,,,,ChatGPT AI,300004.37
+jacquelinebhabha,Grok AI,TRUE,114040.95,838.54,136,112,112,0.044,1,0.085,0.244,0.654,1,0,0.4,47600,20400,68000,28,68267,89,,,,,,Grok AI,114040.95
+jamescarras,Traditional,TRUE,8411.44,1401.91,6,,,0,0,0,1,1,1,0,0.4,1080,720,1800,12,14347,6,,,,,,Traditional,8411.44
+jamescarras,Gemini AI,TRUE,28385.45,378.47,75,,,0,0,0,1,0.08,1,0,0.4,26250,11250,37500,15,14347,6,,,,,,Gemini AI,28385.45
+jamescarras,Claude AI,TRUE,34903.88,2493.13,14,,,0,0,0,1,0.429,1,0,0.4,4900,2100,7000,3,14347,6,,,,,,Claude AI,34903.88
+jamescarras,ChatGPT AI,TRUE,42933.75,3066.7,14,5,5,0,0,0,0.643,0.429,1,0,0.4,4900,2100,7000,3,14347,6,,,,,,ChatGPT AI,42933.75
+jamescarras,Grok AI,TRUE,19032.38,1359.46,14,7,7,0,0,0,0.5,0.429,1,0,0.4,4900,2100,7000,3,14347,6,,,,,,Grok AI,19032.38
+Jason_Priem_CV,Traditional,TRUE,11095.04,1585.01,7,3,3,0.429,0.6,0.5,0.714,1,1,0,0.4,1260,840,2100,14,2237,7,,,,,,Traditional,11095.04
+Jason_Priem_CV,Gemini AI,TRUE,5590.6,798.66,7,7,7,0.714,1,0.833,0.714,1,1,0,0.4,2450,1050,3500,2,2237,7,,,,,,Gemini AI,5590.6
+Jason_Priem_CV,Claude AI,TRUE,20385.51,2912.22,7,4,4,0.571,0.8,0.667,0.857,1,1,0,0.4,2450,1050,3500,2,2237,7,,,,,,Claude AI,20385.51
+Jason_Priem_CV,ChatGPT AI,TRUE,10733.78,1533.4,7,5,5,0.714,1,0.833,1,1,1,0,0.4,2450,1050,3500,2,2237,7,,,,,,ChatGPT AI,10733.78
+Jason_Priem_CV,Grok AI,TRUE,17872.98,2553.28,7,7,7,0.714,1,0.833,0.714,1,1,0,0.4,2450,1050,3500,2,2237,7,,,,,,Grok AI,17872.98
+jenniferhochschild,Traditional,TRUE,71235.47,1737.45,41,17,12,0.39,1,0.561,0.976,1,1,0,0.4,7380,4920,12300,82,43868,41,,,,,,Traditional,71235.47
+jenniferhochschild,Gemini AI,TRUE,9799.71,,,,,0,0,0,0.61,0,0,0,0,,,,,43868,41,,,,,,Gemini AI,9799.71
+jenniferhochschild,Claude AI,FALSE,300010.41,,,,,0,0,0,0.61,0,,,,,,,,43868,41,Timeout,,,,,Claude AI,300010.41
+jenniferhochschild,ChatGPT AI,FALSE,300001.93,,,,,0,0,0,0.61,0,,,,,,,,43868,41,Timeout,,,,,ChatGPT AI,300001.93
+jenniferhochschild,Grok AI,TRUE,252481.29,2019.85,125,107,107,0.128,1,0.227,0.534,0.328,1,0,0.4,43750,18750,62500,25,43868,41,,,,,,Grok AI,252481.29
+Jennifer_Kyle_CV,Traditional,TRUE,14341.03,1593.45,9,3,3,0.333,1,0.5,1,1,1,0,0.4,1620,1080,2700,18,3577,9,,,,,,Traditional,14341.03
+Jennifer_Kyle_CV,Gemini AI,TRUE,7177.21,797.47,9,3,3,0.333,1,0.5,1,1,1,0,0.4,3150,1350,4500,2,3577,9,,,,,,Gemini AI,7177.21
+Jennifer_Kyle_CV,Claude AI,TRUE,87466.2,9718.47,9,3,3,0.333,1,0.5,1,1,1,0,0.4,3150,1350,4500,2,3577,9,,,,,,Claude AI,87466.2
+Jennifer_Kyle_CV,ChatGPT AI,TRUE,16460.58,1828.95,9,3,3,0.333,1,0.5,1,1,1,0,0.4,3150,1350,4500,2,3577,9,,,,,,ChatGPT AI,16460.58
+Jennifer_Kyle_CV,Grok AI,TRUE,23759.23,2639.91,9,3,3,0.333,1,0.5,1,1,1,0,0.4,3150,1350,4500,2,3577,9,,,,,,Grok AI,23759.23
+Jian_Wu_CV,Traditional,TRUE,11471.26,1638.75,7,2,2,0.286,0.667,0.4,0.857,1,1,0,0.4,1260,840,2100,14,1789,7,,,,,,Traditional,11471.26
+Jian_Wu_CV,Gemini AI,TRUE,6464.39,923.48,7,4,4,0.429,1,0.6,0.857,1,1,0,0.4,2450,1050,3500,2,1789,7,,,,,,Gemini AI,6464.39
+Jian_Wu_CV,Claude AI,TRUE,24761.85,3537.41,7,1,1,0.143,0.333,0.2,0.714,1,1,0,0.4,2450,1050,3500,2,1789,7,,,,,,Claude AI,24761.85
+Jian_Wu_CV,ChatGPT AI,TRUE,9849.38,1407.05,7,2,2,0.286,0.667,0.4,0.857,1,1,0,0.4,2450,1050,3500,2,1789,7,,,,,,ChatGPT AI,9849.38
+Jian_Wu_CV,Grok AI,TRUE,20286.94,2898.13,7,5,5,0.429,1,0.6,0.714,1,1,0,0.4,2450,1050,3500,2,1789,7,,,,,,Grok AI,20286.94
+jiebai,Traditional,TRUE,10727.62,2681.9,4,2,2,0.5,0.5,0.5,0.5,1,1,0,0.4,720,480,1200,8,10058,4,,,,,,Traditional,10727.62
+jiebai,Gemini AI,TRUE,34153.59,307.69,111,95,95,0.036,1,0.07,0.856,0.036,1,0,0.4,38850,16650,55500,23,10058,4,,,,,,Gemini AI,34153.59
+jiebai,Claude AI,TRUE,72150.77,3435.75,21,10,10,0.19,1,0.32,0.476,0.19,1,0,0.4,7350,3150,10500,5,10058,4,,,,,,Claude AI,72150.77
+jiebai,ChatGPT AI,TRUE,34773.9,1655.9,21,10,10,0.19,1,0.32,0.476,0.19,1,0,0.4,7350,3150,10500,5,10058,4,,,,,,ChatGPT AI,34773.9
+jiebai,Grok AI,TRUE,46549.12,2216.62,21,10,10,0.19,1,0.32,0.476,0.19,1,0,0.4,7350,3150,10500,5,10058,4,,,,,,Grok AI,46549.12
+johnholdren,Traditional,TRUE,71383.88,1189.73,60,26,,0.433,0.867,0.578,0.933,1,1,0,0.4,10800,7200,18000,120,27530,60,,,,,,Traditional,71383.88
+johnholdren,Gemini AI,TRUE,29040.98,433.45,67,58,57,0.448,1,0.619,0.634,0.896,1,0,0.4,23450,10050,33500,14,27530,60,,,,,,Gemini AI,29040.98
+johnholdren,Claude AI,TRUE,140872.98,2347.88,60,60,60,0.5,1,0.667,0.5,1,1,0,0.4,21000,9000,30000,12,27530,60,,,,,,Claude AI,140872.98
+johnholdren,ChatGPT AI,TRUE,248064.96,3876.02,64,60,60,0.469,1,0.638,0.563,0.938,1,0,0.4,22400,9600,32000,13,27530,60,,,,,,ChatGPT AI,248064.96
+johnholdren,Grok AI,TRUE,58580.47,976.34,60,60,59,0.5,1,0.667,0.5,1,1,0,0.4,21000,9000,30000,12,27530,60,,,,,,Grok AI,58580.47
+josephaldy,Traditional,TRUE,971.26,,,,,1,1,1,1,1,0,0,0,,,,,106885,,,,,,,Traditional,971.26
+josephaldy,Gemini AI,TRUE,946.9,,,,,1,1,1,1,1,0,0,0,,,,,106885,,,,,,,Gemini AI,946.9
+josephaldy,Claude AI,TRUE,122549.26,535.15,229,195,195,0,1,0,0,0,1,0,0.4,80150,34350,114500,46,106885,,,,,,,Claude AI,122549.26
+josephaldy,ChatGPT AI,TRUE,99102.23,338.23,293,225,185,0,1,0,0,0,1,0,0.4,102550,43950,146500,59,106885,,,,,,,ChatGPT AI,99102.23
+josephaldy,Grok AI,FALSE,300004.86,,,,,1,1,1,1,1,,,,,,,,106885,,Timeout,,,,,Grok AI,300004.86
+josephkalt,Traditional,TRUE,84674.84,1388.11,61,4,3,0.016,1,0.032,0.951,1,1,0,0.4,10980,7320,18300,122,48316,61,,,,,,Traditional,84674.84
+josephkalt,Gemini AI,TRUE,30074.28,,,,,0,0,0,0.984,0,0,0,0,,,,,48316,61,,,,,,Gemini AI,30074.28
+josephkalt,Claude AI,TRUE,207460.4,,,,,0,0,0,0.984,0,0,0,0,,,,,48316,61,,,,,,Claude AI,207460.4
+josephkalt,ChatGPT AI,FALSE,300014.33,,,,,0,0,0,0.984,0,,,,,,,,48316,61,Timeout,,,,,ChatGPT AI,300014.33
+josephkalt,Grok AI,TRUE,113988.64,1280.77,89,82,82,0.011,1,0.022,0.095,0.685,1,0,0.4,31150,13350,44500,18,48316,61,,,,,,Grok AI,113988.64
+juliebattilana,Traditional,TRUE,137791.54,1391.83,99,32,30,0.293,1,0.453,0.97,1,1,0,0.4,17820,11880,29700,198,66928,99,,,,,,Traditional,137791.54
+juliebattilana,Gemini AI,TRUE,58496.58,,,,,0,0,0,0.707,0,0,0,0,,,,,66928,99,,,,,,Gemini AI,58496.58
+juliebattilana,Claude AI,FALSE,300002.96,,,,,0,0,0,0.707,0,,,,,,,,66928,99,Timeout,,,,,Claude AI,300002.96
+juliebattilana,ChatGPT AI,FALSE,300005.75,,,,,0,0,0,0.707,0,,,,,,,,66928,99,Timeout,,,,,ChatGPT AI,300005.75
+juliebattilana,Grok AI,TRUE,174810.25,1197.33,146,141,138,0.199,1,0.331,0.327,0.678,1,0,0.4,51100,21900,73000,30,66928,99,,,,,,Grok AI,174810.25
+Keisha V. Thomas,Traditional,TRUE,6413.53,1603.38,4,2,,0.5,1,0.667,1,1,1,0,0.4,720,480,1200,8,5205,4,,,,,,Traditional,6413.53
+Keisha V. Thomas,Gemini AI,TRUE,4910.63,1227.66,4,2,2,0.5,1,0.667,1,1,1,0,0.4,1400,600,2000,1,5205,4,,,,,,Gemini AI,4910.63
+Keisha V. Thomas,Claude AI,TRUE,18654.07,4663.52,4,,,0,0,0,0.5,1,1,0,0.4,1400,600,2000,1,5205,4,,,,,,Claude AI,18654.07
+Keisha V. Thomas,ChatGPT AI,TRUE,9722.64,2430.66,4,,,0,0,0,0.5,1,1,0,0.4,1400,600,2000,1,5205,4,,,,,,ChatGPT AI,9722.64
+Keisha V. Thomas,Grok AI,TRUE,26512.99,6628.25,4,,,0,0,0,0.5,1,1,0,0.4,1400,600,2000,1,5205,4,,,,,,Grok AI,26512.99
+kesselyhong,Traditional,TRUE,7934.46,1983.62,4,1,1,0.25,0.5,0.333,0.75,1,1,0,0.4,720,480,1200,8,23661,4,,,,,,Traditional,7934.46
+kesselyhong,Gemini AI,TRUE,6611.69,661.17,10,4,4,0.2,1,0.333,0.9,0.4,1,0,0.4,3500,1500,5000,2,23661,4,,,,,,Gemini AI,6611.69
+kesselyhong,Claude AI,TRUE,49543.39,4954.34,10,2,2,0.2,1,0.333,0.7,0.4,1,0,0.4,3500,1500,5000,2,23661,4,,,,,,Claude AI,49543.39
+kesselyhong,ChatGPT AI,TRUE,33472.94,3347.29,10,4,4,0.2,1,0.333,0.9,0.4,1,0,0.4,3500,1500,5000,2,23661,4,,,,,,ChatGPT AI,33472.94
+kesselyhong,Grok AI,TRUE,19049.99,1905,10,4,4,0.2,1,0.333,0.9,0.4,1,0,0.4,3500,1500,5000,2,23661,4,,,,,,Grok AI,19049.99
+khalilabdur-rashid,Traditional,TRUE,11484.4,1435.55,8,1,1,0.125,0.333,0.182,0.75,1,1,0,0.4,1440,960,2400,16,9618,8,,,,,,Traditional,11484.4
+khalilabdur-rashid,Gemini AI,TRUE,5972.01,746.5,8,4,4,0.375,1,0.545,0.875,1,1,0,0.4,2800,1200,4000,2,9618,8,,,,,,Gemini AI,5972.01
+khalilabdur-rashid,Claude AI,TRUE,37102.71,4637.84,8,6,6,0.375,1,0.545,0.625,1,1,0,0.4,2800,1200,4000,2,9618,8,,,,,,Claude AI,37102.71
+khalilabdur-rashid,ChatGPT AI,TRUE,32010.23,4001.28,8,4,4,0.375,1,0.545,0.875,1,1,0,0.4,2800,1200,4000,2,9618,8,,,,,,ChatGPT AI,32010.23
+khalilabdur-rashid,Grok AI,TRUE,19533.5,2441.69,8,8,8,0.375,1,0.545,0.375,1,1,0,0.4,2800,1200,4000,2,9618,8,,,,,,Grok AI,19533.5
+lindabilmes,Traditional,TRUE,63968.48,1390.62,46,20,,0,0,0,0.565,1,1,0,0.4,8280,5520,13800,92,33360,46,,,,,,Traditional,63968.48
+lindabilmes,Gemini AI,TRUE,25379.51,,,,,0,0,0,1,0,0,0,0,,,,,33360,46,,,,,,Gemini AI,25379.51
+lindabilmes,Claude AI,FALSE,300014.15,,,,,0,0,0,1,0,,,,,,,,33360,46,Timeout,,,,,Claude AI,300014.15
+lindabilmes,ChatGPT AI,FALSE,300010.24,,,,,0,0,0,1,0,,,,,,,,33360,46,Timeout,,,,,ChatGPT AI,300010.24
+lindabilmes,Grok AI,TRUE,118361.02,2320.8,51,48,7,0,0,0,0.059,0.902,1,0,0.4,17850,7650,25500,11,33360,46,,,,,,Grok AI,118361.02
+lotembassan,Traditional,TRUE,22327.16,1594.8,14,6,5,0.429,1,0.6,1,1,1,0,0.4,2520,1680,4200,28,8426,14,,,,,,Traditional,22327.16
+lotembassan,Gemini AI,TRUE,11484.64,499.33,23,5,5,0.217,0.833,0.345,0.789,0.609,1,0,0.4,8050,3450,11500,5,8426,14,,,,,,Gemini AI,11484.64
+lotembassan,Claude AI,TRUE,62927.99,2736,23,8,8,0.261,1,0.414,0.919,0.609,1,0,0.4,8050,3450,11500,5,8426,14,,,,,,Claude AI,62927.99
+lotembassan,ChatGPT AI,TRUE,35771.03,1490.46,24,10,10,0.25,1,0.4,0.988,0.583,1,0,0.4,8400,3600,12000,5,8426,14,,,,,,ChatGPT AI,35771.03
+lotembassan,Grok AI,TRUE,53547.96,2328.17,23,12,12,0.261,1,0.414,0.907,0.609,1,0,0.4,8050,3450,11500,5,8426,14,,,,,,Grok AI,53547.96
+Magda V. Yulanovski,Traditional,TRUE,6350.1,1587.53,4,1,,0,0,0,0.75,1,1,0,0.4,720,480,1200,8,8375,4,,,,,,Traditional,6350.1
+Magda V. Yulanovski,Gemini AI,TRUE,7111.87,547.07,13,10,4,0,0,0,0.231,0.308,1,0,0.4,4550,1950,6500,3,8375,4,,,,,,Gemini AI,7111.87
+Magda V. Yulanovski,Claude AI,TRUE,31658.65,2435.28,13,,,0,0,0,1,0.308,1,0,0.4,4550,1950,6500,3,8375,4,,,,,,Claude AI,31658.65
+Magda V. Yulanovski,ChatGPT AI,TRUE,11905.03,1488.13,8,,,0,0,0,1,0.5,1,0,0.4,2800,1200,4000,2,8375,4,,,,,,ChatGPT AI,11905.03
+Magda V. Yulanovski,Grok AI,TRUE,28086.13,2160.47,13,4,4,0,0,0,0.692,0.308,1,0,0.4,4550,1950,6500,3,8375,4,,,,,,Grok AI,28086.13
+maryjobane,Traditional,TRUE,8670.19,,,,,1,1,1,1,1,0,0,0,,,,,18291,,,,,,,Traditional,8670.19
+maryjobane,Gemini AI,TRUE,24017.4,369.5,65,65,65,0,1,0,0,0,1,0,0.4,22750,9750,32500,13,18291,,,,,,,Gemini AI,24017.4
+maryjobane,Claude AI,TRUE,133515.2,2301.99,58,46,46,0,1,0,0,0,1,0,0.4,20300,8700,29000,12,18291,,,,,,,Claude AI,133515.2
+maryjobane,ChatGPT AI,TRUE,280270.46,4671.17,60,34,34,0,1,0,0,0,1,0,0.4,21000,9000,30000,12,18291,,,,,,,ChatGPT AI,280270.46
+maryjobane,Grok AI,TRUE,40069.78,1082.97,37,28,28,0,1,0,0,0,1,0,0.4,12950,5550,18500,8,18291,,,,,,,Grok AI,40069.78
+matthewbaum,Traditional,TRUE,88347.09,1402.33,63,12,10,0.19,0.375,0.253,0.683,1,1,0,0.4,11340,7560,18900,126,43682,63,,,,,,Traditional,88347.09
+matthewbaum,Gemini AI,TRUE,64204.02,539.53,119,92,92,0.269,1,0.424,0.735,0.529,1,0,0.4,41650,17850,59500,24,43682,63,,,,,,Gemini AI,64204.02
+matthewbaum,Claude AI,FALSE,300003.44,,,,,0,0,0,0.492,0,,,,,,,,43682,63,Timeout,,,,,Claude AI,300003.44
+matthewbaum,ChatGPT AI,FALSE,300008.1,,,,,0,0,0,0.492,0,,,,,,,,43682,63,Timeout,,,,,ChatGPT AI,300008.1
+matthewbaum,Grok AI,TRUE,107904.35,1212.41,89,64,64,0.36,1,0.529,0.789,0.708,1,0,0.4,31150,13350,44500,18,43682,63,,,,,,Grok AI,107904.35
+Meredith Gershowitz,Traditional,TRUE,15426.19,1285.52,12,2,,0,0,0,0.833,1,1,0,0.4,2160,1440,3600,24,4038,12,,,,,,Traditional,15426.19
+Meredith Gershowitz,Gemini AI,TRUE,7541.24,628.44,12,9,9,0,0,0,0.25,1,1,0,0.4,4200,1800,6000,3,4038,12,,,,,,Gemini AI,7541.24
+Meredith Gershowitz,Claude AI,TRUE,18085.88,1507.16,12,,,0,0,0,1,1,1,0,0.4,4200,1800,6000,3,4038,12,,,,,,Claude AI,18085.88
+Meredith Gershowitz,ChatGPT AI,TRUE,19084.34,1590.36,12,,,0,0,0,1,1,1,0,0.4,4200,1800,6000,3,4038,12,,,,,,ChatGPT AI,19084.34
+Meredith Gershowitz,Grok AI,TRUE,19066.77,1271.12,15,,,0,0,0,1,0.8,1,0,0.4,5250,2250,7500,3,4038,12,,,,,,Grok AI,19066.77
+michelacarlana,Traditional,TRUE,10404.78,2080.96,5,4,4,0.8,0.8,0.8,0.8,1,1,0,0.4,900,600,1500,10,13086,5,,,,,,Traditional,10404.78
+michelacarlana,Gemini AI,TRUE,33730.58,455.82,74,65,65,0.068,1,0.127,0.878,0.068,1,0,0.4,25900,11100,37000,15,13086,5,,,,,,Gemini AI,33730.58
+michelacarlana,Claude AI,TRUE,54958.42,2198.34,25,9,9,0.2,1,0.333,0.36,0.2,1,0,0.4,8750,3750,12500,5,13086,5,,,,,,Claude AI,54958.42
+michelacarlana,ChatGPT AI,TRUE,26224.61,1639.04,16,5,5,0.313,1,0.476,0.313,0.313,1,0,0.4,5600,2400,8000,4,13086,5,,,,,,ChatGPT AI,26224.61
+michelacarlana,Grok AI,TRUE,45690,2855.62,16,15,15,0.313,1,0.476,0.938,0.313,1,0,0.4,5600,2400,8000,4,13086,5,,,,,,Grok AI,45690
+music-cv,Traditional,TRUE,6219.36,1554.84,4,,,0,0,0,1,1,1,0,0.4,720,480,1200,8,7207,4,,,,,,Traditional,6219.36
+music-cv,Gemini AI,TRUE,914.26,,,,,0,0,0,1,0,0,0,0,,,,,7207,4,,,,,,Gemini AI,914.26
+music-cv,Claude AI,TRUE,12807.36,3201.84,4,,,0,0,0,1,1,1,0,0.4,1400,600,2000,1,7207,4,,,,,,Claude AI,12807.36
+music-cv,ChatGPT AI,TRUE,6218.7,888.39,7,,,0,0,0,1,0.571,1,0,0.4,2450,1050,3500,2,7207,4,,,,,,ChatGPT AI,6218.7
+music-cv,Grok AI,TRUE,19730.38,4932.6,4,3,3,0,0,0,0.25,1,1,0,0.4,1400,600,2000,1,7207,4,,,,,,Grok AI,19730.38
+nicholasburns,Traditional,TRUE,1657.68,,,,,1,1,1,1,1,0,0,0,,,,,6408,,,,,,,Traditional,1657.68
+nicholasburns,Gemini AI,TRUE,476.95,,,,,1,1,1,1,1,0,0,0,,,,,6408,,,,,,,Gemini AI,476.95
+nicholasburns,Claude AI,TRUE,8778.74,,,,,1,1,1,1,1,0,0,0,,,,,6408,,,,,,,Claude AI,8778.74
+nicholasburns,ChatGPT AI,TRUE,1936.75,,,,,1,1,1,1,1,0,0,0,,,,,6408,,,,,,,ChatGPT AI,1936.75
+nicholasburns,Grok AI,TRUE,12546.08,,,,,1,1,1,1,1,0,0,0,,,,,6408,,,,,,,Grok AI,12546.08
+nursing-professor-resume-example,Traditional,TRUE,4312.52,,,,,1,1,1,1,1,0,0,0,,,,,2168,,,,,,,Traditional,4312.52
+nursing-professor-resume-example,Gemini AI,TRUE,4257.53,,,,,1,1,1,1,1,0,0,0,,,,,2168,,,,,,,Gemini AI,4257.53
+nursing-professor-resume-example,Claude AI,TRUE,5772.57,,,,,1,1,1,1,1,0,0,0,,,,,2168,,,,,,,Claude AI,5772.57
+nursing-professor-resume-example,ChatGPT AI,TRUE,4732.9,,,,,1,1,1,1,1,0,0,0,,,,,2168,,,,,,,ChatGPT AI,4732.9
+nursing-professor-resume-example,Grok AI,TRUE,15377.31,,,,,1,1,1,1,1,0,0,0,,,,,2168,,,,,,,Grok AI,15377.31
+PhD-academic-CV-2,Traditional,TRUE,15260.66,1387.33,11,7,,0,0,0,0.364,1,1,0,0.4,1980,1320,3300,22,10361,11,,,,,,Traditional,15260.66
+PhD-academic-CV-2,Gemini AI,TRUE,16229.23,491.79,33,15,11,0,0,0,0.545,0.333,1,0,0.4,11550,4950,16500,7,10361,11,,,,,,Gemini AI,16229.23
+PhD-academic-CV-2,Claude AI,TRUE,33098.3,2546.02,13,5,2,0,0,0,0.615,0.846,1,0,0.4,4550,1950,6500,3,10361,11,,,,,,Claude AI,33098.3
+PhD-academic-CV-2,ChatGPT AI,TRUE,103011.65,8584.3,12,,,0,0,0,1,0.917,1,0,0.4,4200,1800,6000,3,10361,11,,,,,,ChatGPT AI,103011.65
+PhD-academic-CV-2,Grok AI,TRUE,36995.58,1761.69,21,12,12,0,0,0,0.429,0.524,1,0,0.4,7350,3150,10500,5,10361,11,,,,,,Grok AI,36995.58
+PhD-academic-CV,Traditional,TRUE,6627.23,1656.81,4,,,0,0,0,1,1,1,0,0.4,720,480,1200,8,10255,4,,,,,,Traditional,6627.23
+PhD-academic-CV,Gemini AI,TRUE,4947.99,1237,4,2,2,0,0,0,0.5,1,1,0,0.4,1400,600,2000,1,10255,4,,,,,,Gemini AI,4947.99
+PhD-academic-CV,Claude AI,TRUE,24539.47,6134.87,4,1,1,0,0,0,0.75,1,1,0,0.4,1400,600,2000,1,10255,4,,,,,,Claude AI,24539.47
+PhD-academic-CV,ChatGPT AI,TRUE,29412.68,7353.17,4,1,1,0,0,0,0.75,1,1,0,0.4,1400,600,2000,1,10255,4,,,,,,ChatGPT AI,29412.68
+PhD-academic-CV,Grok AI,TRUE,20007.11,5001.78,4,4,4,0,0,0,0,1,1,0,0.4,1400,600,2000,1,10255,4,,,,,,Grok AI,20007.11
+PhD-non-academic-roles,Traditional,TRUE,1682.28,,,,,1,1,1,1,1,0,0,0,,,,,3948,,,,,,,Traditional,1682.28
+PhD-non-academic-roles,Gemini AI,TRUE,1515.73,,,,,1,1,1,1,1,0,0,0,,,,,3948,,,,,,,Gemini AI,1515.73
+PhD-non-academic-roles,Claude AI,TRUE,3896.39,,,,,1,1,1,1,1,0,0,0,,,,,3948,,,,,,,Claude AI,3896.39
+PhD-non-academic-roles,ChatGPT AI,TRUE,5702.31,1900.77,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,3948,,,,,,,ChatGPT AI,5702.31
+PhD-non-academic-roles,Grok AI,TRUE,16917.78,5639.26,3,,,0,1,0,0,0,1,0,0.4,1050,450,1500,1,3948,,,,,,,Grok AI,16917.78
+Professor Brett Harris,Traditional,TRUE,71329.57,1398.62,51,41,39,0.804,0.82,0.812,0.824,1,1,0,0.4,9180,6120,15300,102,15480,51,,,,,,Traditional,71329.57
+Professor Brett Harris,Gemini AI,TRUE,34007.29,666.81,51,38,36,0.745,0.76,0.752,0.765,1,1,0,0.4,17850,7650,25500,11,15480,51,,,,,,Gemini AI,34007.29
+Professor Brett Harris,Claude AI,TRUE,141717.03,2778.77,51,39,39,0.765,0.78,0.772,0.784,1,1,0,0.4,17850,7650,25500,11,15480,51,,,,,,Claude AI,141717.03
+Professor Brett Harris,ChatGPT AI,TRUE,146193.81,2866.55,51,27,27,0.529,0.54,0.535,0.549,1,1,0,0.4,17850,7650,25500,11,15480,51,,,,,,ChatGPT AI,146193.81
+Professor Brett Harris,Grok AI,TRUE,104141.44,2041.99,51,49,44,0.961,0.98,0.97,0.98,1,1,0,0.4,17850,7650,25500,11,15480,51,,,,,,Grok AI,104141.44
+professor_resume_example_template_influx,Traditional,TRUE,4411.97,,,,,1,1,1,1,1,0,0,0,,,,,2277,,,,,,,Traditional,4411.97
+professor_resume_example_template_influx,Gemini AI,TRUE,4631.28,2315.64,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,2277,,,,,,,Gemini AI,4631.28
+professor_resume_example_template_influx,Claude AI,TRUE,8068.6,4034.3,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,2277,,,,,,,Claude AI,8068.6
+professor_resume_example_template_influx,ChatGPT AI,TRUE,6902.24,6902.24,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2277,,,,,,,ChatGPT AI,6902.24
+professor_resume_example_template_influx,Grok AI,TRUE,17760.81,,,,,1,1,1,1,1,0,0,0,,,,,2277,,,,,,,Grok AI,17760.81
+professor_resume_example_template_primo,Traditional,TRUE,4501.17,,,,,1,1,1,1,1,0,0,0,,,,,2367,,,,,,,Traditional,4501.17
+professor_resume_example_template_primo,Gemini AI,TRUE,4618.57,4618.57,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2367,,,,,,,Gemini AI,4618.57
+professor_resume_example_template_primo,Claude AI,TRUE,8182.2,8182.2,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2367,,,,,,,Claude AI,8182.2
+professor_resume_example_template_primo,ChatGPT AI,TRUE,5933.94,5933.94,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2367,,,,,,,ChatGPT AI,5933.94
+professor_resume_example_template_primo,Grok AI,TRUE,17948.82,,,,,1,1,1,1,1,0,0,0,,,,,2367,,,,,,,Grok AI,17948.82
+qqwqwq,Traditional,TRUE,5197.78,1732.59,3,1,1,0,0,0,0.667,1,1,0,0.4,540,360,900,6,6746,3,,,,,,Traditional,5197.78
+qqwqwq,Gemini AI,TRUE,6813.5,757.06,9,1,1,0,0,0,0.889,0.333,1,0,0.4,3150,1350,4500,2,6746,3,,,,,,Gemini AI,6813.5
+qqwqwq,Claude AI,TRUE,8122.14,2707.38,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,6746,3,,,,,,Claude AI,8122.14
+qqwqwq,ChatGPT AI,TRUE,5174.15,1724.72,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,6746,3,,,,,,ChatGPT AI,5174.15
+qqwqwq,Grok AI,TRUE,10861.24,3620.41,3,1,1,0,0,0,0.667,1,1,0,0.4,1050,450,1500,1,6746,3,,,,,,Grok AI,10861.24
+QueeLim_Chng_CV,Traditional,TRUE,10767.28,1538.18,7,2,2,0.286,1,0.444,1,1,1,0,0.4,1260,840,2100,14,1848,7,,,,,,Traditional,10767.28
+QueeLim_Chng_CV,Gemini AI,TRUE,5805.64,829.38,7,5,5,0.286,1,0.444,0.571,1,1,0,0.4,2450,1050,3500,2,1848,7,,,,,,Gemini AI,5805.64
+QueeLim_Chng_CV,Claude AI,TRUE,17789.58,2541.37,7,2,1,0.286,1,0.444,1,1,1,0,0.4,2450,1050,3500,2,1848,7,,,,,,Claude AI,17789.58
+QueeLim_Chng_CV,ChatGPT AI,TRUE,15301.38,2185.91,7,2,2,0.286,1,0.444,1,1,1,0,0.4,2450,1050,3500,2,1848,7,,,,,,ChatGPT AI,15301.38
+QueeLim_Chng_CV,Grok AI,TRUE,19370.62,2767.23,7,2,2,0.286,1,0.444,1,1,1,0,0.4,2450,1050,3500,2,1848,7,,,,,,Grok AI,19370.62
+randallkekoaakee,Traditional,TRUE,105809.93,1429.86,74,1,1,0.014,0.25,0.026,0.959,1,1,0,0.4,13320,8880,22200,148,38567,74,,,,,,Traditional,105809.93
+randallkekoaakee,Gemini AI,TRUE,31863.66,,,,,0,0,0,0.946,0,0,0,0,,,,,38567,74,,,,,,Gemini AI,31863.66
+randallkekoaakee,Claude AI,FALSE,300010,,,,,0,0,0,0.946,0,,,,,,,,38567,74,Timeout,,,,,Claude AI,300010
+randallkekoaakee,ChatGPT AI,FALSE,300015.04,,,,,0,0,0,0.946,0,,,,,,,,38567,74,Timeout,,,,,ChatGPT AI,300015.04
+randallkekoaakee,Grok AI,TRUE,146961.62,1959.49,75,63,63,0.053,1,0.101,0.214,0.987,1,0,0.4,26250,11250,37500,15,38567,74,,,,,,Grok AI,146961.62
+sample-cv-architecture,Traditional,TRUE,2837.24,2837.24,1,,,0,0,0,1,1,1,0,0.4,180,120,300,2,3849,1,,,,,,Traditional,2837.24
+sample-cv-architecture,Gemini AI,TRUE,2931.73,2931.73,1,1,1,0,0,0,0,1,1,0,0.4,350,150,500,1,3849,1,,,,,,Gemini AI,2931.73
+sample-cv-architecture,Claude AI,TRUE,4364.72,4364.72,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,3849,1,,,,,,Claude AI,4364.72
+sample-cv-architecture,ChatGPT AI,TRUE,3378.61,3378.61,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,3849,1,,,,,,ChatGPT AI,3378.61
+sample-cv-architecture,Grok AI,TRUE,9297.12,9297.12,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,3849,1,,,,,,Grok AI,9297.12
+sample-cv-public-health,Traditional,TRUE,3363.63,3363.63,1,,,0,0,0,1,1,1,0,0.4,180,120,300,2,7226,1,,,,,,Traditional,3363.63
+sample-cv-public-health,Gemini AI,TRUE,3600.41,1200.14,3,1,1,0,0,0,0.667,0.333,1,0,0.4,1050,450,1500,1,7226,1,,,,,,Gemini AI,3600.41
+sample-cv-public-health,Claude AI,TRUE,12433.08,4144.36,3,,,0,0,0,1,0.333,1,0,0.4,1050,450,1500,1,7226,1,,,,,,Claude AI,12433.08
+sample-cv-public-health,ChatGPT AI,TRUE,8097.11,2699.04,3,,,0,0,0,1,0.333,1,0,0.4,1050,450,1500,1,7226,1,,,,,,ChatGPT AI,8097.11
+sample-cv-public-health,Grok AI,TRUE,13350.59,4450.2,3,1,1,0,0,0,0.667,0.333,1,0,0.4,1050,450,1500,1,7226,1,,,,,,Grok AI,13350.59
+Sample_2,Traditional,TRUE,9180.01,1836,5,3,3,0.6,0.75,0.667,0.8,1,1,0,0.4,900,600,1500,10,2792,5,,,,,,Traditional,9180.01
+Sample_2,Gemini AI,TRUE,5500.64,1100.13,5,4,4,0.8,1,0.889,1,1,1,0,0.4,1750,750,2500,1,2792,5,,,,,,Gemini AI,5500.64
+Sample_2,Claude AI,TRUE,16957.02,3391.4,5,4,4,0.8,1,0.889,1,1,1,0,0.4,1750,750,2500,1,2792,5,,,,,,Claude AI,16957.02
+Sample_2,ChatGPT AI,TRUE,15684.62,3136.92,5,4,4,0.8,1,0.889,1,1,1,0,0.4,1750,750,2500,1,2792,5,,,,,,ChatGPT AI,15684.62
+Sample_2,Grok AI,TRUE,13178.63,2635.73,5,4,4,0.8,1,0.889,1,1,1,0,0.4,1750,750,2500,1,2792,5,,,,,,Grok AI,13178.63
+Sam_Abbott_CV,Traditional,TRUE,7709.8,1927.45,4,2,2,0.5,0.667,0.571,0.75,1,1,0,0.4,720,480,1200,8,2165,4,,,,,,Traditional,7709.8
+Sam_Abbott_CV,Gemini AI,TRUE,5713.63,1428.41,4,4,3,0.75,1,0.857,0.75,1,1,0,0.4,1400,600,2000,1,2165,4,,,,,,Gemini AI,5713.63
+Sam_Abbott_CV,Claude AI,TRUE,15730.77,3932.69,4,3,2,0.75,1,0.857,1,1,1,0,0.4,1400,600,2000,1,2165,4,,,,,,Claude AI,15730.77
+Sam_Abbott_CV,ChatGPT AI,TRUE,10713.14,2678.29,4,4,3,0.75,1,0.857,0.75,1,1,0,0.4,1400,600,2000,1,2165,4,,,,,,ChatGPT AI,10713.14
+Sam_Abbott_CV,Grok AI,TRUE,17555.39,4388.85,4,4,4,0.75,1,0.857,0.75,1,1,0,0.4,1400,600,2000,1,2165,4,,,,,,Grok AI,17555.39
+sanderijncels,Traditional,TRUE,24088.67,1416.98,17,3,3,0.176,0.3,0.222,0.588,1,1,0,0.4,3060,2040,5100,34,30647,17,,,,,,Traditional,24088.67
+sanderijncels,Gemini AI,TRUE,25625.07,502.45,51,30,29,0.196,1,0.328,1,0.333,1,0,0.4,17850,7650,25500,11,30647,17,,,,,,Gemini AI,25625.07
+sanderijncels,Claude AI,TRUE,125458.49,2459.97,51,7,7,0.137,0.7,0.23,0.549,0.333,1,0,0.4,17850,7650,25500,11,30647,17,,,,,,Claude AI,125458.49
+sanderijncels,ChatGPT AI,TRUE,76021.31,2235.92,34,12,12,0.294,1,0.455,0.765,0.5,1,0,0.4,11900,5100,17000,7,30647,17,,,,,,ChatGPT AI,76021.31
+sanderijncels,Grok AI,TRUE,73705.32,1445.2,51,13,13,0.196,1,0.328,0.667,0.333,1,0,0.4,17850,7650,25500,11,30647,17,,,,,,Grok AI,73705.32
+Screenshot_26-7-2025_153215_zety.com,Traditional,TRUE,8563.73,2854.58,3,,,0,0,0,1,1,1,0,0.4,540,360,900,6,831,3,,,,,,Traditional,8563.73
+Screenshot_26-7-2025_153215_zety.com,Gemini AI,TRUE,4525.37,4525.37,1,,,0,0,0,1,0.333,1,0,0.4,350,150,500,1,831,3,,,,,,Gemini AI,4525.37
+Screenshot_26-7-2025_153215_zety.com,Claude AI,TRUE,8117.21,4058.61,2,,,0,0,0,1,0.667,1,0,0.4,700,300,1000,1,831,3,,,,,,Claude AI,8117.21
+Screenshot_26-7-2025_153215_zety.com,ChatGPT AI,TRUE,7206.85,1441.37,5,,,0,0,0,1,0.6,1,0,0.4,1750,750,2500,1,831,3,,,,,,ChatGPT AI,7206.85
+Screenshot_26-7-2025_153215_zety.com,Grok AI,TRUE,46506.48,,,,,0,0,0,1,0,0,0,0,,,,,831,3,,,,,,Grok AI,46506.48
+Screenshot_26-7-2025_165238_resume,Traditional,TRUE,3612.6,,,,,1,1,1,1,1,0,0,0,,,,,1402,,,,,,,Traditional,3612.6
+Screenshot_26-7-2025_165238_resume,Gemini AI,TRUE,3676.66,,,,,1,1,1,1,1,0,0,0,,,,,1402,,,,,,,Gemini AI,3676.66
+Screenshot_26-7-2025_165238_resume,Claude AI,TRUE,4588.62,,,,,1,1,1,1,1,0,0,0,,,,,1402,,,,,,,Claude AI,4588.62
+Screenshot_26-7-2025_165238_resume,ChatGPT AI,TRUE,3670.28,,,,,1,1,1,1,1,0,0,0,,,,,1402,,,,,,,ChatGPT AI,3670.28
+Screenshot_26-7-2025_165238_resume,Grok AI,TRUE,9640.17,,,,,1,1,1,1,1,0,0,0,,,,,1402,,,,,,,Grok AI,9640.17
+Screenshot_26-7-2025_165321_resume,Traditional,TRUE,3840.24,,,,,1,1,1,1,1,0,0,0,,,,,1928,,,,,,,Traditional,3840.24
+Screenshot_26-7-2025_165321_resume,Gemini AI,TRUE,4043.08,,,,,1,1,1,1,1,0,0,0,,,,,1928,,,,,,,Gemini AI,4043.08
+Screenshot_26-7-2025_165321_resume,Claude AI,TRUE,6993.26,,,,,1,1,1,1,1,0,0,0,,,,,1928,,,,,,,Claude AI,6993.26
+Screenshot_26-7-2025_165321_resume,ChatGPT AI,TRUE,4187.08,,,,,1,1,1,1,1,0,0,0,,,,,1928,,,,,,,ChatGPT AI,4187.08
+Screenshot_26-7-2025_165321_resume,Grok AI,TRUE,10099.04,,,,,1,1,1,1,1,0,0,0,,,,,1928,,,,,,,Grok AI,10099.04
+Screenshot_26-7-2025_16537_resume.io,Traditional,TRUE,3799.5,,,,,1,1,1,1,1,0,0,0,,,,,1605,,,,,,,Traditional,3799.5
+Screenshot_26-7-2025_16537_resume.io,Gemini AI,TRUE,3749.46,,,,,1,1,1,1,1,0,0,0,,,,,1605,,,,,,,Gemini AI,3749.46
+Screenshot_26-7-2025_16537_resume.io,Claude AI,TRUE,4913.57,,,,,1,1,1,1,1,0,0,0,,,,,1605,,,,,,,Claude AI,4913.57
+Screenshot_26-7-2025_16537_resume.io,ChatGPT AI,TRUE,3845.38,,,,,1,1,1,1,1,0,0,0,,,,,1605,,,,,,,ChatGPT AI,3845.38
+Screenshot_26-7-2025_16537_resume.io,Grok AI,TRUE,16218.67,,,,,1,1,1,1,1,0,0,0,,,,,1605,,,,,,,Grok AI,16218.67
+Screenshot_7-7-2025_175225_resumebuildr.ai,Traditional,TRUE,6308,3154,2,,,0,0,0,1,1,1,0,0.4,360,240,600,4,2300,2,,,,,,Traditional,6308
+Screenshot_7-7-2025_175225_resumebuildr.ai,Gemini AI,TRUE,6032.31,3016.16,2,2,2,0,0,0,0,1,1,0,0.4,700,300,1000,1,2300,2,,,,,,Gemini AI,6032.31
+Screenshot_7-7-2025_175225_resumebuildr.ai,Claude AI,TRUE,8454.62,4227.31,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,2300,2,,,,,,Claude AI,8454.62
+Screenshot_7-7-2025_175225_resumebuildr.ai,ChatGPT AI,TRUE,5962.59,2981.3,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,2300,2,,,,,,ChatGPT AI,5962.59
+Screenshot_7-7-2025_175225_resumebuildr.ai,Grok AI,TRUE,18722.79,9361.39,2,,,0,0,0,1,1,1,0,0.4,700,300,1000,1,2300,2,,,,,,Grok AI,18722.79
+Screenshot_7-7-2025_175237_resumebuildr.ai,Traditional,TRUE,7392.95,2464.32,3,,,0,0,0,1,1,1,0,0.4,540,360,900,6,2284,3,,,,,,Traditional,7392.95
+Screenshot_7-7-2025_175237_resumebuildr.ai,Gemini AI,TRUE,4917.17,1639.06,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,2284,3,,,,,,Gemini AI,4917.17
+Screenshot_7-7-2025_175237_resumebuildr.ai,Claude AI,TRUE,12917.07,4305.69,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,2284,3,,,,,,Claude AI,12917.07
+Screenshot_7-7-2025_175237_resumebuildr.ai,ChatGPT AI,TRUE,6377.77,2125.92,3,,,0,0,0,1,1,1,0,0.4,1050,450,1500,1,2284,3,,,,,,ChatGPT AI,6377.77
+Screenshot_7-7-2025_175237_resumebuildr.ai,Grok AI,TRUE,10665.64,10665.64,1,,,0,0,0,1,0.333,1,0,0.4,350,150,500,1,2284,3,,,,,,Grok AI,10665.64
+Screenshot_7-7-2025_175752_resumebuildr.ai,Traditional,TRUE,5130.86,5130.86,1,,,0,0,0,1,1,1,0,0.4,180,120,300,2,2178,1,,,,,,Traditional,5130.86
+Screenshot_7-7-2025_175752_resumebuildr.ai,Gemini AI,TRUE,4249.34,4249.34,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,2178,1,,,,,,Gemini AI,4249.34
+Screenshot_7-7-2025_175752_resumebuildr.ai,Claude AI,TRUE,7090.26,7090.26,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,2178,1,,,,,,Claude AI,7090.26
+Screenshot_7-7-2025_175752_resumebuildr.ai,ChatGPT AI,TRUE,4969.84,4969.84,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,2178,1,,,,,,ChatGPT AI,4969.84
+Screenshot_7-7-2025_175752_resumebuildr.ai,Grok AI,TRUE,10906.75,10906.75,1,,,0,0,0,1,1,1,0,0.4,350,150,500,1,2178,1,,,,,,Grok AI,10906.75
+Screenshot_7-7-2025_181853_enhancv.com,Traditional,TRUE,9249.9,2312.47,4,,,0,0,0,1,1,1,0,0.4,720,480,1200,8,2690,4,,,,,,Traditional,9249.9
+Screenshot_7-7-2025_181853_enhancv.com,Gemini AI,TRUE,6920.13,1730.03,4,1,1,0,0,0,0.75,1,1,0,0.4,1400,600,2000,1,2690,4,,,,,,Gemini AI,6920.13
+Screenshot_7-7-2025_181853_enhancv.com,Claude AI,TRUE,11936.82,2984.2,4,,,0,0,0,1,1,1,0,0.4,1400,600,2000,1,2690,4,,,,,,Claude AI,11936.82
+Screenshot_7-7-2025_181853_enhancv.com,ChatGPT AI,TRUE,7988.45,1997.11,4,,,0,0,0,1,1,1,0,0.4,1400,600,2000,1,2690,4,,,,,,ChatGPT AI,7988.45
+Screenshot_7-7-2025_181853_enhancv.com,Grok AI,TRUE,46671.61,,,,,0,0,0,1,0,0,0,0,,,,,2690,4,,,,,,Grok AI,46671.61
+sheilajasanoff,Traditional,TRUE,43809.43,2433.86,18,9,6,0.5,0.563,0.529,0.611,1,1,0,0.4,3240,2160,5400,36,60423,18,,,,,,Traditional,43809.43
+sheilajasanoff,Gemini AI,TRUE,70418.95,529.47,133,128,126,0.12,1,0.215,0.926,0.135,1,0,0.4,46550,19950,66500,27,60423,18,,,,,,Gemini AI,70418.95
+sheilajasanoff,Claude AI,FALSE,300008.9,,,,,0,0,0,0.111,0,,,,,,,,60423,18,Timeout,,,,,Claude AI,300008.9
+sheilajasanoff,ChatGPT AI,FALSE,300009.85,,,,,0,0,0,0.111,0,,,,,,,,60423,18,Timeout,,,,,ChatGPT AI,300009.85
+sheilajasanoff,Grok AI,TRUE,131211.34,1286.39,102,99,99,0.157,1,0.271,0.918,0.176,1,0,0.4,35700,15300,51000,21,60423,18,,,,,,Grok AI,131211.34
+Skills-based-career-changer,Traditional,TRUE,2651.25,,,,,1,1,1,1,1,0,0,0,,,,,4441,,,,,,,Traditional,2651.25
+Skills-based-career-changer,Gemini AI,TRUE,1419.26,,,,,1,1,1,1,1,0,0,0,,,,,4441,,,,,,,Gemini AI,1419.26
+Skills-based-career-changer,Claude AI,TRUE,2840.21,,,,,1,1,1,1,1,0,0,0,,,,,4441,,,,,,,Claude AI,2840.21
+Skills-based-career-changer,ChatGPT AI,TRUE,2042.68,,,,,1,1,1,1,1,0,0,0,,,,,4441,,,,,,,ChatGPT AI,2042.68
+Skills-based-career-changer,Grok AI,TRUE,18129.66,9064.83,2,,,0,1,0,0,0,1,0,0.4,700,300,1000,1,4441,,,,,,,Grok AI,18129.66
+Skills-based-experienced,Traditional,TRUE,2103.41,,,,,1,1,1,1,1,0,0,0,,,,,4011,,,,,,,Traditional,2103.41
+Skills-based-experienced,Gemini AI,TRUE,2979.22,2979.22,1,1,1,0,1,0,0,0,1,0,0.4,350,150,500,1,4011,,,,,,,Gemini AI,2979.22
+Skills-based-experienced,Claude AI,TRUE,3203.13,,,,,1,1,1,1,1,0,0,0,,,,,4011,,,,,,,Claude AI,3203.13
+Skills-based-experienced,ChatGPT AI,TRUE,4519,4519,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,4011,,,,,,,ChatGPT AI,4519
+Skills-based-experienced,Grok AI,TRUE,12305.25,,,,,1,1,1,1,1,0,0,0,,,,,4011,,,,,,,Grok AI,12305.25
+staffportal-curtin-edu-au-staff-profile-view-alex-stojcevski-6f5e1609-...,Traditional,FALSE,300010.71,,,,,0,0,0,0.008,0,,,,,,,,57845,254,Timeout,,,,,Traditional,300010.71
+staffportal-curtin-edu-au-staff-profile-view-alex-stojcevski-6f5e1609-...,Gemini AI,TRUE,147759.12,584.03,253,176,176,0.696,0.698,0.697,0.704,0.996,1,0,0.4,88550,37950,126500,51,57845,254,,,,,,Gemini AI,147759.12
+staffportal-curtin-edu-au-staff-profile-view-alex-stojcevski-6f5e1609-...,Claude AI,FALSE,300008.38,,,,,0,0,0,0.008,0,,,,,,,,57845,254,Timeout,,,,,Claude AI,300008.38
+staffportal-curtin-edu-au-staff-profile-view-alex-stojcevski-6f5e1609-...,ChatGPT AI,FALSE,300011.52,,,,,0,0,0,0.008,0,,,,,,,,57845,254,Timeout,,,,,ChatGPT AI,300011.52
+staffportal-curtin-edu-au-staff-profile-view-alex-stojcevski-6f5e1609-...,Grok AI,FALSE,300001.09,,,,,0,0,0,0.008,0,,,,,,,,57845,254,Timeout,,,,,Grok AI,300001.09
+staffportal-curtin-edu-au-staff-profile-view-chris-rawson-7fb03d18-...,Traditional,TRUE,26377.72,1648.61,16,15,15,0.938,0.938,0.938,0.938,1,1,0,0.4,2880,1920,4800,32,9465,16,,,,,,Traditional,26377.72
+staffportal-curtin-edu-au-staff-profile-view-chris-rawson-7fb03d18-...,Gemini AI,TRUE,13240.81,827.55,16,16,16,1,1,1,1,1,1,0,0.4,5600,2400,8000,4,9465,16,,,,,,Gemini AI,13240.81
+staffportal-curtin-edu-au-staff-profile-view-chris-rawson-7fb03d18-...,Claude AI,TRUE,48323.06,3020.19,16,15,15,0.938,0.938,0.938,0.938,1,1,0,0.4,5600,2400,8000,4,9465,16,,,,,,Claude AI,48323.06
+staffportal-curtin-edu-au-staff-profile-view-chris-rawson-7fb03d18-...,ChatGPT AI,TRUE,31389.61,1961.85,16,13,13,0.813,0.813,0.813,0.813,1,1,0,0.4,5600,2400,8000,4,9465,16,,,,,,ChatGPT AI,31389.61
+staffportal-curtin-edu-au-staff-profile-view-chris-rawson-7fb03d18-...,Grok AI,TRUE,41325.34,2582.83,16,16,16,1,1,1,1,1,1,0,0.4,5600,2400,8000,4,9465,16,,,,,,Grok AI,41325.34
+staffportal-curtin-edu-au-staff-profile-view-franca-jones-366fbb02-...,Traditional,TRUE,130529.32,1292.37,101,78,77,0.772,0.804,0.788,0.812,1,1,0,0.4,18180,12120,30300,202,24356,101,,,,,,Traditional,130529.32
+staffportal-curtin-edu-au-staff-profile-view-franca-jones-366fbb02-...,Gemini AI,TRUE,65577.56,649.28,101,96,95,0.95,0.99,0.97,0.99,1,1,0,0.4,35350,15150,50500,21,24356,101,,,,,,Gemini AI,65577.56
+staffportal-curtin-edu-au-staff-profile-view-franca-jones-366fbb02-...,Claude AI,TRUE,241270.47,2388.82,101,96,96,0.95,0.99,0.97,0.99,1,1,0,0.4,35350,15150,50500,21,24356,101,,,,,,Claude AI,241270.47
+staffportal-curtin-edu-au-staff-profile-view-franca-jones-366fbb02-...,ChatGPT AI,FALSE,300008.34,,,,,0,0,0,0.04,0,,,,,,,,24356,101,Timeout,,,,,ChatGPT AI,300008.34
+staffportal-curtin-edu-au-staff-profile-view-franca-jones-366fbb02-...,Grok AI,TRUE,177853.81,2195.73,81,78,77,0.963,0.804,0.876,0.997,0.802,1,0,0.4,28350,12150,40500,17,24356,101,,,,,,Grok AI,177853.81
+staffportal-curtin-edu-au-staff-profile-view-jonathan-paxman-c9a2deae-...,Traditional,TRUE,39111.43,1348.67,29,20,19,0.69,0.8,0.741,0.828,1,1,0,0.4,5220,3480,8700,58,11028,29,,,,,,Traditional,39111.43
+staffportal-curtin-edu-au-staff-profile-view-jonathan-paxman-c9a2deae-...,Gemini AI,TRUE,28177.15,,,,,0,0,0,0.138,0,0,0,0,,,,,11028,29,,,,,,Gemini AI,28177.15
+staffportal-curtin-edu-au-staff-profile-view-jonathan-paxman-c9a2deae-...,Claude AI,TRUE,92636.12,3194.35,29,25,24,0.862,1,0.926,1,1,1,0,0.4,10150,4350,14500,6,11028,29,,,,,,Claude AI,92636.12
+staffportal-curtin-edu-au-staff-profile-view-jonathan-paxman-c9a2deae-...,ChatGPT AI,TRUE,153980.69,5309.68,29,22,22,0.759,0.88,0.815,0.897,1,1,0,0.4,10150,4350,14500,6,11028,29,,,,,,ChatGPT AI,153980.69
+staffportal-curtin-edu-au-staff-profile-view-jonathan-paxman-c9a2deae-...,Grok AI,TRUE,56588.63,1951.33,29,25,21,0.862,1,0.926,1,1,1,0,0.4,10150,4350,14500,6,11028,29,,,,,,Grok AI,56588.63
+staffportal-curtin-edu-au-staff-profile-view-kate-brooks-ad1af2ea-...,Traditional,TRUE,1615.18,,,,,1,1,1,1,1,0,0,0,,,,,1372,,,,,,,Traditional,1615.18
+staffportal-curtin-edu-au-staff-profile-view-kate-brooks-ad1af2ea-...,Gemini AI,TRUE,1348.04,,,,,1,1,1,1,1,0,0,0,,,,,1372,,,,,,,Gemini AI,1348.04
+staffportal-curtin-edu-au-staff-profile-view-kate-brooks-ad1af2ea-...,Claude AI,TRUE,886.9,,,,,1,1,1,1,1,0,0,0,,,,,1372,,,,,,,Claude AI,886.9
+staffportal-curtin-edu-au-staff-profile-view-kate-brooks-ad1af2ea-...,ChatGPT AI,TRUE,2169.19,,,,,1,1,1,1,1,0,0,0,,,,,1372,,,,,,,ChatGPT AI,2169.19
+staffportal-curtin-edu-au-staff-profile-view-kate-brooks-ad1af2ea-...,Grok AI,TRUE,14733.43,,,,,1,1,1,1,1,0,0,0,,,,,1372,,,,,,,Grok AI,14733.43
+staffportal-curtin-edu-au-staff-profile-view-M-Buntine-...,Traditional,TRUE,116050.43,1415.25,82,71,71,0.866,0.887,0.877,0.89,1,1,0,0.4,14760,9840,24600,164,31613,82,,,,,,Traditional,116050.43
+staffportal-curtin-edu-au-staff-profile-view-M-Buntine-...,Gemini AI,TRUE,78884.37,717.13,110,101,99,0.727,1,0.842,0.943,0.745,1,0,0.4,38500,16500,55000,22,31613,82,,,,,,Gemini AI,78884.37
+staffportal-curtin-edu-au-staff-profile-view-M-Buntine-...,Claude AI,TRUE,1136.42,,,,,0,0,0,0.024,0,0,0,0,,,,,31613,82,,,,,,Claude AI,1136.42
+staffportal-curtin-edu-au-staff-profile-view-M-Buntine-...,ChatGPT AI,FALSE,300011.8,,,,,0,0,0,0.024,0,,,,,,,,31613,82,Timeout,,,,,ChatGPT AI,300011.8
+staffportal-curtin-edu-au-staff-profile-view-M-Buntine-...,Grok AI,TRUE,183242.83,1665.84,110,106,104,0.727,1,0.842,0.988,0.745,1,0,0.4,38500,16500,55000,22,31613,82,,,,,,Grok AI,183242.83
+staffportal-curtin-edu-au-staff-profile-view-mark-ogden-29ecbc5d-...,Traditional,TRUE,145039.91,1436.04,101,83,82,0.822,0.83,0.826,0.832,1,1,0,0.4,18180,12120,30300,202,44266,101,,,,,,Traditional,145039.91
+staffportal-curtin-edu-au-staff-profile-view-mark-ogden-29ecbc5d-...,Gemini AI,TRUE,110326.39,685.26,161,160,158,0.621,1,0.766,0.996,0.627,1,0,0.4,56350,24150,80500,33,44266,101,,,,,,Gemini AI,110326.39
+staffportal-curtin-edu-au-staff-profile-view-mark-ogden-29ecbc5d-...,Claude AI,TRUE,1233.89,,,,,0,0,0,0.01,0,0,0,0,,,,,44266,101,,,,,,Claude AI,1233.89
+staffportal-curtin-edu-au-staff-profile-view-mark-ogden-29ecbc5d-...,ChatGPT AI,FALSE,300008.17,,,,,0,0,0,0.01,0,,,,,,,,44266,101,Timeout,,,,,ChatGPT AI,300008.17
+staffportal-curtin-edu-au-staff-profile-view-mark-ogden-29ecbc5d-...,Grok AI,TRUE,263776.29,1638.36,161,160,158,0.621,1,0.766,0.996,0.627,1,0,0.4,56350,24150,80500,33,44266,101,,,,,,Grok AI,263776.29
+staffportal-curtin-edu-au-staff-profile-view-martin-van-kranendonk-4b1d3270-...,Traditional,TRUE,81284.07,1890.33,43,40,9,0.93,0.93,0.93,0.93,1,1,0,0.4,7740,5160,12900,86,36146,43,,,,,,Traditional,81284.07
+staffportal-curtin-edu-au-staff-profile-view-martin-van-kranendonk-4b1d3270-...,Gemini AI,TRUE,89871.61,646.56,139,123,121,0.309,1,0.473,0.885,0.309,1,0,0.4,48650,20850,69500,28,36146,43,,,,,,Gemini AI,89871.61
+staffportal-curtin-edu-au-staff-profile-view-martin-van-kranendonk-4b1d3270-...,Claude AI,TRUE,1119.74,,,,,0,0,0,0,0,0,0,0,,,,,36146,43,,,,,,Claude AI,1119.74
+staffportal-curtin-edu-au-staff-profile-view-martin-van-kranendonk-4b1d3270-...,ChatGPT AI,FALSE,300011.49,,,,,0,0,0,0,0,,,,,,,,36146,43,Timeout,,,,,ChatGPT AI,300011.49
+staffportal-curtin-edu-au-staff-profile-view-martin-van-kranendonk-4b1d3270-...,Grok AI,TRUE,252950.79,1873.71,135,126,125,0.319,1,0.483,0.933,0.319,1,0,0.4,47250,20250,67500,27,36146,43,,,,,,Grok AI,252950.79
+staffportal-curtin-edu-au-staff-profile-view-Sambit-Datta-...,Traditional,TRUE,71134.05,1247.97,57,44,44,0.772,0.8,0.786,0.807,1,1,0,0.4,10260,6840,17100,114,18358,57,,,,,,Traditional,71134.05
+staffportal-curtin-edu-au-staff-profile-view-Sambit-Datta-...,Gemini AI,TRUE,37610.57,637.47,59,53,53,0.898,0.964,0.93,0.933,0.966,1,0,0.4,20650,8850,29500,12,18358,57,,,,,,Gemini AI,37610.57
+staffportal-curtin-edu-au-staff-profile-view-Sambit-Datta-...,Claude AI,TRUE,1104.4,,,,,0,0,0,0.035,0,0,0,0,,,,,18358,57,,,,,,Claude AI,1104.4
+staffportal-curtin-edu-au-staff-profile-view-Sambit-Datta-...,ChatGPT AI,TRUE,161247.29,2780.13,58,37,37,0.638,0.673,0.655,0.673,0.983,1,0,0.4,20300,8700,29000,12,18358,57,,,,,,ChatGPT AI,161247.29
+staffportal-curtin-edu-au-staff-profile-view-Sambit-Datta-...,Grok AI,TRUE,110574.98,1906.47,58,44,44,0.759,0.8,0.779,0.794,0.983,1,0,0.4,20300,8700,29000,12,18358,57,,,,,,Grok AI,110574.98
+staffportal-curtin-edu-au-staff-profile-view-sarina-claassens-327ea294-...,Traditional,TRUE,48031.11,1298.14,37,36,36,0.973,0.973,0.973,0.973,1,1,0,0.4,6660,4440,11100,74,10354,37,,,,,,Traditional,48031.11
+staffportal-curtin-edu-au-staff-profile-view-sarina-claassens-327ea294-...,Gemini AI,TRUE,24716.16,668,37,37,37,1,1,1,1,1,1,0,0.4,12950,5550,18500,8,10354,37,,,,,,Gemini AI,24716.16
+staffportal-curtin-edu-au-staff-profile-view-sarina-claassens-327ea294-...,Claude AI,TRUE,980.39,,,,,0,0,0,0,0,0,0,0,,,,,10354,37,,,,,,Claude AI,980.39
+staffportal-curtin-edu-au-staff-profile-view-sarina-claassens-327ea294-...,ChatGPT AI,TRUE,73647.78,1990.48,37,37,37,1,1,1,1,1,1,0,0.4,12950,5550,18500,8,10354,37,,,,,,ChatGPT AI,73647.78
+staffportal-curtin-edu-au-staff-profile-view-sarina-claassens-327ea294-...,Grok AI,TRUE,56404.05,1524.43,37,37,37,1,1,1,1,1,1,0,0.4,12950,5550,18500,8,10354,37,,,,,,Grok AI,56404.05
+staffportal-curtin-edu-au-staff-profile-view-steven-reddy-388571d7-...,Traditional,TRUE,260310.19,1328.11,196,163,161,0.719,1,0.837,0.888,1,1,0,0.4,35280,23520,58800,392,55299,196,,,,,,Traditional,260310.19
+staffportal-curtin-edu-au-staff-profile-view-steven-reddy-388571d7-...,Gemini AI,TRUE,133609.07,,,,,0,0,0,0.281,0,0,0,0,,,,,55299,196,,,,,,Gemini AI,133609.07
+staffportal-curtin-edu-au-staff-profile-view-steven-reddy-388571d7-...,Claude AI,FALSE,300001.24,,,,,0,0,0,0.281,0,,,,,,,,55299,196,Timeout,,,,,Claude AI,300001.24
+staffportal-curtin-edu-au-staff-profile-view-steven-reddy-388571d7-...,ChatGPT AI,FALSE,300004.61,,,,,0,0,0,0.281,0,,,,,,,,55299,196,Timeout,,,,,ChatGPT AI,300004.61
+staffportal-curtin-edu-au-staff-profile-view-steven-reddy-388571d7-...,Grok AI,FALSE,300015.97,,,,,0,0,0,0.281,0,,,,,,,,55299,196,Timeout,,,,,Grok AI,300015.97
+staffportal-curtin-edu-au-staff-profile-view-V-Pareek-...,Traditional,TRUE,251240.12,1231.57,204,161,158,0.789,0.91,0.845,0.922,1,1,0,0.4,36720,24480,61200,408,48372,204,,,,,,Traditional,251240.12
+staffportal-curtin-edu-au-staff-profile-view-V-Pareek-...,Gemini AI,TRUE,130555.62,,,,,0,0,0,0.132,0,0,0,0,,,,,48372,204,,,,,,Gemini AI,130555.62
+staffportal-curtin-edu-au-staff-profile-view-V-Pareek-...,Claude AI,FALSE,300000.92,,,,,0,0,0,0.132,0,,,,,,,,48372,204,Timeout,,,,,Claude AI,300000.92
+staffportal-curtin-edu-au-staff-profile-view-V-Pareek-...,ChatGPT AI,FALSE,300004.12,,,,,0,0,0,0.132,0,,,,,,,,48372,204,Timeout,,,,,ChatGPT AI,300004.12
+staffportal-curtin-edu-au-staff-profile-view-V-Pareek-...,Grok AI,TRUE,281697.17,1380.87,204,200,200,0.868,1,0.929,0.887,1,1,0,0.4,71400,30600,102000,41,48372,204,,,,,,Grok AI,281697.17
+stevekelman,Traditional,TRUE,57040.18,1213.62,47,11,11,0.234,0.306,0.265,0.468,1,1,0,0.4,8460,5640,14100,94,10648,47,,,,,,Traditional,57040.18
+stevekelman,Gemini AI,TRUE,23238.48,484.13,48,48,48,0.75,1,0.857,0.766,0.979,1,0,0.4,16800,7200,24000,10,10648,47,,,,,,Gemini AI,23238.48
+stevekelman,Claude AI,TRUE,104753.92,2182.37,48,48,48,0.75,1,0.857,0.766,0.979,1,0,0.4,16800,7200,24000,10,10648,47,,,,,,Claude AI,104753.92
+stevekelman,ChatGPT AI,TRUE,83668.54,1673.37,50,44,44,0.72,1,0.837,0.886,0.94,1,0,0.4,17500,7500,25000,10,10648,47,,,,,,ChatGPT AI,83668.54
+stevekelman,Grok AI,TRUE,73694.76,1535.31,48,47,47,0.75,1,0.857,0.787,0.979,1,0,0.4,16800,7200,24000,10,10648,47,,,,,,Grok AI,73694.76
+TE NING CHANG,Traditional,TRUE,5428.26,1809.42,3,1,,0.333,1,0.5,1,1,1,0,0.4,540,360,900,6,9089,3,,,,,,Traditional,5428.26
+TE NING CHANG,Gemini AI,TRUE,8771.91,730.99,12,4,2,0.083,1,0.154,1,0.25,1,0,0.4,4200,1800,6000,3,9089,3,,,,,,Gemini AI,8771.91
+TE NING CHANG,Claude AI,TRUE,24866.1,2486.61,10,1,1,0.1,1,0.182,0.767,0.3,1,0,0.4,3500,1500,5000,2,9089,3,,,,,,Claude AI,24866.1
+TE NING CHANG,ChatGPT AI,TRUE,18223.7,1518.64,12,1,1,0.083,1,0.154,0.75,0.25,1,0,0.4,4200,1800,6000,3,9089,3,,,,,,ChatGPT AI,18223.7
+TE NING CHANG,Grok AI,TRUE,38613.07,3217.76,12,7,7,0.083,1,0.154,0.75,0.25,1,0,0.4,4200,1800,6000,3,9089,3,,,,,,Grok AI,38613.07
+thumbnail,Traditional,TRUE,4257.56,,,,,1,1,1,1,1,0,0,0,,,,,1886,,,,,,,Traditional,4257.56
+thumbnail,Gemini AI,TRUE,4140.82,,,,,1,1,1,1,1,0,0,0,,,,,1886,,,,,,,Gemini AI,4140.82
+thumbnail,Claude AI,TRUE,6225.57,,,,,1,1,1,1,1,0,0,0,,,,,1886,,,,,,,Claude AI,6225.57
+thumbnail,ChatGPT AI,TRUE,4268.17,,,,,1,1,1,1,1,0,0,0,,,,,1886,,,,,,,ChatGPT AI,4268.17
+thumbnail,Grok AI,TRUE,15662.93,,,,,1,1,1,1,1,0,0,0,,,,,1886,,,,,,,Grok AI,15662.93
+www-hks-harvard-edu-faculty-deirdre-bloome#publications-tab...,Traditional,TRUE,1532.87,,,,,1,1,1,1,1,0,0,0,,,,,2101,,,,,,,Traditional,1532.87
+www-hks-harvard-edu-faculty-deirdre-bloome#publications-tab...,Gemini AI,TRUE,1376.74,,,,,1,1,1,1,1,0,0,0,,,,,2101,,,,,,,Gemini AI,1376.74
+www-hks-harvard-edu-faculty-deirdre-bloome#publications-tab...,Claude AI,TRUE,3988.36,,,,,1,1,1,1,1,0,0,0,,,,,2101,,,,,,,Claude AI,3988.36
+www-hks-harvard-edu-faculty-deirdre-bloome#publications-tab...,ChatGPT AI,TRUE,2398.92,2398.92,1,,,0,1,0,0,0,1,0,0.4,350,150,500,1,2101,,,,,,,ChatGPT AI,2398.92
+www-hks-harvard-edu-faculty-deirdre-bloome#publications-tab...,Grok AI,TRUE,8701.62,,,,,1,1,1,1,1,0,0,0,,,,,2101,,,,,,,Grok AI,8701.62
+www-hks-harvard-edu-faculty-graham-allison...,Traditional,TRUE,1566.51,,,,,1,1,1,1,1,0,0,0,,,,,4475,,,,,,,Traditional,1566.51
+www-hks-harvard-edu-faculty-graham-allison...,Gemini AI,TRUE,4425.45,1106.36,4,4,4,0,1,0,0,0,1,0,0.4,1400,600,2000,1,4475,,,,,,,Gemini AI,4425.45
+www-hks-harvard-edu-faculty-graham-allison...,Claude AI,TRUE,12451.74,3112.93,4,4,4,0,1,0,0,0,1,0,0.4,1400,600,2000,1,4475,,,,,,,Claude AI,12451.74
+www-hks-harvard-edu-faculty-graham-allison...,ChatGPT AI,TRUE,8444.03,2111.01,4,4,4,0,1,0,0,0,1,0,0.4,1400,600,2000,1,4475,,,,,,,ChatGPT AI,8444.03
+www-hks-harvard-edu-faculty-graham-allison...,Grok AI,TRUE,13172.07,3293.02,4,4,4,0,1,0,0,0,1,0,0.4,1400,600,2000,1,4475,,,,,,,Grok AI,13172.07
+www-rmit-edu-vn-profiles-d-joshua-dwight...,Traditional,TRUE,2516.12,,,,,1,1,1,1,1,0,0,0,,,,,2364,,,,,,,Traditional,2516.12
+www-rmit-edu-vn-profiles-d-joshua-dwight...,Gemini AI,TRUE,1404.48,,,,,1,1,1,1,1,0,0,0,,,,,2364,,,,,,,Gemini AI,1404.48
+www-rmit-edu-vn-profiles-d-joshua-dwight...,Claude AI,TRUE,3046.38,,,,,1,1,1,1,1,0,0,0,,,,,2364,,,,,,,Claude AI,3046.38
+www-rmit-edu-vn-profiles-d-joshua-dwight...,ChatGPT AI,TRUE,1848.68,,,,,1,1,1,1,1,0,0,0,,,,,2364,,,,,,,ChatGPT AI,1848.68
+www-rmit-edu-vn-profiles-d-joshua-dwight...,Grok AI,TRUE,8943.75,,,,,1,1,1,1,1,0,0,0,,,,,2364,,,,,,,Grok AI,8943.75
+www-rmit-edu-vn-profiles-d-minh-dinh4...,Traditional,TRUE,2372.7,,,,,1,1,1,1,1,0,0,0,,,,,3115,,,,,,,Traditional,2372.7
+www-rmit-edu-vn-profiles-d-minh-dinh4...,Gemini AI,TRUE,1569.12,,,,,1,1,1,1,1,0,0,0,,,,,3115,,,,,,,Gemini AI,1569.12
+www-rmit-edu-vn-profiles-d-minh-dinh4...,Claude AI,TRUE,3471.45,,,,,1,1,1,1,1,0,0,0,,,,,3115,,,,,,,Claude AI,3471.45
+www-rmit-edu-vn-profiles-d-minh-dinh4...,ChatGPT AI,TRUE,1748.56,,,,,1,1,1,1,1,0,0,0,,,,,3115,,,,,,,ChatGPT AI,1748.56
+www-rmit-edu-vn-profiles-d-minh-dinh4...,Grok AI,TRUE,15155.61,,,,,1,1,1,1,1,0,0,0,,,,,3115,,,,,,,Grok AI,15155.61
+www-rmit-edu-vn-profiles-d-tri-dangtran...,Traditional,TRUE,2606.72,,,,,1,1,1,1,1,0,0,0,,,,,2288,,,,,,,Traditional,2606.72
+www-rmit-edu-vn-profiles-d-tri-dangtran...,Gemini AI,TRUE,2642.34,660.59,4,,,0,1,0,0,0,1,0,0.4,1400,600,2000,1,2288,,,,,,,Gemini AI,2642.34
+www-rmit-edu-vn-profiles-d-tri-dangtran...,Claude AI,TRUE,3145.5,,,,,1,1,1,1,1,0,0,0,,,,,2288,,,,,,,Claude AI,3145.5
+www-rmit-edu-vn-profiles-d-tri-dangtran...,ChatGPT AI,TRUE,2189.11,,,,,1,1,1,1,1,0,0,0,,,,,2288,,,,,,,ChatGPT AI,2189.11
+www-rmit-edu-vn-profiles-d-tri-dangtran...,Grok AI,TRUE,22794.51,5698.63,4,4,4,0,1,0,0,0,1,0,0.4,1400,600,2000,1,2288,,,,,,,Grok AI,22794.51
+www-rmit-edu-vn-profiles-h-anh-hoang62...,Traditional,TRUE,2550.97,,,,,1,1,1,1,1,0,0,0,,,,,563,,,,,,,Traditional,2550.97
+www-rmit-edu-vn-profiles-h-anh-hoang62...,Gemini AI,TRUE,1726.25,,,,,1,1,1,1,1,0,0,0,,,,,563,,,,,,,Gemini AI,1726.25
+www-rmit-edu-vn-profiles-h-anh-hoang62...,Claude AI,TRUE,3694.03,,,,,1,1,1,1,1,0,0,0,,,,,563,,,,,,,Claude AI,3694.03
+www-rmit-edu-vn-profiles-h-anh-hoang62...,ChatGPT AI,TRUE,2505.3,,,,,1,1,1,1,1,0,0,0,,,,,563,,,,,,,ChatGPT AI,2505.3
+www-rmit-edu-vn-profiles-h-anh-hoang62...,Grok AI,TRUE,8849.99,,,,,1,1,1,1,1,0,0,0,,,,,563,,,,,,,Grok AI,8849.99
+www-rmit-edu-vn-profiles-n-thao-nguyenhieu...,Traditional,TRUE,2442.29,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Traditional,2442.29
+www-rmit-edu-vn-profiles-n-thao-nguyenhieu...,Gemini AI,TRUE,1435.6,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Gemini AI,1435.6
+www-rmit-edu-vn-profiles-n-thao-nguyenhieu...,Claude AI,TRUE,3308.16,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Claude AI,3308.16
+www-rmit-edu-vn-profiles-n-thao-nguyenhieu...,ChatGPT AI,TRUE,1858.7,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,ChatGPT AI,1858.7
+www-rmit-edu-vn-profiles-n-thao-nguyenhieu...,Grok AI,TRUE,14713.21,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Grok AI,14713.21
+www-rmit-edu-vn-profiles-p-hung-phamviet2...,Traditional,TRUE,2396.03,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Traditional,2396.03
+www-rmit-edu-vn-profiles-p-hung-phamviet2...,Gemini AI,TRUE,1457.97,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Gemini AI,1457.97
+www-rmit-edu-vn-profiles-p-hung-phamviet2...,Claude AI,TRUE,3747.69,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Claude AI,3747.69
+www-rmit-edu-vn-profiles-p-hung-phamviet2...,ChatGPT AI,TRUE,1818.43,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,ChatGPT AI,1818.43
+www-rmit-edu-vn-profiles-p-hung-phamviet2...,Grok AI,TRUE,19499.27,,,,,1,1,1,1,1,0,0,0,,,,,2046,,,,,,,Grok AI,19499.27
+www-rmit-edu-vn-profiles-s-ben-scott...,Traditional,TRUE,2689.17,,,,,1,1,1,1,1,0,0,0,,,,,1456,,,,,,,Traditional,2689.17
+www-rmit-edu-vn-profiles-s-ben-scott...,Gemini AI,TRUE,1406.22,,,,,1,1,1,1,1,0,0,0,,,,,1456,,,,,,,Gemini AI,1406.22
+www-rmit-edu-vn-profiles-s-ben-scott...,Claude AI,TRUE,3091.85,,,,,1,1,1,1,1,0,0,0,,,,,1456,,,,,,,Claude AI,3091.85
+www-rmit-edu-vn-profiles-s-ben-scott...,ChatGPT AI,TRUE,1758.05,,,,,1,1,1,1,1,0,0,0,,,,,1456,,,,,,,ChatGPT AI,1758.05
+www-rmit-edu-vn-profiles-s-ben-scott...,Grok AI,TRUE,11659.1,,,,,1,1,1,1,1,0,0,0,,,,,1456,,,,,,,Grok AI,11659.1
+www-rmit-edu-vn-profiles-s-ushik-shrestha...,Traditional,TRUE,2544.59,,,,,1,1,1,1,1,0,0,0,,,,,2102,,,,,,,Traditional,2544.59
+www-rmit-edu-vn-profiles-s-ushik-shrestha...,Gemini AI,TRUE,1408.19,,,,,1,1,1,1,1,0,0,0,,,,,2102,,,,,,,Gemini AI,1408.19
+www-rmit-edu-vn-profiles-s-ushik-shrestha...,Claude AI,TRUE,3091.15,,,,,1,1,1,1,1,0,0,0,,,,,2102,,,,,,,Claude AI,3091.15
+www-rmit-edu-vn-profiles-s-ushik-shrestha...,ChatGPT AI,TRUE,1760.21,,,,,1,1,1,1,1,0,0,0,,,,,2102,,,,,,,ChatGPT AI,1760.21
+www-rmit-edu-vn-profiles-s-ushik-shrestha...,Grok AI,TRUE,20143.02,,,,,1,1,1,1,1,0,0,0,,,,,2102,,,,,,,Grok AI,20143.02
+zzzzzzzz,Traditional,TRUE,4664.05,2332.02,2,1,1,0.5,1,0.667,1,1,1,0,0.4,360,240,600,4,6743,2,,,,,,Traditional,4664.05
+zzzzzzzz,Gemini AI,TRUE,7004.48,778.28,9,1,1,0.111,1,0.2,0.611,0.222,1,0,0.4,3150,1350,4500,2,6743,2,,,,,,Gemini AI,7004.48
+zzzzzzzz,Claude AI,TRUE,12874.88,4291.63,3,1,1,0.333,1,0.5,0.833,0.667,1,0,0.4,1050,450,1500,1,6743,2,,,,,,Claude AI,12874.88
+zzzzzzzz,ChatGPT AI,TRUE,7063.79,2354.6,3,1,1,0.333,1,0.5,0.833,0.667,1,0,0.4,1050,450,1500,1,6743,2,,,,,,ChatGPT AI,7063.79
+zzzzzzzz,Grok AI,TRUE,15835.22,5278.41,3,1,1,0.333,1,0.5,0.833,0.667,1,0,0.4,1050,450,1500,1,6743,2,,,,,,Grok AI,15835.22
