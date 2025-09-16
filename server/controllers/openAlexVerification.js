@@ -115,7 +115,7 @@ const searchOpenAlex = async (title, maxResults) => {
     )}&api_key=${apiKey}`;
 
     const { data: openAlexResult } = await axios.get(openAlexApiUrl, {
-      timeout: 1500,
+      timeout: 2000,
     });
     return openAlexResult;
   } catch (err) {
