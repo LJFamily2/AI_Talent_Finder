@@ -401,8 +401,10 @@ export default function SearchStart() {
 
   return (
     <>
-      <Header />
-      <div className="w-full flex justify-end px-4 mt-4">
+      <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
+        <Header />
+      </div>
+      <div className="w-full flex justify-end px-4 mt-4 pt-24">
         <button
           onClick={() => navigate('/search-interface')}
           className="flex items-center gap-2 text-sm bg-transparent font-semibold transition group cursor-pointer"

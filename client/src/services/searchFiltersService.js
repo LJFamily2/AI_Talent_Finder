@@ -117,7 +117,8 @@ export function buildFilterPayload({
     hIndex = null,
     i10Index = null,
     page = 1,
-    limit = 20
+    limit = 20,
+    require_full_match = false
 } = {}) {
     const search_tags = [];
 
@@ -146,6 +147,11 @@ export function buildFilterPayload({
         body.researcher_name = n; // preferred key on server
         body.name = n;            // fallback for robustness
     }
+
+    // Include sort when provided
+    if (sort_field) body.sort_field = sort_field;
+    if (sort_order) body.sort_order = sort_order;
+    if (require_full_match) body.require_full_match = true;
 
     body.page = page;
     body.limit = limit;

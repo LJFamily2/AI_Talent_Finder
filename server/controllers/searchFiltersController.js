@@ -3,6 +3,7 @@ const Researcher = require("../models/Researcher");
 const Field = require("../models/Field");
 const Institution = require("../models/Institution");
 const Country = require("../models/Country");
+const Topic = require("../models/Topic");
 
 const { buildComparison, parseYearBounds, inYearRange } = require("../utils/queryHelpers");
 
@@ -60,6 +61,7 @@ exports.searchResearchers = async (req, res) => {
       name: nameRaw,
       sort_field = "match_count",
       sort_order = "desc",
+      require_full_match = false,
       page = 1,
       limit = 20,
       year_from,
@@ -102,6 +104,8 @@ exports.searchResearchers = async (req, res) => {
     // -----------------------------
     // Aggregation pipeline
     // -----------------------------
+    const filterCount = search_tags.length;
+
     const pipeline = [
       { $match: matchStage },
 
@@ -167,6 +171,9 @@ exports.searchResearchers = async (req, res) => {
         }
       },
 
+      // If require_full_match is set, only keep researchers matching all selected tags
+      ...(require_full_match && filterCount > 0 ? [{ $match: { matchCount: filterCount } }] : []),
+
       // Sort
       {
         $sort:
@@ -185,37 +192,50 @@ exports.searchResearchers = async (req, res) => {
     let researchers = await Researcher.aggregate(pipeline).allowDiskUse(true).exec();
 
     // -----------------------------
-    // Enrich fields from search_tags
+    // Build display-name maps for all selected filters and result data
     // -----------------------------
-    const allFieldIds = [...new Set(
+    // IDs from results
+    const allFieldIdsFromResults = [...new Set(
       researchers.flatMap(r =>
         r.search_tags.filter(tag => tag.startsWith("field:")).map(tag => tag.split(":")[1])
       )
     )];
-    const fieldMap = await enrichFields(allFieldIds);
-
-    // -----------------------------
-    // Enrich last_known affiliations and other display names
-    // -----------------------------
-    const allInstIds = [...new Set(researchers.flatMap(r => r.last_known_affiliations))];
-    const allCountries = [...new Set(
+    const allInstIdsFromResults = [...new Set(researchers.flatMap(r => r.last_known_affiliations))];
+    const allCountryIdsFromResults = [...new Set(
       researchers.flatMap(r =>
         r.search_tags.filter(tag => tag.startsWith("country:")).map(tag => tag.split(":")[1])
       )
     )];
 
-    const [institutions, countries] = await Promise.all([
-      Institution.find({ _id: { $in: allInstIds } }, { display_name: 1 }).lean(),
-      Country.find({ _id: { $in: allCountries } }, { display_name: 1 }).lean()
+    // IDs from selected filters (req.body.search_tags)
+    const selectedFieldIds = new Set(search_tags.filter(t => t.startsWith('field:')).map(t => t.split(':')[1]));
+    const selectedTopicIds = new Set(search_tags.filter(t => t.startsWith('topic:')).map(t => t.split(':')[1]));
+    const selectedInstIds = new Set(search_tags.filter(t => t.startsWith('institution:')).map(t => t.split(':')[1]));
+    const selectedCountryIds = new Set(search_tags.filter(t => t.startsWith('country:')).map(t => t.split(':')[1]));
+
+    // Union sets for fetching
+    const fieldIdsForMap = [...new Set([...allFieldIdsFromResults, ...selectedFieldIds])];
+    const instIdsForMap = [...new Set([...allInstIdsFromResults, ...selectedInstIds])];
+    const countryIdsForMap = [...new Set([...allCountryIdsFromResults, ...selectedCountryIds])];
+    const topicIdsForMap = [...selectedTopicIds]; // topics from results already via $lookup below
+
+    // Fetch display names
+    const [fieldMapRaw, institutions, countries, selectedTopics] = await Promise.all([
+      enrichFields(fieldIdsForMap),
+      Institution.find({ _id: { $in: instIdsForMap } }, { display_name: 1 }).lean(),
+      Country.find({ _id: { $in: countryIdsForMap } }, { display_name: 1 }).lean(),
+      topicIdsForMap.length ? Topic.find({ _id: { $in: topicIdsForMap } }, { display_name: 1 }).lean() : Promise.resolve([])
     ]);
 
-    const instMap = Object.fromEntries(institutions.map(i => [i._id, i.display_name]));
-    const countryMap = Object.fromEntries(countries.map(c => [c._id, c.display_name]));
+    const fieldMap = fieldMapRaw || {};
+    const instMap = Object.fromEntries((institutions || []).map(i => [String(i._id), i.display_name]));
+    const countryMap = Object.fromEntries((countries || []).map(c => [String(c._id), c.display_name]));
 
-    // For topics, we already have display_name from $lookup
-    const topicMap = Object.fromEntries(
-      researchers.flatMap(r => r.topics.map(t => [t._id, t.display_name]))
-    );
+    // Topics: from aggregation lookup (for results) + selected topics
+    const topicMap = Object.fromEntries([
+      ...researchers.flatMap(r => r.topics.map(t => [String(t._id), t.display_name])),
+      ...(selectedTopics || []).map(t => [String(t._id), t.display_name])
+    ]);
 
     // -----------------------------
     // Compute matched/unmatched and final formatting
@@ -251,7 +271,54 @@ exports.searchResearchers = async (req, res) => {
     // -----------------------------
     // Get total count for pagination
     // -----------------------------
-    const total = await Researcher.countDocuments(matchStage);
+    let total;
+    if (require_full_match && filterCount > 0) {
+      const countPipeline = [
+        { $match: matchStage },
+        // Apply year range filter if any (same logic as main pipeline)
+        ...((yFrom != null || yTo != null) ? [{
+          $addFields: {
+            affiliations: {
+              $filter: {
+                input: "$affiliations",
+                as: "aff",
+                cond: {
+                  $function: {
+                    body: function (years, from, to) {
+                      if (!Array.isArray(years) || years.length === 0) return false;
+                      from = from != null ? from : to;
+                      to = to != null ? to : from;
+                      return years.some(y => y >= from && y <= to);
+                    },
+                    args: ["$$aff.years", yFrom, yTo],
+                    lang: "js"
+                  }
+                }
+              }
+            }
+          }
+        }] : []),
+        {
+          $addFields: {
+            matchCount: {
+              $size: {
+                $filter: {
+                  input: "$search_tags",
+                  as: "tag",
+                  cond: { $in: ["$$tag", search_tags] }
+                }
+              }
+            }
+          }
+        },
+        { $match: { matchCount: filterCount } },
+        { $count: 'total' }
+      ];
+      const countRes = await Researcher.aggregate(countPipeline).exec();
+      total = (countRes && countRes[0] && countRes[0].total) ? countRes[0].total : 0;
+    } else {
+      total = await Researcher.countDocuments(matchStage);
+    }
 
     res.json({
       total,

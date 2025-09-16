@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import searchIcon from '../assets/search.png';
 import menuIcon from '../assets/menu.png';
-import sortIcon from '../assets/sort.png';
+// import sortIcon from '../assets/sort.png';
 // import { Switch } from "@/components/ui/switch"
 import Bulb from '../assets/lightbulb.png';
 import Dot from '../assets/dot.png';
+import letterH from '../assets/letter-h.png';
+import scholarHat from '../assets/scholar-hat.png';
+import citationIcon from '../assets/citation.png';
+import documentIcon from '../assets/document.png';
 import filterIcon from '../assets/filter.png';
 import noResultImage from '../assets/no-result.png';
 // pagination primitives are used via PaginationBar component
@@ -23,11 +27,7 @@ import InlineFieldDropdown from '@/components/InlineFieldDropdown';
 import SelectedFieldChips from '@/components/SelectedFieldChips';
 import SelectedInstitutionChips from '@/components/SelectedInstitutionChips';
 import PaginationBar from '@/components/PaginationBar';
-// import SortModalComp from '@/components/SortModal';
-
-// (moved) CountryModal in components/CountryModal.jsx
-// (moved) InstitutionModal in components/InstitutionModal.jsx
-// (moved) FieldModal in components/FieldModal.jsx
+import SortBar from '@/components/SortBar';
 
 function SearchInterface() {
     // Plan restoration before effects run to avoid clobbering saved state
@@ -58,9 +58,10 @@ function SearchInterface() {
     const [expertiseInput, setExpertiseInput] = useState("");
     const [expertiseInputFocused, setExpertiseInputFocused] = useState(false);
     // const [peopleList, setPeopleList] = useState([]);
-    const [sortBy, setSortBy] = useState('name');
-    const [sortOrder, setSortOrder] = useState('asc');
+    const [sortBy, setSortBy] = useState('match');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [hasSearched, setHasSearched] = useState(false);
+    const [onlyFullMatches, setOnlyFullMatches] = useState(false);
     const [peopleList, setPeopleList] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState(null);
@@ -283,9 +284,26 @@ function SearchInterface() {
                         .map(f => String(f._id))
                 );
 
+                // If no hits from Atlas, fallback to per-field topic query
+                let effectiveTopicHits = topicHits;
+                if (!effectiveTopicHits || effectiveTopicHits.length === 0) {
+                    try {
+                        const perField = await Promise.all((fieldsList || []).map(async (f) => {
+                            try {
+                                const res = await loadTopicsForField(f._id ? f._id : "null", 0, 200, q);
+                                const topics = res?.topics || [];
+                                return topics.map(t => ({ ...t, field_id: f._id, field_display_name: f.display_name }));
+                            } catch {
+                                return [];
+                            }
+                        }));
+                        effectiveTopicHits = perField.flat();
+                    } catch {}
+                }
+
                 // Group topic hits by field_id
                 const byFieldId = new Map();
-                (topicHits || []).forEach(t => {
+                (effectiveTopicHits || []).forEach(t => {
                     const fid = t.field_id === null || t.field_id === undefined ? 'null' : String(t.field_id);
                     if (!byFieldId.has(fid)) byFieldId.set(fid, { topics: [], fieldDisplayName: t.field_display_name });
                     const entry = byFieldId.get(fid);
@@ -368,6 +386,14 @@ function SearchInterface() {
         return () => clearTimeout(timer);
     }, [institutionInput]);
 
+    // re-run search when sort or full-match toggle changes (after initial search)
+    useEffect(() => {
+        if (!hasSearched) return;
+        // reset to first page on sort change
+        loadResults({ page: 1, limit: perPage });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortBy, sortOrder, onlyFullMatches]);
+
     // helper: toggle selection by search_tag
     function toggleInstitutionSelection(item) {
         setSelectedInstitutions(prev => {
@@ -405,8 +431,9 @@ function handleReset() {
         setShowCountryModal(false);
         setShowFieldModal(false);
         setShowInstitutionModal(false);
-        setSortBy('name');
-        setSortOrder('asc');
+        setSortBy('match');
+        setSortOrder('desc');
+        setOnlyFullMatches(false);
         setNameInput("");
         setNameSuggestions([]);
         setNameInputFocused(false);
@@ -437,6 +464,19 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
             fieldIds = [];
         }
 
+        // derive sort field mapping for API
+        function mapSortField(key) {
+            switch (key) {
+                case 'match': return 'match_count';
+                case 'name': return 'name';
+                case 'h_index': return 'h_index';
+                case 'i10_index': return 'i10_index';
+                case 'citations': return 'total_citations';
+                case 'works': return 'total_works';
+                default: return 'match_count';
+            }
+        }
+
         // build payload from UI state
         const payload = buildFilterPayload({
             selectedInstitutions,
@@ -444,6 +484,9 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
             selectedTopics: selectedTopicIds,
             selectedCountries,
             name: nameInput,
+            sort_field: mapSortField(sortBy),
+            sort_order: sortOrder,
+            require_full_match: onlyFullMatches,
             hIndex: (hIndexVal !== '' && hIndexVal !== null ? { operator: hIndexOp, value: Number(hIndexVal) } : null),
             i10Index: (i10Val !== '' && i10Val !== null ? { operator: i10Op, value: Number(i10Val) } : null),
             page,
@@ -521,6 +564,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
             sortOrder,
             hasSearched,
             nameInput,
+            onlyFullMatches,
         };
         try { sessionStorage.setItem('searchInterfaceState', JSON.stringify(snapshot)); } catch {}
     }, [selectedCountries, selectedFields, selectedInstitutions, selectedTopicIds, topicKeyToId, hIndexOp, hIndexVal, i10Op, i10Val, peopleList, currentPage, perPage, totalResults, sortBy, sortOrder, hasSearched, nameInput]);
@@ -546,16 +590,64 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                     setCurrentPage(Number(s.currentPage || 1));
                     setPerPage(Number(s.perPage || 10));
                     setTotalResults(Number(s.totalResults || 0));
-                    setSortBy(s.sortBy || 'name');
-                    setSortOrder(s.sortOrder || 'asc');
+                    setSortBy(s.sortBy || 'match');
+                    setSortOrder(s.sortOrder || 'desc');
                     setHasSearched(Boolean(s.hasSearched));
                     setNameInput(s.nameInput || '');
+                    if (typeof s.onlyFullMatches === 'boolean') setOnlyFullMatches(s.onlyFullMatches);
                     // mark restored to allow subsequent snapshot writes
                     restoredRef.current = true;
                 }
             } catch {}
             try { sessionStorage.removeItem('restoreSearchState'); } catch {}
         }
+    }, []);
+
+    // Bootstrap from SearchStart (apply initial selection and auto-run)
+    useEffect(() => {
+        const raw = (() => { try { return sessionStorage.getItem('searchInterfaceBootstrap'); } catch { return null; } })();
+        const rawPayload = (() => { try { return sessionStorage.getItem('searchInterfaceBootstrapPayload'); } catch { return null; } })();
+        if (!raw && !rawPayload) return;
+        try {
+            const b = raw ? (JSON.parse(raw) || {}) : {};
+            // Apply incoming bootstrap filters
+            if (Array.isArray(b.selectedCountries)) setSelectedCountries(b.selectedCountries);
+            if (Array.isArray(b.selectedFields)) setSelectedFields(b.selectedFields);
+            if (Array.isArray(b.selectedInstitutions)) setSelectedInstitutions(b.selectedInstitutions);
+            if (Array.isArray(b.selectedTopicIds)) setSelectedTopicIds(b.selectedTopicIds.map(String));
+            if (b.topicKeyToId && typeof b.topicKeyToId === 'object') setTopicKeyToId(b.topicKeyToId);
+            if (typeof b.nameInput === 'string') setNameInput(b.nameInput);
+        } catch {}
+        try { sessionStorage.removeItem('searchInterfaceBootstrap'); } catch {}
+
+        // Run search, preferring a prebuilt payload if present
+        setTimeout(async () => {
+            try {
+                setIsSearching(true);
+                if (rawPayload) {
+                    const payload = JSON.parse(rawPayload);
+                    const results = await searchResearchers(payload);
+                    const list = results?.researchers || results?.items || results?.results || [];
+                    const total = results?.total || results?.count || results?.total_count || list.length;
+                    setPeopleList(list);
+                    setTotalResults(Number(total || 0));
+                    setCurrentPage(Number(payload?.page || 1));
+                    setHasSearched(true);
+                } else {
+                    await loadResults({ page: 1, limit: perPage });
+                }
+            } catch (err) {
+                console.error('bootstrap search error:', err);
+                setPeopleList([]);
+                setTotalResults(0);
+                setHasSearched(true);
+                setSearchError(formatError(err));
+            } finally {
+                setIsSearching(false);
+                try { sessionStorage.removeItem('searchInterfaceBootstrapPayload'); } catch {}
+            }
+        }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Debounced name suggestions
@@ -596,8 +688,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
 
     return (
         <div>
-            <Header />
-            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20'>
+            <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
+                <Header />
+            </div>
+            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20 pt-24'>
                 <form>
                     {/* Left side: filter */}
                     <div className='w-[390px] h-auto flex justify-center'>
@@ -654,9 +748,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                 <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
                                 <div className='flex items-center justify-between '>
                                     <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
+                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
                                         <select
-                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600'
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            style={{ textAlign: 'center', textAlignLast: 'center' }}
                                             value={hIndexOp}
                                             onChange={e => setHIndexOp(e.target.value)}
                                             aria-label="h-index operator"
@@ -667,10 +762,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                             <option value=">">&gt;</option>
                                             <option value=">=">&ge;</option>
                                         </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                        <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
                                             <input
                                                 type='number'
-                                                className='w-30 focus:outline-0 text-end px-3'
+                                                className='w-full focus:outline-0 text-center px-3'
                                                 min={0}
                                                 value={hIndexVal}
                                                 onChange={e => setHIndexVal(e.target.value)}
@@ -684,9 +779,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
 
                                 <div className='flex items-center justify-between'>
                                     <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
-                                    <div className='flex w-3/4 justify-end items-center gap-5'>
+                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
                                         <select
-                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600'
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            style={{ textAlign: 'center', textAlignLast: 'center' }}
                                             value={i10Op}
                                             onChange={e => setI10Op(e.target.value)}
                                             aria-label="i10-index operator"
@@ -697,10 +793,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                             <option value=">">&gt;</option>
                                             <option value=">=">&ge;</option>
                                         </select>
-                                        <div className='w-2/5 border-b-1 border-[#6A6A6A] flex items-center py-1'>
+                                        <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
                                             <input
                                                 type='number'
-                                                className='w-30 focus:outline-0 text-end px-3'
+                                                className='w-full focus:outline-0 text-center px-3'
                                                 min={0}
                                                 value={i10Val}
                                                 onChange={e => setI10Val(e.target.value)}
@@ -907,26 +1003,68 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                 </p>
                             </div>
                         ) : (hasSearched && peopleList.length === 0) ? (
-                            <div className="flex flex-col items-center justify-center h-[400px]">
-                                <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
-                                <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
-                                <p className="text-md text-gray-500 text-center mt-2">
-                                    We couldn't find anyone matching your filter. <br />
-                                    Try changing your search criteria.
-                                </p>
-                            </div>
+                            <>
+                                <div className='w-full flex flex-col gap-3 mb-10'>
+                                    <div className='w-full flex items-center justify-between gap-4'>
+                                        <div className='flex-1'>
+                                            <SortBar
+                                                sortBy={sortBy}
+                                                sortOrder={sortOrder}
+                                                onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
+                                            />
+                                        </div>
+                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                            <input
+                                                type='checkbox'
+                                                className='w-4 h-4 accent-[#E60028]'
+                                                checked={onlyFullMatches}
+                                                onChange={(e) => setOnlyFullMatches(e.target.checked)}
+                                            />
+                                            Only full matches
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center justify-center h-[300px]">
+                                    <img src={noResultImage} alt="No results" className="w-24 h-24 mb-4" />
+                                    <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
+                                    <p className="text-md text-gray-500 text-center mt-2">
+                                        We couldn't find anyone matching your filter. <br />
+                                        Try changing your search criteria.
+                                    </p>
+                                </div>
+                            </>
                         ) : (
                             <>
                                 {/* Max results per page */}
-                                <div className='w-full flex justify-between items-center mb-10'>
-                                    <p>
-                                        Showing <b>
-                                            {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
-                                            -
-                                            {Math.min(currentPage * perPage, totalResults)}
-                                        </b> in <b>{totalResults.toLocaleString()}</b>
-                                    </p>
-                                    <div className='flex items-center gap-2'>
+                                <div className='w-full flex flex-col gap-3 mb-10'>
+                                    <div className='w-full flex items-center justify-between gap-4'>
+                                        <div className='flex-1'>
+                                            <SortBar
+                                                sortBy={sortBy}
+                                                sortOrder={sortOrder}
+                                                onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
+                                            />
+                                        </div>
+                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                            <input
+                                                type='checkbox'
+                                                className='w-4 h-4 accent-[#E60028]'
+                                                checked={onlyFullMatches}
+                                                onChange={(e) => setOnlyFullMatches(e.target.checked)}
+                                            />
+                                            Only full matches
+                                        </label>
+                                    </div>
+                                    {/* Results toolbar */}
+                                    <div className='w-full flex justify-between items-center relative'>
+                                        <p>
+                                            Showing <b>
+                                                {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
+                                                -
+                                                {Math.min(currentPage * perPage, totalResults)}
+                                            </b> in <b>{totalResults.toLocaleString()}</b>
+                                        </p>
+                                    <div className='flex items-center gap-4'>
                                         <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
                                         <select
                                             name="resultsPerPage"
@@ -945,6 +1083,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                             <option value="50">50</option>
                                         </select>
                                     </div>
+                                    </div>
                                 </div>
 
                                 {/* People List */}
@@ -956,6 +1095,9 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                     const fieldsArr = Array.isArray(person.fields) && person.fields.length
                                         ? person.fields.filter(Boolean)
                                         : (person.field ? [person.field] : []);
+                                    const totalCitations = person.research_metrics?.total_citations ?? '';
+                                    const totalWorks = person.research_metrics?.total_works ?? '';
+                                    const fmt = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v))) ? '' : Number(v).toLocaleString();
                                     const slug = person.slug || '';
                                     const researcherId = person._id || person.id || person.slug;
                                     return (
@@ -972,16 +1114,29 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                             <p className='text-[#6A6A6A] text-md truncate min-w-0 flex-1' title={institution}>{institution}</p>
                                                         </div>
 
-                                                        <div className='flex-col justify-center'>
-                                                            <span className='text-sm text-[#6A6A6A]'>h-index: {hIndex}</span>
-                                                            <br />
-                                                            <span className='text-sm text-[#6A6A6A]'>i10-index: {i10Index}</span>
+                                                        <div className='grid grid-cols-2 gap-x-8 gap-y-1 items-start justify-start'>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={letterH} alt='H' className='w-4 h-4' />
+                                                                <span>h-index: {fmt(hIndex)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={documentIcon} alt='Works' className='w-4 h-4' />
+                                                                <span>Total works: {fmt(totalWorks)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={scholarHat} alt='i10' className='w-4 h-4' />
+                                                                <span>i10-index: {fmt(i10Index)}</span>
+                                                            </div>
+                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={citationIcon} alt='Citations' className='w-4 h-4' />
+                                                                <span>Total citations: {fmt(totalCitations)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className='shrink-0 self-start flex items-center gap-3'>
                                                         <button
                                                             className='whitespace-nowrap text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed'
-                                                            onClick={() => { if (slug) navigate(`/researcher-profile/${slug}`); }}
+                                                            onClick={() => { try { sessionStorage.setItem('restoreSearchState','1'); } catch {} if (slug) navigate(`/researcher-profile/${slug}`); }}
                                                             disabled={!slug}
                                                         >
                                                             View profile
@@ -989,12 +1144,41 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                     </div>
                                                 </div>
 
-                                                <div className='flex flex-wrap gap-2 mt-6'>
-                                                    {fieldsArr.map((f, i) => (
-                                                        <div key={`${f}_${i}`} className='w-max py-1 px-4 rounded-full font-semibold bg-white border border-[#d2e4f4] text-[#3C72A5] text-sm'>
-                                                            {f}
-                                                        </div>
-                                                    ))}
+                                                <div className='mt-6'>
+                                                    {(() => {
+                                                        const matchObj = person.match || {};
+                                                        const matchedCount = Number(matchObj.matchCount || 0);
+                                                        const totalFilters = Number(matchObj.totalFilters || 0);
+                                                        const matched = Array.isArray(matchObj.matched) ? matchObj.matched.filter(Boolean) : [];
+                                                        const unmatched = Array.isArray(matchObj.unmatched) ? matchObj.unmatched.filter(Boolean) : [];
+                                                        return (
+                                                            <div>
+                                                                {(() => {
+                                                                    const full = totalFilters > 0 && matchedCount === totalFilters;
+                                                                    const chipClass = full
+                                                                        ? 'bg-green-100 text-green-700 border border-green-200'
+                                                                        : 'bg-gray-100 text-gray-700 border border-gray-200';
+                                                                    return (
+                                                                        <div className={`inline-flex items-center py-1 px-3 rounded-full text-sm font-medium ${chipClass}`}>
+                                                                            Matches {matchedCount}/{totalFilters} filters
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {matched.length > 0 && !(totalFilters > 0 && matchedCount === totalFilters) && (
+                                                                    <div className='mt-2 text-xs text-gray-700'>
+                                                                        <span className='font-medium mr-1'>Matched:</span>
+                                                                        <span>{matched.join(', ')}</span>
+                                                                    </div>
+                                                                )}
+                                                                {unmatched.length > 0 && (
+                                                                    <div className='mt-1 text-xs text-gray-600'>
+                                                                        <span className='font-medium mr-1'>Not matched:</span>
+                                                                        <span>{unmatched.join(', ')}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
