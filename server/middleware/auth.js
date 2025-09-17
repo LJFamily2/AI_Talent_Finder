@@ -53,18 +53,21 @@ const protect = async (req, res, next) => {
           const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
             user.getSignedJwtToken();
 
+          // Determine if we're in production
+          const isProduction = process.env.NODE_ENV === "production";
+
           // Set new httpOnly cookies
           res.cookie("accessToken", newAccessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "strict",
             maxAge: 60 * 60 * 1000, // 1 hour
           });
 
           res.cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           });
 
