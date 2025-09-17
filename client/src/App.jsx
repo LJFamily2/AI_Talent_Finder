@@ -33,8 +33,8 @@ function App() {
           />
           <Route path="/verify-cv" element={<CVUpload />} />
           <Route path="/verify-cv/results" element={<CVVerification />} />
-          <Route path="/search-tool" element={<SearchStart />} />
-          <Route path="/search-interface" element={<SearchInterface />} />
+          <Route path="/search" element={<SearchStart />} />
+          <Route path="/search/advanced" element={<SearchInterface />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/landing-page" element={<LandingPage />} />
 

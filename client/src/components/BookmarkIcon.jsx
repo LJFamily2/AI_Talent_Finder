@@ -169,7 +169,7 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
                             const target =
                               window.location.pathname + window.location.search + window.location.hash;
                             sessionStorage.setItem("postLoginRedirect", target);
-                            if (window.location.pathname.startsWith('/search-interface')) {
+                            if (window.location.pathname.startsWith('/search/advanced')) {
                               sessionStorage.setItem('restoreSearchState', '1');
                             }
                         } catch (err) {

@@ -306,7 +306,7 @@ export default function SearchStart() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigate('/search-interface');
+      navigate('/search/advanced');
     }, 300);
   };
 
@@ -406,7 +406,7 @@ export default function SearchStart() {
       </div>
       <div className="w-full flex justify-end px-4 pt-24">
         <button
-          onClick={() => navigate('/search-interface')}
+          onClick={() => navigate('/search/advanced')}
           className="flex items-center gap-2 text-sm bg-transparent font-semibold transition group cursor-pointer"
           onMouseEnter={() => setIconBounce(true)}
           onMouseLeave={() => setIconBounce(false)}

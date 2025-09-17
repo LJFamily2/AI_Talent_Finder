@@ -34,8 +34,8 @@ api.interceptors.response.use(
       const publicRoutes = [
         "/verify-cv",
         "/verify-cv/results",
-        "/search-tool",
-        "/search-interface",
+        "/search",
+        "/search/advanced",
         "/landing-page",
         "/",
         "/search-author",
