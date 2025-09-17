@@ -170,7 +170,7 @@ function LandingPage() {
                   <p className="text-justify text-base md:line-clamp-3">Pulling data from reliable databases such as Scopus, ORCID and OpenAlex, our product presents to you a list of potential academics with the necessary details already given, sparing you much time of looking up on various individual platforms.</p>
               </div>
               <button className="w-max bg-[#E60028] text-white px-6 md:px-8 py-3 mt-4 rounded-2xl mb-10 hover:underline text-base md:text-lg">
-                  <a href="/search-tool">Explore now</a>
+                  <a href="/search">Explore now</a>
               </button>
           </div>
           <div className="max-w-500 w-full md:w-2/5 px-0 md:px-8 mt-8 md:mt-0">
@@ -183,7 +183,7 @@ function LandingPage() {
       <div className="w-full md:w-5/6 h-max flex flex-col md:flex-row gap-8 md:gap-16 mx-auto text-white px-4 md:px-0">
           {/* Feature 2: Verify candidate CVs */}
           <div className="w-full md:w-1/2 sm:hover:scale-100 h-full bg-[#000054] rounded-2xl pt-10 shadow-md hover:scale-105 transition-transform duration-300 shadow-md mb-8 md:mb-0 px-4 sm:px-5">
-              <div className="h-max px-0 md:px-10">
+              <div className="h-max px-0 md:px-5">
                   <h3 className="font-bold text-2xl md:text-3xl mb-4">Verify candidates’ CVs</h3>
                   <p className="text-balance text-base md:line-clamp-3">By comparing candidates’ statements in CV with some of our Internet sources, this product could give early alarms to the recruiters, highlighting which claims of the candidates are unverifiable.
                   </p>
@@ -195,7 +195,7 @@ function LandingPage() {
           </div>
           {/* Feature 3: Export to report */}
           <div className="w-full md:w-1/2 sm:hover:scale-100 bg-[#000054] rounded-2xl shadow-md grow flex flex-col justify-between hover:scale-105 transition-transform duration-300 shadow-md px-4 sm:px-5">
-                  <div className="h-full px-0 md:px-10 pt-10 flex flex-col justify-between">
+                  <div className="h-full px-0 md:px-5 pt-10 flex flex-col justify-between">
                           <div>
                                   <h3 className="font-bold text-2xl md:text-3xl mb-4">Export to report</h3>
                                   <p className="text-balance text-base md:text-lg sm:mb-5">Recruiters can export their search results for further analysis.</p>
