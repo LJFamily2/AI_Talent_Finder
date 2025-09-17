@@ -125,12 +125,12 @@ const userInitial = (() => {
                       </div>
                     ) : (
                       <div
-                        className={`flex items-center justify-center px-8 h-full ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'}`}
+                        className={`flex items-center justify-center px-8 h-full ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'} md:ml-8`}
                         title="Log in to access Saved Profiles"
                       >
                           <button
                             onClick={handleLoginClick}
-                            className={`font-medium hover:underline ${path === '/login' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}
+                            className={`font-medium hover:underline py-2 ${path === '/login' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}
                             aria-label="Login"
                           >
                             Login
