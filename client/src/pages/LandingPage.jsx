@@ -70,7 +70,7 @@ function LandingPage() {
         <Header />
       </div>
 
-      <div className="w-full h-[45rem] sm:h-[50rem] md:h-[55rem] lg:h-[60rem] mt-16 sm:mt-18 flex justify-center items-center overflow-clip z-0 relative">
+      <div className="w-full h-[100dvh] flex justify-center items-center overflow-clip z-0 relative">
         {/* Video background, then fallback to image */}
         <div className="w-full h-full absolute top-0 left-0 z-0">
           {!videoEnded ? (
