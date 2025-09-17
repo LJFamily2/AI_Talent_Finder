@@ -19,7 +19,16 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml: {
           order: "pre",
           handler(html) {
-            return html.replace(/%%VITE_BACKEND_URL%%/g, env.VITE_BACKEND_URL);
+            const backendUrl = env.VITE_BACKEND_URL || "http://localhost:5000";
+
+            // Generate WebSocket URLs based on backend URL
+            const wsUrl = backendUrl.replace(/^https?:/, "ws:");
+            const wssUrl = backendUrl.replace(/^https?:/, "wss:");
+
+            return html
+              .replace(/%%VITE_BACKEND_URL%%/g, backendUrl)
+              .replace(/%%VITE_WS_URL%%/g, wsUrl)
+              .replace(/%%VITE_WSS_URL%%/g, wssUrl);
           },
         },
       },

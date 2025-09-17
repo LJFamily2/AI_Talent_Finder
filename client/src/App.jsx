@@ -32,17 +32,18 @@ function App() {
             }
           />
           <Route path="/publication-check" element={<CVUpload />} />
-          <Route path="/publication-check/results" element={<CVVerification />} />
+          <Route
+            path="/publication-check/results"
+            element={<CVVerification />}
+          />
           <Route path="/search" element={<SearchStart />} />
           <Route path="/search/advanced" element={<SearchInterface />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/landing-page" element={<LandingPage />} />
-
           <Route
             path="/researcher-profile/:slug"
             element={<ResearcherProfile />}
           />
-
           <Route
             path="/saved-researchers"
             element={
@@ -51,7 +52,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route path="/search-author" element={<SearchAuthor />} />
         </Routes>
       </AuthProvider>

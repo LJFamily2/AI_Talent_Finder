@@ -6,14 +6,17 @@ import { useDropzone } from "react-dropzone";
 import api from "../config/api";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
+import SimplePDFViewer from "../components/SimplePDFViewer";
 
 function CVUpload() {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
   const [errorInfo, setErrorInfo] = useState(null); // {message, retryable, code}
+  const [uploadedFile, setUploadedFile] = useState(null); // Store the uploaded file for preview
   const navigate = useNavigate();
   const socketRef = useRef(null);
+  const fileRef = useRef(null); // Store file reference for socket callbacks
 
   const handleFileUpload = useCallback(
     async (file) => {
@@ -21,6 +24,8 @@ function CVUpload() {
       setProgress(0);
       setProgressPhase("upload");
       setErrorInfo(null); // Clear any previous error
+      setUploadedFile(file); // Store the file for preview
+      fileRef.current = file; // Store file reference for socket callbacks
 
       try {
         const formData = new FormData();
@@ -66,14 +71,21 @@ function CVUpload() {
           setTimeout(() => {
             setProcessing(false);
             navigate("/publication-check/results", {
-              state: { publications: data.result },
+              state: {
+                publications: data.result,
+                originalFile: fileRef.current,
+              },
             });
+            setUploadedFile(null); // Clear the file after navigation
+            fileRef.current = null; // Clear the file reference
           }, 1000);
         });
 
         socketRef.current.on("error", (data) => {
           setProcessing(false);
           setProgress(0);
+          setUploadedFile(null); // Clear the file on error
+          fileRef.current = null; // Clear the file reference
           setErrorInfo({
             message:
               data.error ||
@@ -86,6 +98,8 @@ function CVUpload() {
         console.error("Error verifying CV:", error);
         setProcessing(false);
         setProgress(0);
+        setUploadedFile(null); // Clear the file on error
+        fileRef.current = null; // Clear the file reference
         setErrorInfo({
           message:
             error.response?.data?.error ||
@@ -135,6 +149,7 @@ function CVUpload() {
           retryable: false,
           code: "INVALID_FILE_TYPE",
         });
+        setUploadedFile(null); // Clear any previous file
         return;
       }
 
@@ -150,6 +165,7 @@ function CVUpload() {
             retryable: false,
             code: "INVALID_FILE_TYPE",
           });
+          setUploadedFile(null); // Clear any previous file
           return;
         }
 
@@ -218,54 +234,241 @@ function CVUpload() {
         </div>
       </div>
 
-      {processing && (
+      {processing && uploadedFile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-sm sm:max-w-md bg-white rounded-lg p-6 sm:p-8 shadow-lg flex flex-col items-center">
-            {/* Circular Progress Bar */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24">
-              <svg
-                className="w-full h-full transform -rotate-90 origin-center"
-                viewBox="0 0 80 80"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                <circle
-                  className="text-gray-200"
-                  strokeWidth="6"
-                  stroke="currentColor"
-                  fill="transparent"
-                  r="36"
-                  cx="40"
-                  cy="40"
-                />
-                <circle
-                  className="text-blue-500 transition-all duration-300 ease-out"
-                  strokeWidth="6"
-                  strokeDasharray={2 * Math.PI * 36}
-                  strokeDashoffset={2 * Math.PI * 36 * (1 - progress / 100)}
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="transparent"
-                  r="36"
-                  cx="40"
-                  cy="40"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-semibold">
-                {progress}%
-              </div>
+          <div className="w-full max-w-6xl bg-white rounded-lg shadow-lg overflow-hidden">
+            {/* Header */}
+            <div className="bg-gray-50 px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Processing Your CV
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {progressPhase === "upload" && "Uploading your file..."}
+                {progressPhase === "processing" && "Analyzing CV content..."}
+                {progressPhase === "complete" && "Finalizing results..."}
+              </p>
             </div>
 
-            <span className="text-gray-500 mt-4 text-lg sm:text-xl text-center">
-              {progressPhase === "upload" && "Uploading your file..."}
-              {progressPhase === "processing" && "Analyzing CV content..."}
-              {progressPhase === "complete" && "Finalizing results..."}
-            </span>
+            {/* Content */}
+            <div className="flex flex-col lg:flex-row h-[70vh]">
+              {/* PDF Preview */}
+              <div className="flex-1 p-6 bg-gray-50">
+                <div className="h-full min-h-[600px] rounded border border-gray-200 overflow-hidden">
+                  <SimplePDFViewer file={uploadedFile} className="h-full" />
+                </div>
+              </div>
 
-            {progressPhase === "processing" && (
-              <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center px-2">
-                This may take up to 90 seconds for complex documents
-              </p>
-            )}
+              {/* Progress Panel */}
+              <div className="lg:w-80 p-6 bg-white border-l flex flex-col justify-center">
+                <div className="text-center">
+                  {/* Large Circular Progress */}
+                  <div className="relative w-32 h-32 mx-auto mb-6">
+                    {/* Background circle with subtle animation */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 animate-pulse"></div>
+
+                    <svg
+                      className="w-full h-full transform -rotate-90 relative z-10"
+                      viewBox="0 0 120 120"
+                    >
+                      <circle
+                        className="text-gray-200"
+                        strokeWidth="8"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="52"
+                        cx="60"
+                        cy="60"
+                      />
+                      <circle
+                        className="text-blue-500 transition-all duration-700 ease-out"
+                        strokeWidth="8"
+                        strokeDasharray={2 * Math.PI * 52}
+                        strokeDashoffset={
+                          2 * Math.PI * 52 * (1 - progress / 100)
+                        }
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="52"
+                        cx="60"
+                        cy="60"
+                        style={{
+                          filter:
+                            "drop-shadow(0 0 6px rgba(59, 130, 246, 0.4))",
+                        }}
+                      />
+                    </svg>
+
+                    <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-gray-800 z-20">
+                      <span className="animate-pulse">{progress}%</span>
+                    </div>
+
+                    {/* Rotating outer ring */}
+                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-300 rounded-full animate-spin opacity-30"></div>
+                  </div>
+
+                  {/* Status Text with animations */}
+                  <div className="mb-6">
+                    <h4 className="text-xl font-semibold text-gray-800 mb-2 transition-all duration-300">
+                      {progressPhase === "upload" && (
+                        <span className="inline-flex items-center">
+                          <span className="animate-bounce mr-2">📤</span>
+                          Uploading...
+                        </span>
+                      )}
+                      {progressPhase === "processing" && (
+                        <span className="inline-flex items-center">
+                          <span className=" mr-2">🔍</span>
+                          Analyzing...
+                        </span>
+                      )}
+                      {progressPhase === "complete" && (
+                        <span className="inline-flex items-center">
+                          <span className="animate-pulse mr-2">✅</span>
+                          Almost Done!
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-gray-600 transition-opacity duration-300">
+                      {progressPhase === "upload" &&
+                        "Preparing your CV for analysis"}
+                      {progressPhase === "processing" &&
+                        "Extracting and verifying publications"}
+                      {progressPhase === "complete" && "Preparing your results"}
+                    </p>
+                  </div>
+
+                  {/* Progress Steps with enhanced animations */}
+                  <div className="space-y-3">
+                    <div
+                      className={`flex items-center text-sm transition-all duration-500 ${
+                        progress >= 20
+                          ? "text-green-600 transform translate-x-2"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                          progress >= 20
+                            ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {progress >= 20 && (
+                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                        )}
+                      </div>
+                      <span
+                        className={`transition-all duration-300 ${
+                          progress >= 20 ? "font-medium" : ""
+                        }`}
+                      >
+                        File Upload Complete
+                        {progress >= 20 && (
+                          <span className="ml-2 text-xs">✓</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`flex items-center text-sm transition-all duration-500 ${
+                        progress >= 50
+                          ? "text-green-600 transform translate-x-2"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                          progress >= 50
+                            ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {progress >= 50 && (
+                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                        )}
+                      </div>
+                      <span
+                        className={`transition-all duration-300 ${
+                          progress >= 50 ? "font-medium" : ""
+                        }`}
+                      >
+                        Text Extraction
+                        {progress >= 50 && (
+                          <span className="ml-2 text-xs">✓</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`flex items-center text-sm transition-all duration-500 ${
+                        progress >= 80
+                          ? "text-green-600 transform translate-x-2"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                          progress >= 80
+                            ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {progress >= 80 && (
+                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                        )}
+                      </div>
+                      <span
+                        className={`transition-all duration-300 ${
+                          progress >= 80 ? "font-medium" : ""
+                        }`}
+                      >
+                        Publication Verification
+                        {progress >= 80 && (
+                          <span className="ml-2 text-xs">✓</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`flex items-center text-sm transition-all duration-500 ${
+                        progress >= 100
+                          ? "text-green-600 transform translate-x-2"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                          progress >= 100
+                            ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        {progress >= 100 && (
+                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                        )}
+                      </div>
+                      <span
+                        className={`transition-all duration-300 ${
+                          progress >= 100 ? "font-medium" : ""
+                        }`}
+                      >
+                        Results Ready
+                        {progress >= 100 && (
+                          <span className="ml-2 text-xs">✓</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {progressPhase === "processing" && (
+                    <p className="text-gray-400 text-xs mt-6">
+                      This may take up to 90 seconds for complex documents
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
