@@ -25,16 +25,6 @@ async function extractTextFromPDF(filePath) {
       "[CV Verification] pdf-parse failed, falling back to OCR...",
       err
     );
-    try {
-      fs.unlinkSync(filePath);
-      console.warn(`[CV Verification] File removed due to error: ${filePath}`);
-    } catch (removeErr) {
-      console.error(
-        `[CV Verification] Failed to remove file: ${filePath}`,
-        removeErr
-      );
-    }
-    throw err;
   }
 
   // 2. Fallback OCR using pdfjs-dist + one persistent tesseract worker
@@ -87,15 +77,6 @@ async function extractTextFromPDF(filePath) {
     return finalText;
   } catch (err) {
     console.error("[CV Verification] OCR failed:", err);
-    try {
-      fs.unlinkSync(filePath);
-      console.warn(`[CV Verification] File removed due to error: ${filePath}`);
-    } catch (removeErr) {
-      console.error(
-        `[CV Verification] Failed to remove file: ${filePath}`,
-        removeErr
-      );
-    }
     throw new Error(
       "Error: Failed to extract text from PDF (both pdf-parse & OCR failed)."
     );

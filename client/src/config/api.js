@@ -33,10 +33,11 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
       const publicRoutes = [
         "/verify-cv",
-        "/cv-verification",
-        "/search-tool",
-        "/search-interface",
+        "/verify-cv/results",
+        "/search",
+        "/search/advanced",
         "/landing-page",
+        "/",
         "/search-author",
         "/researcher-profile",
       ];
@@ -51,6 +52,19 @@ api.interceptors.response.use(
         !currentPath.includes("/login") &&
         !currentPath.includes("/register")
       ) {
+        try {
+          const target =
+            window.location.pathname + window.location.search + window.location.hash;
+          sessionStorage.setItem("postLoginRedirect", target);
+        } catch (err) {
+          // In some environments (e.g., Safari private mode), sessionStorage may throw
+          // Log a non-blocking warning so we don't swallow errors silently
+          // and still proceed with redirect to login.
+          console.warn(
+            "Could not save post-login redirect target to sessionStorage:",
+            err
+          );
+        }
         window.location.href = "/login";
       }
     }

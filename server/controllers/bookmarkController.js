@@ -14,6 +14,7 @@ module.exports = {
   replaceResearchersInFolder,
   updateResearchersInFolder,
   moveResearchersBetweenFolders,
+  getBookmarkIds,
 };
 
 /* ============================================================
@@ -388,6 +389,29 @@ async function moveResearchersBetweenFolders(req, res) {
     await bookmark.save();
     res.status(200).json({ success: true, message: "Researchers moved" });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/* ============================================================
+   GET Bookmark IDs (only researcher IDs)
+============================================================ */
+async function getBookmarkIds(req, res) {
+  try {
+    const userId = req.user.id;
+    let bookmark = await ensureBookmarkDoc(userId);
+
+    const folderIds = bookmark.folders.map(folder => ({
+      name: folder.name,
+      researcherIds: folder.researcherIds, // Only return IDs
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: folderIds,
+    });
+  } catch (err) {
+    console.error("Error fetching bookmark IDs:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 }

@@ -17,29 +17,61 @@ router.post("/verify-cv", upload.single("cv"), async (req, res) => {
     // Get priority source from request body, default to 'scopus'
     const prioritySource = req.body.prioritySource || "scopus";
     // Validate priority source
-    const validSources = ["googleScholar", "scopus", "openalex"];
+    const validSources = [
+      "googleScholar",
+      "scopus",
+      "openalex",
+      "pubmed",
+      "crossref",
+    ];
     if (!validSources.includes(prioritySource)) {
       return res.status(400).json({
         error: "Invalid priority source",
         message:
-          "Priority source must be one of: googleScholar, scopus, openalex",
+          "Priority source must be one of: googleScholar, scopus, openalex, pubmed, crossref",
         providedValue: prioritySource,
       });
     }
 
-    // Generate a jobId and return it immediately
+    // Generate a jobId for socket communication
     const jobId = uuidv4();
-    res.json({ jobId });
-
-    // Start verification in the background, passing jobId and io
     const io = req.app.get("io");
-    verifyCV(req.file, prioritySource, { jobId, io })
-      .then((result) => {
+
+    // Return jobId immediately so frontend can join the room
+    res.json({
+      success: true,
+      jobId: jobId,
+      message: "CV upload successful, verification started",
+    });
+
+    // Start verification asynchronously
+    (async () => {
+      try {
+        const result = await verifyCV(req.file, prioritySource, { jobId, io });
+
+        // Detect structured AI failure response
+        if (
+          result &&
+          result.success === false &&
+          (result.code === "AI_PUBLICATION_EXTRACTION_FAILED" ||
+            result.code === "AI_NAME_EXTRACTION_FAILED")
+        ) {
+          io.to(jobId).emit("error", {
+            error: result.error,
+            code: result.code,
+            retryable: true,
+            stage: result.stage,
+          });
+          return; // Do not emit complete
+        }
+
+        // Send completion event via socket
         io.to(jobId).emit("complete", { result });
-      })
-      .catch((error) => {
+      } catch (error) {
+        console.error("[CV Verification Route] Error:", error);
         io.to(jobId).emit("error", { error: error.message });
-      });
+      }
+    })();
   } catch (error) {
     res.status(500).json({
       error: "Error processing CV",

@@ -1,0 +1,1271 @@
+/**
+ * Grok AI-Based CV Verification Controller
+ *
+ * This controller provides Grok AI-powered academic CV verification that focuses on
+ * publication verification and author matching without external API dependencies.
+ * It uses Grok AI (via OpenRouter) to:
+ * - Verify if publications exist online
+ * - Extract publication details and find links
+ * - Match candidate names with publication authors
+ * - Return results in the same format as traditional verification
+ *
+ * @module grokAiCvVerification
+ * @author SwangLee
+ * @version 1.0.0
+ */
+
+const fs = require("fs");
+const OpenAI = require("openai");
+const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
+const {
+  initializeHeaderClassifier,
+} = require("../utils/headerClassifierUtils");
+const axios = require("axios");
+
+//=============================================================================
+// CONSTANTS
+//=============================================================================
+
+const MAX_CHUNK_SIZE = 5000;
+
+//=============================================================================
+// ML MODEL INITIALIZATION
+//=============================================================================
+
+// Initialize the header classifier
+const headerClassifier = initializeHeaderClassifier("Grok CV Verification");
+
+//=============================================================================
+// MODULE EXPORTS
+//=============================================================================
+
+module.exports = {
+  verifyCVWithGrok,
+};
+
+//=============================================================================
+// MAIN GROK CV VERIFICATION FUNCTION
+//=============================================================================
+
+/**
+ * Main function for Grok AI-based academic CV verification
+ *
+ * Processes a CV file through Grok AI-powered verification pipeline:
+ * 1. Parse PDF to extract text content
+ * 2. Extract candidate name using Grok AI
+ * 3. Extract publications using Grok AI
+ * 4. Verify each publication exists online using Grok AI
+ * 5. Match candidate name against publication authors
+ * 6. Generate verification report in traditional format
+ *
+ * @param {Object} file - Uploaded CV file object with path property
+ * @param {string} prioritySource - Priority source for verification (optional)
+ * @returns {Promise<Object>} Verification results in traditional format
+ */
+async function verifyCVWithGrok(file, prioritySource = "grok") {
+  let cvText = "";
+
+  try {
+    console.log("[Grok CV Verification] Starting CV verification process");
+
+    // Parse PDF to text (with OCR fallback)
+    cvText = await extractTextFromPDF(file.path);
+
+    if (!cvText || cvText.trim().length === 0) {
+      throw new Error("Failed to extract text from CV file");
+    }
+
+    console.log(
+      `[Grok CV Verification] Extracted CV text: ${cvText.length} characters`
+    );
+
+    // Initialize OpenRouter client for Grok AI
+    const grokClient = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+    });
+
+    // Extract candidate name using Grok AI
+    const candidateName = await extractCandidateNameWithGrok(
+      grokClient,
+      cvText
+    );
+    console.log(
+      `[Grok CV Verification] Extracted candidate name: ${candidateName}`
+    );
+
+    // Process CV with Grok AI for publication verification
+    let verificationResults = [];
+    verificationResults = await processFullCVWithGrok(
+      grokClient,
+      cvText,
+      candidateName
+    );
+
+    // Ensure verificationResults is always an array
+    verificationResults = verificationResults || [];
+
+    // Remove duplicates
+    verificationResults = removeDuplicatePublications(verificationResults);
+
+    console.log(
+      `[Grok CV Verification] Completed verification for ${verificationResults.length} publications`
+    );
+
+    // Get author profile from APIs (not AI-generated)
+    const authorProfile = await getAuthorProfileFromAPIs(
+      candidateName,
+      verificationResults
+    );
+
+    return {
+      success: true,
+      candidateName: candidateName,
+      total: verificationResults.length,
+      verifiedPublications: verificationResults.filter(
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          (r.verification.displayData.status === "verified" ||
+            r.verification.displayData.status ===
+              "verified but not same author name")
+      ).length,
+      verifiedWithAuthorMatch: verificationResults.filter(
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          r.verification.displayData.status === "verified"
+      ).length,
+      verifiedButDifferentAuthor: verificationResults.filter(
+        (r) =>
+          r &&
+          r.verification &&
+          r.verification.displayData &&
+          r.verification.displayData.status ===
+            "verified but not same author name"
+      ).length,
+      results: verificationResults,
+      authorDetails: authorProfile,
+    };
+  } catch (error) {
+    console.error("[Grok CV Verification] Error during verification:", error);
+    throw new Error(`CV verification failed: ${error.message}`);
+  } finally {
+    // Clean up temporary file
+    if (file && file.path && fs.existsSync(file.path)) {
+      try {
+        fs.unlinkSync(file.path);
+        console.log("[Grok CV Verification] Cleaned up temporary file");
+      } catch (cleanupError) {
+        console.warn(
+          "[Grok CV Verification] Failed to clean up temporary file:",
+          cleanupError
+        );
+      }
+    }
+  }
+}
+
+//=============================================================================
+// GROK AI-SPECIFIC FUNCTIONS
+//=============================================================================
+
+/**
+ * Extract candidate name using Grok AI
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {string} cvText - CV text content
+ * @returns {Promise<string>} Candidate name
+ */
+async function extractCandidateNameWithGrok(grokClient, cvText) {
+  const prompt = `You are an expert CV analyzer.
+From the text of this CV/resume, extract ONLY the full name of the candidate/person whose CV this is.
+Return ONLY the name as plain text - no explanation, no JSON, no additional information.
+If you cannot determine the name with high confidence, return "UNKNOWN".
+
+CV TEXT:
+${cvText.substring(0, 2000)}`; // Only need the beginning of the CV
+
+  try {
+    const response = await grokClient.chat.completions.create({
+      model: "x-ai/grok-code-fast-1",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0,
+    });
+
+    const candidateName = response.choices[0].message.content.trim();
+    console.log(
+      `[Grok CV Verification] Extracted candidate name: ${candidateName}`
+    );
+    return candidateName === "UNKNOWN" ? null : candidateName;
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error extracting candidate name:",
+      error
+    );
+    return null;
+  }
+}
+
+/**
+ * Process full CV content with Grok AI to directly verify publications online
+ * Handles large CVs by chunking them into manageable pieces
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {string} cvText - Full CV text content
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Verification results array
+ */
+async function processFullCVWithGrok(grokClient, cvText, candidateName) {
+  try {
+    if (cvText.length <= MAX_CHUNK_SIZE) {
+      console.log(
+        "[Grok CV Verification] Processing small CV directly without chunking"
+      );
+      return await processSmallCVDirectly(grokClient, cvText, candidateName);
+    } else {
+      console.log(
+        "[Grok CV Verification] Processing large CV with chunking or ML-based sections"
+      );
+      return await processLargeCVWithChunking(
+        grokClient,
+        cvText,
+        candidateName
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error in processFullCVWithGrok:",
+      error
+    );
+    // Fallback to basic extraction
+  }
+}
+
+/**
+ * Process small CV directly without chunking
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {string} cvText - Full CV text content
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Verification results array
+ */
+async function processSmallCVDirectly(grokClient, cvText, candidateName) {
+  console.log(
+    `[Grok CV Verification] Processing small CV for ${candidateName}`
+  );
+  const directVerificationPrompt = `
+You are an expert at analyzing academic CV content. Your task is to extract ALL publications from this CV and verify each one online.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+
+FULL CV CONTENT:
+${cvText}
+
+Extract ALL publications from the CV and verify each one. For each publication found (whether verified online or not), provide the following JSON format:
+
+{
+  "allPublications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "get the publication link or null",
+        "citationCount": "get from real source"
+      }
+    }
+  ]
+}
+
+EXTRACTION AND VERIFICATION GUIDELINES:
+1. Extract ALL publications listed in the CV (journal articles, conference papers, book chapters, etc.)
+2. For each publication, determine if it likely exists online (isOnline: true/false)
+3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
+5. For unverified publications, set isOnline: false, link: null, citationCount: 0
+6. Estimate citation counts only for verified publications
+7. IMPORTANT: Include ALL publications found in CV, not just verified ones
+
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
+
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
+
+  try {
+    const response = await grokClient.chat.completions.create({
+      model: "x-ai/grok-code-fast-1",
+      messages: [
+        {
+          role: "user",
+          content: directVerificationPrompt,
+        },
+      ],
+      extra_headers: {
+        "HTTP-Referer": "https://talent-finder.com",
+        "X-Title": "AI Talent Finder",
+      },
+      temperature: 0.0,
+      max_tokens: 16384,
+    });
+
+    const rawResponse = response.choices[0].message.content;
+
+    // Check if response might be truncated
+    if (response.choices[0].finish_reason === "length") {
+      console.warn(
+        "[Grok CV Verification] Small CV response may be truncated due to token limit"
+      );
+    }
+
+    // Use robust JSON parsing with multiple fallback strategies
+    const parsedResult = robustJSONParse(rawResponse);
+
+    if (
+      parsedResult.allPublications &&
+      Array.isArray(parsedResult.allPublications)
+    ) {
+      console.log(
+        `[Grok CV Verification] Successfully extracted ${parsedResult.allPublications.length} publications`
+      );
+
+      return parsedResult.allPublications.map((item) =>
+        transformPublicationResult(item.publication, item.verification)
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error in processSmallCVDirectly:",
+      error
+    );
+  }
+}
+
+/**
+ * Process large CV by chunking it into smaller pieces
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {string} cvText - Full CV text content
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Verification results array
+ */
+async function processLargeCVWithChunking(grokClient, cvText, candidateName) {
+  try {
+    // First try ML-based section detection if classifier is available
+    if (headerClassifier) {
+      console.log(
+        "[Grok CV Verification] Using ML-based publication section detection"
+      );
+      const publicationSections = extractPublicationSectionsWithML(
+        cvText,
+        headerClassifier
+      );
+
+      if (publicationSections.length > 0) {
+        return await processBatchedPublicationSectionsWithGrok(
+          grokClient,
+          publicationSections,
+          candidateName
+        );
+      }
+    }
+
+    // Fallback to chunking approach
+    console.log("[Grok CV Verification] Using chunking approach for large CV");
+    const chunks = chunkCVText(cvText, MAX_CHUNK_SIZE);
+    return await processBatchedChunksWithGrok(
+      grokClient,
+      chunks,
+      candidateName
+    );
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error in processLargeCVWithChunking:",
+      error
+    );
+  }
+}
+
+/**
+ * Process multiple CV chunks in batched Grok AI requests
+ * Combines chunks to reduce API calls while staying within token limits
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {Array} chunks - Array of CV text chunks
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Array of verified publications from all chunks
+ */
+async function processBatchedChunksWithGrok(grokClient, chunks, candidateName) {
+  const batchedChunks = [];
+
+  // Group chunks into batches that fit within token limits
+  let currentBatch = [];
+  let currentSize = 0;
+
+  for (const chunk of chunks) {
+    if (
+      currentSize + chunk.length > MAX_CHUNK_SIZE &&
+      currentBatch.length > 0
+    ) {
+      batchedChunks.push(currentBatch);
+      currentBatch = [chunk];
+      currentSize = chunk.length;
+    } else {
+      currentBatch.push(chunk);
+      currentSize += chunk.length;
+    }
+  }
+
+  // Add the last batch
+  if (currentBatch.length > 0) {
+    batchedChunks.push(currentBatch);
+  }
+
+  console.log(
+    `[Grok CV Verification] Grouped ${chunks.length} chunks into ${batchedChunks.length} batched requests`
+  );
+
+  const allResults = [];
+
+  // Process each batch
+  for (let i = 0; i < batchedChunks.length; i++) {
+    const batch = batchedChunks[i];
+    const combinedText = batch.join("\n\n---CHUNK SEPARATOR---\n\n");
+
+    const batchPrompt = `
+Extract ALL publications from these CV sections and verify each one online.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+
+CV SECTIONS:
+${combinedText}
+
+Extract ALL publications from ALL sections above. For each publication found, provide the following JSON format:
+
+{
+  "allPublications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "publication link or null",
+        "citationCount": "number or 0"
+      }
+    }
+  ]
+}
+
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
+
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
+
+    try {
+      const response = await grokClient.chat.completions.create({
+        model: "x-ai/grok-code-fast-1",
+        messages: [
+          {
+            role: "user",
+            content: batchPrompt,
+          },
+        ],
+        extra_headers: {
+          "HTTP-Referer": "https://talent-finder.com",
+          "X-Title": "AI Talent Finder",
+        },
+        temperature: 0.0,
+        max_tokens: 16384,
+      });
+
+      const rawResponse = response.choices[0].message.content;
+
+      // Check if response might be truncated
+      if (response.choices[0].finish_reason === "length") {
+        console.warn(
+          `[Grok CV Verification] Batch ${
+            i + 1
+          } response may be truncated due to token limit`
+        );
+      }
+
+      // Use robust JSON parsing with multiple fallback strategies
+      const result = robustJSONParse(rawResponse);
+
+      if (result.allPublications && Array.isArray(result.allPublications)) {
+        const transformedResults = result.allPublications.map((item) =>
+          transformPublicationResult(item.publication, item.verification)
+        );
+        allResults.push(...transformedResults);
+      }
+    } catch (error) {
+      console.error(
+        `[Grok CV Verification] Error processing batch ${i + 1}:`,
+        error
+      );
+    }
+  }
+
+  return allResults;
+}
+
+//=============================================================================
+// SHARED HELPER FUNCTIONS (same as other AI controllers)
+//=============================================================================
+
+/**
+ * Get author profile using APIs from sources (OpenAlex, Google Scholar, Scopus)
+ * instead of generating with AI
+ * @param {string} candidateName - Candidate name
+ * @param {Array} verificationResults - Publication verification results
+ * @returns {Promise<Object|null>} Author profile from API sources
+ */
+async function getAuthorProfileFromAPIs(candidateName, verificationResults) {
+  try {
+    console.log(
+      `[Grok CV Verification] Attempting to get author profile from APIs for: ${candidateName}`
+    );
+
+    // Search for author in various APIs
+    const authorIds = await searchAuthorInAPIs(candidateName);
+
+    if (authorIds.openalex || authorIds.google_scholar || authorIds.scopus) {
+      // Use the aggregateAuthorDetails utility to get comprehensive profile
+      const authorProfile = await aggregateAuthorDetails(
+        candidateName,
+        authorIds,
+        verificationResults
+      );
+
+      if (authorProfile) {
+        console.log(
+          "[Grok CV Verification] Successfully retrieved author profile from APIs"
+        );
+        return authorProfile;
+      }
+    }
+
+    console.log(
+      "[Grok CV Verification] No author profile found in APIs, creating basic profile"
+    );
+    return createBasicAuthorProfile(candidateName, verificationResults);
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error getting author profile from APIs:",
+      error
+    );
+    return createBasicAuthorProfile(candidateName, verificationResults);
+  }
+}
+
+/**
+ * Search for author in different APIs (OpenAlex, Google Scholar, Scopus)
+ * @param {string} candidateName - Candidate name to search
+ * @returns {Promise<Object>} Author IDs from different sources
+ */
+async function searchAuthorInAPIs(candidateName) {
+  const authorIds = {
+    google_scholar: null,
+    scopus: null,
+    openalex: null,
+  };
+
+  try {
+    // Search OpenAlex first (most reliable)
+    authorIds.openalex = await searchOpenAlexAuthor(candidateName);
+
+    // Could add Google Scholar and Scopus search here
+    // but keeping it simple for now
+  } catch (error) {
+    console.error(
+      "[Grok CV Verification] Error searching for author in APIs:",
+      error
+    );
+  }
+
+  return authorIds;
+}
+
+/**
+ * Search for author in OpenAlex API
+ * @param {string} candidateName - Candidate name to search
+ * @returns {Promise<string|null>} OpenAlex author ID if found
+ */
+async function searchOpenAlexAuthor(candidateName) {
+  try {
+    const response = await axios.get(
+      `https://api.openalex.org/authors?search=${encodeURIComponent(
+        candidateName
+      )}&per-page=1`
+    );
+
+    if (response.data.results && response.data.results.length > 0) {
+      const author = response.data.results[0];
+      return author.id.replace("https://openalex.org/", "");
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[Grok CV Verification] Error searching OpenAlex:", error);
+    return null;
+  }
+}
+
+/**
+ * Create basic author profile from verification results
+ * @param {string} candidateName - Candidate name
+ * @param {Array} verificationResults - Verification results
+ * @returns {Object} Basic author profile
+ */
+function createBasicAuthorProfile(candidateName, verificationResults) {
+  // Handle cases where verificationResults is undefined or null
+  const results = verificationResults || [];
+  const verifiedPublications = results.filter(
+    (r) =>
+      r &&
+      r.verification &&
+      r.verification.displayData &&
+      r.verification.displayData.status === "verified"
+  );
+
+  return {
+    author: {
+      name: candidateName || "Unknown",
+      email: null,
+      profileImageUrl: null,
+      profileUrl: null,
+    },
+    expertises: ["General"],
+    metrics: {
+      h_index: 0,
+      documentCount: verifiedPublications.length,
+      i10_index: 0,
+      citationCount: 0,
+      citations: [],
+    },
+  };
+}
+
+/**
+ * Determine publication verification status based on AI verification results
+ * @param {Object} verification - Verification object with isOnline and hasAuthorMatch
+ * @returns {string} Status string
+ */
+function determinePublicationStatus(verification) {
+  if (!verification || !verification.isOnline) {
+    return "not verified";
+  }
+
+  return verification.hasAuthorMatch
+    ? "verified"
+    : "verified but not same author name";
+}
+
+/**
+ * Transform publication data to expected format
+ * @param {Object} publication - Publication data
+ * @param {Object} verification - Verification data
+ * @param {Object} originalPub - Original publication object (for fallback)
+ * @returns {Object} Formatted result object
+ */
+function transformPublicationResult(
+  publication,
+  verification,
+  originalPub = {}
+) {
+  const status = determinePublicationStatus(verification);
+
+  return {
+    publication: {
+      title: publication.title || originalPub.title || "",
+      doi: publication.doi || originalPub.doi || null,
+      fullText: publication.fullText || originalPub.publication || "",
+    },
+    verification: {
+      grok_verification: {
+        status: status,
+        details: verification,
+      },
+      displayData: {
+        publication: publication.fullText || originalPub.publication || "",
+        title: publication.title || originalPub.title || "Unable to extract",
+        author: Array.isArray(publication.authors)
+          ? publication.authors.join(", ")
+          : "Unable to extract",
+        type: publication.type || "Unknown",
+        year: publication.year || "Unknown",
+        citedBy: verification?.citationCount?.toString() || "0",
+        link: verification?.link || generateSearchLink(publication.title),
+        status: status,
+      },
+    },
+    authorVerification: {
+      hasAuthorMatch: verification?.hasAuthorMatch || false,
+      authorIds: {
+        grok_verified: verification?.hasAuthorMatch ? "grok_verified" : null,
+      },
+    },
+  };
+}
+
+/**
+ * Fix truncated or malformed JSON responses from AI
+ * @param {string} jsonText - The malformed JSON text
+ * @returns {string} Fixed JSON text
+ */
+function fixTruncatedJSON(jsonText) {
+  let fixedText = jsonText;
+
+  // Remove trailing commas before closing brackets/braces
+  fixedText = fixedText.replace(/,(\s*[}\]])/g, "$1");
+
+  // Check if the JSON is truncated (missing closing brackets)
+  const openBraces = (fixedText.match(/\{/g) || []).length;
+  const closeBraces = (fixedText.match(/\}/g) || []).length;
+  const openBrackets = (fixedText.match(/\[/g) || []).length;
+  const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+  // If JSON is truncated, try to complete it
+  if (openBraces > closeBraces || openBrackets > closeBrackets) {
+    // Remove any incomplete object at the end
+    const lastCompleteObjectMatch = fixedText.lastIndexOf("    }");
+    if (lastCompleteObjectMatch !== -1) {
+      fixedText = fixedText.substring(0, lastCompleteObjectMatch + 5);
+    }
+
+    // Add missing closing brackets and braces
+    const missingBrackets = openBrackets - closeBrackets;
+    const missingBraces = openBraces - closeBraces;
+
+    for (let i = 0; i < missingBrackets; i++) {
+      fixedText += "\n  ]";
+    }
+    for (let i = 0; i < missingBraces; i++) {
+      fixedText += "\n}";
+    }
+  }
+
+  return fixedText;
+}
+
+/**
+ * Clean and extract JSON from AI response
+ * @param {string} response - Raw response text
+ * @returns {string} Cleaned JSON string
+ */
+function cleanJSONResponse(response) {
+  if (!response) return "{}";
+
+  // Remove markdown code blocks
+  let cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+
+  // Find JSON content between { and }
+  const startIndex = cleaned.indexOf("{");
+  const lastIndex = cleaned.lastIndexOf("}");
+
+  if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+    cleaned = cleaned.substring(startIndex, lastIndex + 1);
+  }
+
+  // Additional cleaning steps for common JSON issues
+  // Remove any trailing commas before closing brackets/braces
+  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+  // Remove any control characters that might break JSON parsing
+  cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, "");
+
+  return cleaned.trim();
+}
+
+/**
+ * Attempts to parse JSON with fallback strategies for malformed responses
+ * @param {string} jsonString - String to parse as JSON
+ * @returns {Object} Parsed JSON object or empty structure
+ */
+function robustJSONParse(jsonString) {
+  // First attempt: direct parsing
+  try {
+    return JSON.parse(jsonString);
+  } catch (firstError) {
+    console.log(
+      "[Grok CV Verification] Direct JSON parse failed, trying cleanup..."
+    );
+  }
+
+  // Second attempt: with cleanup
+  try {
+    const cleaned = cleanJSONResponse(jsonString);
+    return JSON.parse(cleaned);
+  } catch (secondError) {
+    console.log(
+      "[Grok CV Verification] Cleaned JSON parse failed, trying regex extraction..."
+    );
+  }
+
+  // Third attempt: extract publications array using regex
+  try {
+    // Look for the allPublications array with better pattern matching
+    const publicationsMatch = jsonString.match(
+      /"allPublications"\s*:\s*\[([\s\S]*?)\](?:\s*\})?/
+    );
+    if (publicationsMatch) {
+      // Try to construct a valid JSON with just the publications array
+      let publicationsContent = publicationsMatch[1].trim();
+
+      // Remove trailing comma if present
+      publicationsContent = publicationsContent.replace(/,\s*$/, "");
+
+      const publicationsArray = `[${publicationsContent}]`;
+
+      try {
+        const parsedArray = JSON.parse(publicationsArray);
+        console.log(
+          `[Grok CV Verification] Successfully extracted ${parsedArray.length} publications using regex`
+        );
+        return { allPublications: parsedArray };
+      } catch (arrayParseError) {
+        console.log(
+          "[Grok CV Verification] Failed to parse extracted publications array:",
+          arrayParseError.message
+        );
+      }
+    }
+  } catch (thirdError) {
+    console.log(
+      "[Grok CV Verification] Regex extraction failed:",
+      thirdError.message
+    );
+  }
+
+  // Fourth attempt: try to recover partial data
+  try {
+    // Look for complete publication objects in the string
+    const publicationObjects = [];
+    // More flexible regex to match publication objects
+    const publicationPattern =
+      /\{\s*"publication"\s*:\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}\s*,\s*"verification"\s*:\s*\{[^{}]*\}\s*\}/g;
+    const publicationMatches = jsonString.matchAll(publicationPattern);
+
+    for (const match of publicationMatches) {
+      try {
+        const pubObj = JSON.parse(match[0]);
+        publicationObjects.push(pubObj);
+      } catch (e) {
+        // Skip malformed individual publications
+        console.log(
+          "[Grok CV Verification] Skipping malformed publication object:",
+          e.message
+        );
+        continue;
+      }
+    }
+
+    if (publicationObjects.length > 0) {
+      console.log(
+        `[Grok CV Verification] Recovered ${publicationObjects.length} publications from partial response`
+      );
+      return { allPublications: publicationObjects };
+    }
+  } catch (fourthError) {
+    console.log(
+      "[Grok CV Verification] Partial recovery failed:",
+      fourthError.message
+    );
+  }
+
+  // If all attempts fail, return empty structure
+  console.warn(
+    "[Grok CV Verification] All JSON parsing attempts failed, returning empty result"
+  );
+  return { allPublications: [] };
+}
+
+/**
+ * Generate search link for publication
+ * @param {string} title - Publication title
+ * @returns {string} Search URL
+ */
+function generateSearchLink(title) {
+  if (!title) return "https://scholar.google.com/";
+  const query = encodeURIComponent(title);
+  return `https://scholar.google.com/scholar?q=${query}`;
+}
+
+/**
+ * Remove duplicate publications based on title similarity
+ * @param {Array} publications - Array of publication results
+ * @returns {Array} Deduplicated publications
+ */
+function removeDuplicatePublications(publications) {
+  // Handle cases where publications is undefined or null
+  if (!publications || !Array.isArray(publications)) {
+    return [];
+  }
+
+  const unique = [];
+  const seen = new Set();
+
+  for (const pub of publications) {
+    if (!pub || !pub.verification || !pub.verification.displayData) {
+      continue; // Skip invalid publication objects
+    }
+
+    const title = pub.verification.displayData.title || "";
+    const normalizedTitle = title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .trim();
+
+    if (!seen.has(normalizedTitle) && normalizedTitle.length > 0) {
+      seen.add(normalizedTitle);
+      unique.push(pub);
+    }
+  }
+
+  return unique;
+}
+
+//=============================================================================
+// ML-BASED PUBLICATION SECTION EXTRACTION
+//=============================================================================
+
+/**
+ * Extract publication sections using ML header classifier
+ * @param {string} cvText - Full CV text content
+ * @param {Object} headerClassifier - Trained ML header classifier
+ * @returns {Array} Array of publication sections with content
+ */
+function extractPublicationSectionsWithML(cvText, headerClassifier) {
+  const lines = cvText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  // Use ML model to detect all headers
+  const allHeaders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (headerClassifier.predict(line, i, lines.length)) {
+      allHeaders.push({
+        text: line,
+        lineIndex: i,
+      });
+    }
+  }
+
+  // Extract content for each publication section
+  const publicationSections = [];
+  for (let i = 0; i < allHeaders.length; i++) {
+    const currentHeader = allHeaders[i];
+    const nextHeader = allHeaders[i + 1];
+
+    const startLine = currentHeader.lineIndex + 1;
+    const endLine = nextHeader ? nextHeader.lineIndex : lines.length;
+
+    const sectionContent = lines.slice(startLine, endLine).join("\n");
+
+    if (sectionContent.trim().length > 0) {
+      publicationSections.push({
+        header: currentHeader.text,
+        content: sectionContent,
+        classification: currentHeader.classification,
+      });
+    }
+  }
+
+  return publicationSections;
+}
+
+/**
+ * Create batches of section content based on MAX_CHUNK_SIZE
+ * @param {Array} publicationSections - Array of publication section objects
+ * @returns {Array} Array of section content batches
+ */
+function createSectionContentBatches(publicationSections) {
+  const batches = [];
+  let currentBatch = {
+    sections: [],
+    totalSize: 0,
+    combinedContent: "",
+  };
+
+  for (const section of publicationSections) {
+    const sectionSize = section.content.length;
+
+    // If adding this section would exceed MAX_CHUNK_SIZE, start a new batch
+    if (
+      currentBatch.totalSize + sectionSize > MAX_CHUNK_SIZE &&
+      currentBatch.sections.length > 0
+    ) {
+      batches.push({ ...currentBatch });
+      currentBatch = {
+        sections: [section],
+        totalSize: sectionSize,
+        combinedContent: section.content,
+      };
+    } else {
+      currentBatch.sections.push(section);
+      currentBatch.totalSize += sectionSize;
+      if (currentBatch.combinedContent) {
+        currentBatch.combinedContent += "\n\n---\n\n" + section.content;
+      } else {
+        currentBatch.combinedContent = section.content;
+      }
+    }
+  }
+
+  // Add the last batch if it has any sections
+  if (currentBatch.sections.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
+ * Process all publication sections with Grok AI verification in a single batched request
+ * This reduces API calls by combining all sections into one request
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {Array} publicationSections - Array of publication section objects
+ * @param {string} candidateName - Candidate name
+ * @returns {Promise<Array>} Array of verified publications from all sections
+ */
+async function processBatchedPublicationSectionsWithGrok(
+  grokClient,
+  publicationSections,
+  candidateName
+) {
+  if (!publicationSections || publicationSections.length === 0) {
+    return [];
+  }
+
+  console.log(
+    `[Grok CV Verification] Processing ${publicationSections.length} publication sections using size-based batching`
+  );
+
+  // Create batches of section content based on MAX_CHUNK_SIZE
+  const batches = createSectionContentBatches(publicationSections);
+
+  console.log(
+    `[Grok CV Verification] Created ${batches.length} batches for verification`
+  );
+
+  const allResults = [];
+
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+
+    const batchResults = await processBatchOfSectionContentWithGrok(
+      grokClient,
+      batch,
+      candidateName,
+      i + 1
+    );
+    allResults.push(...batchResults);
+  }
+
+  return removeDuplicatePublications(allResults);
+}
+
+/**
+ * Process publication content with Grok AI verification (handles both single sections and batches)
+ * @param {OpenAI} grokClient - OpenRouter client configured for Grok AI
+ * @param {Object|string} content - Batch object with combinedContent or single section content
+ * @param {string} candidateName - Candidate name
+ * @param {number} batchNumber - Batch number for logging
+ * @returns {Promise<Array>} Array of verified publications
+ */
+async function processBatchOfSectionContentWithGrok(
+  grokClient,
+  content,
+  candidateName,
+  batchNumber = 1
+) {
+  // Handle both batch objects and direct content strings
+  const publicationContent =
+    typeof content === "string" ? content : content.combinedContent;
+
+  const prompt = `
+You are an expert at analyzing academic publication content. Extract ALL publications from the content below and verify each one online.
+
+CANDIDATE NAME: ${candidateName || "Unknown"}
+
+PUBLICATION CONTENT:
+${publicationContent}
+
+Extract ALL publications from the content above. For each publication found (whether verified online or not), provide the following JSON format:
+
+{
+  "allPublications": [
+    {
+      "publication": {
+        "title": "extracted title",
+        "authors": ["list", "of", "authors"],
+        "year": "publication year",
+        "venue": "journal/conference name", 
+        "type": "journal/conference/book chapter/etc",
+        "doi": "DOI if available",
+        "fullText": "original text from CV"
+      },
+      "verification": {
+        "isOnline": true/false,
+        "hasAuthorMatch": true/false,
+        "link": "publication link or null",
+        "citationCount": "number or 0"
+      }
+    }
+  ]
+}
+
+EXTRACTION AND VERIFICATION GUIDELINES:
+1. Extract ALL publications from the content (journal articles, conference papers, book chapters, etc.)
+2. For each publication, determine if it likely exists online (isOnline: true/false)
+3. Verify if the candidate name appears in the author list (hasAuthorMatch: true/false)
+4. For verified publications, provide links of the publication (DOI links preferred, then Google Scholar)
+5. For unverified publications, set isOnline: false, link: null, citationCount: 0
+6. Estimate citation counts only for verified publications
+7. IMPORTANT: Include ALL publications found in the content, not just verified ones
+
+JSON FORMATTING REQUIREMENTS:
+- Return ONLY valid JSON - no markdown, no explanations, no code blocks
+- Start your response with { and end with }
+- Use proper JSON syntax: double quotes for strings, no trailing commas
+- Ensure all strings are properly escaped (use \\" for quotes within strings)
+- Boolean values must be true/false (not "true"/"false")
+- Numbers should be numeric, not strings
+- If a field is null, use null (not "null")
+
+IMPORTANT: Your entire response must be a single, valid JSON object that can be parsed by JSON.parse().`;
+
+  const response = await grokClient.chat.completions.create({
+    model: "x-ai/grok-code-fast-1",
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    extra_headers: {
+      "HTTP-Referer": "https://talent-finder.com",
+      "X-Title": "AI Talent Finder",
+    },
+    temperature: 0.0,
+    max_tokens: 16384,
+  });
+
+  const rawResponse = response.choices[0].message.content;
+
+  // Check if response might be truncated
+  if (response.choices[0].finish_reason === "length") {
+    console.warn(
+      `[Grok CV Verification] Batch ${batchNumber} response may be truncated due to token limit`
+    );
+  }
+
+  // Use robust JSON parsing with multiple fallback strategies
+  let parsedResult;
+  try {
+    parsedResult = robustJSONParse(rawResponse);
+  } catch (parseError) {
+    console.error(
+      `[Grok CV Verification] JSON Parse Error in batch ${batchNumber}: ${parseError.message}`
+    );
+
+    // Attempt to fix truncated or malformed JSON
+    const fixedText = fixTruncatedJSON(rawResponse);
+
+    try {
+      parsedResult = JSON.parse(fixedText);
+    } catch (secondError) {
+      console.error(
+        `[Grok CV Verification] Could not fix JSON in batch ${batchNumber}:`,
+        secondError.message
+      );
+      throw new Error(
+        `Failed to parse AI response as JSON: ${parseError.message}`
+      );
+    }
+  }
+
+  const allPublications = parsedResult.allPublications || [];
+
+  return allPublications.map((item) => {
+    return transformPublicationResult(
+      item.publication,
+      item.verification,
+      item.publication
+    );
+  });
+}
+
+//=============================================================================
+// UTILITY FUNCTIONS
+//=============================================================================
+
+/**
+ * Chunk CV text into smaller pieces for processing
+ * @param {string} cvText - Full CV text content
+ * @param {number} maxSize - Maximum chunk size
+ * @returns {Array} Array of text chunks
+ */
+function chunkCVText(cvText, maxSize = MAX_CHUNK_SIZE) {
+  const chunks = [];
+  let currentIndex = 0;
+
+  while (currentIndex < cvText.length) {
+    let endIndex = Math.min(currentIndex + maxSize, cvText.length);
+
+    // Try to end at a natural break point (paragraph or line)
+    if (endIndex < cvText.length) {
+      const lastNewline = cvText.lastIndexOf("\n", endIndex);
+      const lastParagraph = cvText.lastIndexOf("\n\n", endIndex);
+
+      if (lastParagraph > currentIndex + maxSize * 0.7) {
+        endIndex = lastParagraph;
+      } else if (lastNewline > currentIndex + maxSize * 0.8) {
+        endIndex = lastNewline;
+      }
+    }
+
+    const chunk = cvText.substring(currentIndex, endIndex).trim();
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+    }
+
+    currentIndex = endIndex;
+  }
+
+  return chunks;
+}
