@@ -65,7 +65,7 @@ function CVUpload() {
           setProgressPhase("complete");
           setTimeout(() => {
             setProcessing(false);
-            navigate("/cv-verification", {
+            navigate("/verify-cv/results", {
               state: { publications: data.result },
             });
           }, 1000);

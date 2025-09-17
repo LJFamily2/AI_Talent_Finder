@@ -33,7 +33,7 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
       const publicRoutes = [
         "/verify-cv",
-        "/cv-verification",
+        "/verify-cv/results",
         "/search-tool",
         "/search-interface",
         "/landing-page",
