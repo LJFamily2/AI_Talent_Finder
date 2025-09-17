@@ -87,7 +87,10 @@ export default function CVVerification() {
     const filtered = allDisplayData
         .filter(pub => {
             if (filterStatus === 'All') return true;
-            return pub.status === filterStatus;
+            const statusLC = String(pub.status || '').toLowerCase();
+            if (filterStatus === 'verified') return statusLC.startsWith('verified');
+            if (filterStatus === 'not verified') return statusLC.startsWith('not verified');
+            return (pub.status || '') === filterStatus;
         })
         .filter(pub => {
             if (selectedTypes.length === 0) return true;
@@ -319,7 +322,7 @@ export default function CVVerification() {
                                 <div className="md:col-span-9">
                                     <h3 className="text-md font-light mb-5">{pub.publication}</h3>
 
-                                    {pub.status === 'verified' && (
+                                    {String(pub.status || '').toLowerCase().startsWith('verified') && (
                                         <>
                                             <div className="mb-2 text-sm text-gray-700">
                                                 <span className="font-semibold">Title:</span>{' '}
@@ -348,20 +351,20 @@ export default function CVVerification() {
                                     )}
                                 </div>
                                 <div className='md:col-span-1 md:ml-auto'>
-                                    {pub.status === 'verified' ? (
-                                        <>
-                                            <p className='md:text-center'><CheckCircleOutlinedIcon color='success' /></p>
-                                            <a
-                                                href={pub.link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs text-blue-600 underline hover:text-blue-800"
-                                            >
-                                                View Source
-                                            </a>
-                                        </>
+                                    {String(pub.status || '').toLowerCase().startsWith('verified') ? (
+                                        <p className='md:text-center'><CheckCircleOutlinedIcon color='success' /></p>
                                     ) : (
                                         <p className="text-xs text-red-600 md:text-right">{pub.status}</p>
+                                    )}
+                                    {pub.link && (
+                                        <a
+                                            href={pub.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800 md:text-center md:mt-2"
+                                        >
+                                            View Source
+                                        </a>
                                     )}
                                 </div>
                             </div>

@@ -57,3 +57,5 @@ ml/*.ckpt
 eng.traineddata
 # Seeding samples
 **/seed.js
+
+script/

@@ -1004,7 +1004,38 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                             </div>
                         ) : (hasSearched && peopleList.length === 0) ? (
                             <>
-                                <div className='w-full flex flex-col gap-3 mb-10'>
+                                {(() => {
+                                    const topics = [];
+                                    (selectedFields || []).forEach(l => {
+                                        if (!l) return;
+                                        const s = String(l);
+                                        const topicOnly = s.includes(' > ') ? s.split(' > ').pop() : s;
+                                        topics.push(topicOnly);
+                                    });
+                                    const insts = (selectedInstitutions || []).map(i => i?.display_name).filter(Boolean).map(String);
+                                    const countriesDisp = (selectedCountries || []).map(tag => {
+                                        const item = countriesList.find(c => c.search_tag === tag);
+                                        return item?.display_name ? String(item.display_name) : null;
+                                    }).filter(Boolean);
+                                    const name = String(nameInput || '').trim();
+
+                                    return (
+                                        <div className='text-base text-gray-700 font-medium'>
+                                            <p className='mb-1'>
+                                                Found <span className='font-semibold'>{totalResults.toLocaleString()}</span> results:
+                                            </p>
+                                            {(topics.length || insts.length || countriesDisp.length || name) ? (
+                                                <ul className='list-disc pl-5'>
+                                                    {topics.length ? <li>Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
+                                                    {insts.length ? <li>Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
+                                                    {countriesDisp.length ? <li>Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
+                                                    {name ? <li>Name: <span className='font-semibold'>{name}</span></li> : null}
+                                                </ul>
+                                            ) : null}
+                                        </div>
+                                    );
+                                })()}
+                                <div className='w-full flex flex-col gap-6 my-10'>
                                     <div className='w-full flex items-center justify-between gap-4'>
                                         <div className='flex-1'>
                                             <SortBar
@@ -1020,7 +1051,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                 checked={onlyFullMatches}
                                                 onChange={(e) => setOnlyFullMatches(e.target.checked)}
                                             />
-                                            Only full matches
+                                            Exact matches only
                                         </label>
                                     </div>
                                 </div>
@@ -1035,9 +1066,40 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                             </>
                         ) : (
                             <>
-                                {/* Max results per page */}
-                                <div className='w-full flex flex-col gap-3 mb-10'>
-                                    <div className='w-full flex items-center justify-between gap-4'>
+                                {/* Sort and toolbar */}
+                                {(() => {
+                                    const topics = [];
+                                    (selectedFields || []).forEach(l => {
+                                        if (!l) return;
+                                        const s = String(l);
+                                        const topicOnly = s.includes(' > ') ? s.split(' > ').pop() : s;
+                                        topics.push(topicOnly);
+                                    });
+                                    const insts = (selectedInstitutions || []).map(i => i?.display_name).filter(Boolean).map(String);
+                                    const countriesDisp = (selectedCountries || []).map(tag => {
+                                        const item = countriesList.find(c => c.search_tag === tag);
+                                        return item?.display_name ? String(item.display_name) : null;
+                                    }).filter(Boolean);
+                                    const name = String(nameInput || '').trim();
+
+                                    return (
+                                        <div className='text-base text-gray-700 -mt-5 mb-8 font-medium'>
+                                            <p className='mb-1'>
+                                                Found <span className='font-semibold'>{totalResults.toLocaleString()}</span> results:
+                                            </p>
+                                            {(topics.length || insts.length || countriesDisp.length || name) ? (
+                                                <ul className='list-disc pl-10'>
+                                                    {topics.length ? <li>Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
+                                                    {insts.length ? <li>Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
+                                                    {countriesDisp.length ? <li>Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
+                                                    {name ? <li>Name: <span className='font-semibold'>{name}</span></li> : null}
+                                                </ul>
+                                            ) : null}
+                                        </div>
+                                    );
+                                })()}
+                                <div className='w-full flex flex-col gap-6 mb-3'>
+                                    <div className='w-full flex items-center justify-between gap-4 mb-5'>
                                         <div className='flex-1'>
                                             <SortBar
                                                 sortBy={sortBy}
@@ -1052,7 +1114,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                 checked={onlyFullMatches}
                                                 onChange={(e) => setOnlyFullMatches(e.target.checked)}
                                             />
-                                            Only full matches
+                                            Exact matches only
                                         </label>
                                     </div>
                                     {/* Results toolbar */}

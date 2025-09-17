@@ -22,6 +22,7 @@ import {
 } from "../services/api";
 import { exportResearcherById } from "../services/pdfExportService";
 import BookmarkIcon from "../components/BookmarkIcon";
+import PaginationBar from '@/components/PaginationBar';
 
 export default function ResearcherProfile() {
   const { slug } = useParams();
@@ -514,68 +515,14 @@ export default function ResearcherProfile() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center items-center space-x-2 mt-6">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handlePageChange(1)}
-                      disabled={currentPage === 1}
-                    >
-                      First
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-
-                    <div className="flex space-x-1">
-                      {Array.from(
-                        { length: Math.min(5, totalPages) },
-                        (_, i) => {
-                          const pageNumber =
-                            Math.max(
-                              1,
-                              Math.min(totalPages - 4, currentPage - 2)
-                            ) + i;
-                          return pageNumber <= totalPages ? (
-                            <Button
-                              key={pageNumber}
-                              variant={
-                                currentPage === pageNumber
-                                  ? "contained"
-                                  : "outlined"
-                              }
-                              size="small"
-                              onClick={() => handlePageChange(pageNumber)}
-                              className="min-w-0 w-10"
-                            >
-                              {pageNumber}
-                            </Button>
-                          ) : null;
-                        }
-                      )}
-                    </div>
-
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handlePageChange(totalPages)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Last
-                    </Button>
+                  <div className="mt-6">
+                    <PaginationBar
+                      currentPage={currentPage}
+                      perPage={worksPerPage}
+                      totalResults={totalWorks}
+                      onGoToPage={(p) => handlePageChange(p)}
+                      showFirstLast
+                    />
                   </div>
                 )}
               </>

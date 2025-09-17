@@ -67,6 +67,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authAxios.get(`/api/auth/me`);
       setUser(response.data.data);
       setupRefreshTimer(); // Set up refresh timer after successful auth
+      return response.data.data;
     } catch (error) {
       // Suppress console errors for 401 - this is expected when not logged in
       if (error.response?.status === 401) {
@@ -77,14 +78,17 @@ export const AuthProvider = ({ children }) => {
           const response = await authAxios.get(`/api/auth/me`);
           setUser(response.data.data);
           setupRefreshTimer();
+          return response.data.data;
         } catch {
           // Silently fail - user can still use non-authenticated features
           setUser(null);
+          return null;
         }
       } else {
         // Only log non-401 errors (network issues, etc.)
         console.log("Auth check failed - allowing public access");
         setUser(null);
+        return null;
       }
     } finally {
       setLoading(false);
@@ -100,7 +104,8 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         try { localStorage.setItem('hasSession', '1'); } catch {}
-        await checkAuthStatus();
+        const u = await checkAuthStatus();
+        try { if (u?.name) sessionStorage.setItem('loginWelcomeName', u.name); } catch {}
         setupRefreshTimer();
         return { success: true };
       }

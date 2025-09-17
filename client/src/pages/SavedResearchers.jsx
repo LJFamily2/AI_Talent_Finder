@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaThLarge,
@@ -48,6 +48,7 @@ export default function SavedResearchers() {
   const [selectedResearchers, setSelectedResearchers] = useState([]);
 
   const [viewMode, setViewMode] = useState("list"); // 'list' or 'grid' (show list first)
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Export dropdown state
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
@@ -105,6 +106,7 @@ export default function SavedResearchers() {
     setSavedResearchers(folder ? (folder.researcherIds || []) : []);
     // clear selections when switching folders
     setSelectedResearchers([]);
+    setSearchQuery("");
   };
 
   const handleExport = async () => {
@@ -143,6 +145,14 @@ export default function SavedResearchers() {
       setLoading(false);
     }
   };
+
+  // Derived filtered list by name
+  const filteredResearchers = useMemo(() => {
+    const q = (searchQuery || "").trim().toLowerCase();
+    if (!q) return savedResearchers;
+    const getName = (p) => (p?.basic_info?.name || p?.name || p?.display_name || p?.slug || "").toString().toLowerCase();
+    return (savedResearchers || []).filter(p => getName(p).includes(q));
+  }, [savedResearchers, searchQuery]);
 
   const handleExportMenuClick = (event) => {
     setExportAnchorEl(event.currentTarget);
@@ -563,6 +573,14 @@ export default function SavedResearchers() {
     }));
   };
 
+  // Filter the sorted list by search query for list view
+  const filteredSortedResearchers = useMemo(() => {
+    const q = (searchQuery || "").trim().toLowerCase();
+    if (!q) return sortedResearchers;
+    const getName = (p) => (p?.basic_info?.name || p?.name || p?.display_name || p?.slug || "").toString().toLowerCase();
+    return (sortedResearchers || []).filter(p => getName(p).includes(q));
+  }, [sortedResearchers, searchQuery]);
+
   const handleDeleteFolder = async (folderName) => {
     if (folderName === "General") {
       showToast("Cannot delete the default 'General' folder", "warning");
@@ -695,6 +713,28 @@ export default function SavedResearchers() {
                       <FaThLarge className="w-5 h-5" />
                     </button>
                   </div>
+                  {/* Search by name (left aligned) */}
+                  <div className="relative ml-4">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Enter name to search in folder"
+                      className="px-3 py-2 pr-8 border border-gray-300 rounded-md text-sm w-70"
+                      aria-label="Search saved researchers by name"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        aria-label="Clear search"
+                        title="Clear"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </h2>
                 <div className="flex items-center gap-4">
                   <button
@@ -709,7 +749,7 @@ export default function SavedResearchers() {
                       <button
                         onClick={openBulkMove}
                         disabled={selectedResearchers.length === 0}
-                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#d2e4f4] hover:bg-[#c8ddef] text-[#3C72A5] cursor-pointer'}`}
                       >
                         <RiFolderSharedFill />
                         Move
@@ -717,7 +757,7 @@ export default function SavedResearchers() {
                       <button
                         onClick={openBulkDelete}
                         disabled={selectedResearchers.length === 0}
-                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                        className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${selectedResearchers.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'}`}
                       >
                         <FaTimes />
                         Delete
@@ -731,7 +771,7 @@ export default function SavedResearchers() {
                     className={`rounded-md font-medium px-4 py-2 transition flex items-center gap-2 ${
                       loading || (selectMode && selectedResearchers.length === 0)
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                     }`}
                     title="Export"
                   >
@@ -777,9 +817,14 @@ export default function SavedResearchers() {
                   <FaUserSlash className="text-5xl text-gray-300" />
                   <p className="text-lg">No Saved Researchers in this folder</p>
                 </div>
+              ) : filteredResearchers.length === 0 ? (
+                <div className="text-center mt-20 text-gray-500 flex flex-col items-center gap-4">
+                  <FaUserSlash className="text-5xl text-gray-300" />
+                  <p className="text-lg">No matching researchers</p>
+                </div>
               ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {savedResearchers.map(person => (
+                  {filteredResearchers.map(person => (
                     <SavedResearchCard
                       key={person._id}
                       person={person}
@@ -873,7 +918,7 @@ export default function SavedResearchers() {
                     <div className="w-1/12"></div>
                   </div>
                   {/* Data rows */}
-                  {sortedResearchers.map((person) => (
+                  {filteredSortedResearchers.map((person) => (
                     <SavedResearchRow
                       key={person._id}
                       person={person}

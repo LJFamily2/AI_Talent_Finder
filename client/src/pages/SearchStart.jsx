@@ -404,7 +404,7 @@ export default function SearchStart() {
       <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
         <Header />
       </div>
-      <div className="w-full flex justify-end px-4 mt-4 pt-24">
+      <div className="w-full flex justify-end px-4 pt-24">
         <button
           onClick={() => navigate('/search-interface')}
           className="flex items-center gap-2 text-sm bg-transparent font-semibold transition group cursor-pointer"
@@ -422,7 +422,7 @@ export default function SearchStart() {
           </span>
         </button>
       </div>
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 -mt-25">
         <p
           className="text-gray-800 text-4xl font-medium text-center mb-10 w-full whitespace-nowrap"
           style={{ fontFamily: "'Nata Sans', sans-serif" }}
@@ -774,12 +774,12 @@ export default function SearchStart() {
         </div>
 
         {/* Quick suggestions */}
-        <div className="max-w-5xl w-full mt-40">
+        <div className="max-w-5xl w-full mt-40 -mb-40">
           <div className="text-center">
             <p className="text-gray-600 text-base mb-4">
               First time here? Select an expertise domain below to start.
             </p>
-            <div className="flex flex-wrap gap-3 justify-center mb-6">
+            <div className="flex flex-wrap gap-3 justify-center">
               {suggestions.map((field) => (
                 <button
                   key={field}
@@ -800,7 +800,7 @@ export default function SearchStart() {
                     setShowFullList(false);
                     setShowSuggestions(true);
                   }}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-base rounded-full transition"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-base rounded-full transition cursor-pointer"
                 >
                   {field}
                 </button>

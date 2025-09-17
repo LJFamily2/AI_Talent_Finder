@@ -17,7 +17,7 @@ export default function SortBar({ sortBy = 'match', sortOrder = 'desc', onChange
 
   return (
     <div className='w-full flex items-center gap-4'>
-      <span className='text-sm text-[#6A6A6A] shrink-0'>Sort by:</span>
+      <span className='text-md text-[#6A6A6A] shrink-0'>Sort by</span>
       <div className='flex-1 grid grid-cols-6 gap-2'>
         <button type='button' className={`${baseBtn} ${active('match') ? onClass : offClass}`} onClick={() => cycle('match')} aria-pressed={active('match')}>
           <span className='whitespace-nowrap'>Best Match</span>
