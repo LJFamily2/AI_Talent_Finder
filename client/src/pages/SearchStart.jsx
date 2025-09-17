@@ -140,7 +140,7 @@ export default function SearchStart() {
       </div>
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
         <p
-          className="text-gray-800 text-4xl font-medium text-center mb-10 w-full whitespace-nowrap"
+          className="text-gray-800 text-4xl font-medium text-center mb-10 w-full xl:whitespace-nowrap lg:whitespace-normal"
           style={{ fontFamily: "'Nata Sans', sans-serif" }}
         >
           Search for academic talents by a criteria of your choice
