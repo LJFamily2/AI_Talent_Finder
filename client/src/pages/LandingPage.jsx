@@ -158,7 +158,7 @@ function LandingPage() {
         )}
       </div>
 
-      <hr id="hr-features" className="w-2/3 border-[#E60028] border-2 my-10 sm:my-15 place-self-center" />
+      <hr id="hr-features" className="w-2/3 border-[#E60028] border-2 my-10 sm:my-15 mx-auto" />
 
       <h2 className="text-center font-bold text-2xl sm:text-3xl text-[#000054] mb-10 mt-10 sm:mt-20 px-4"> What can we provide?</h2>
 

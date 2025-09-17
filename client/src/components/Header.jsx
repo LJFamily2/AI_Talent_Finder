@@ -9,6 +9,7 @@ function Header() {
   const { user, loading, logout } = useAuth();
   const hadSession = (() => { try { return localStorage.getItem('hasSession') === '1'; } catch { return false; } })();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const menuRef = useRef(null);
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
@@ -28,6 +29,7 @@ function Header() {
   // Close user menu on route change
   useEffect(() => {
     setShowDropdown(false);
+    setShowMobileMenu(false);
   }, [path]);
 
   // Close when clicking outside the menu/avatar
@@ -84,60 +86,72 @@ const userInitial = (() => {
         <nav className="mx-auto flex flex-col md:flex-row max-w-7xl w-full px-4 md:px-0" aria-label="Global">
             <div className="flex flex-col md:flex-row items-center justify-between w-full overflow-hidden">
                 {/* Logo and website name */}
-                <div className="flex items-center w-full md:w-auto mb-2 md:mb-0">
-                    <div className='bg-[#E60028] h-16 md:h-21 py-2 md:py-3 px-3 md:px-4 flex items-center justify-center mr-2 md:mr-4'>
-                        <a href="/landing-page">
-                            <img className="h-7 md:h-8 w-auto" src={logo} alt=""/>
+                <div className="flex items-center justify-between w-full md:w-auto mb-2 md:mb-0">
+                    <div className="flex items-center">
+                        <div className='bg-[#E60028] h-16 md:h-21 py-2 md:py-3 px-3 md:px-4 flex items-center justify-center mr-2 md:mr-4'>
+                            <a href="/landing-page">
+                                <img className="h-7 md:h-8 w-auto" src={logo} alt=""/>
+                            </a>
+                        </div>
+                        <a href="/landing-page" className="ml-2">
+                            <p className='text-base md:text-lg text-white font-bold'>Talent Finder</p>
                         </a>
                     </div>
-                    <a href="/landing-page" className="ml-2">
-                        <p className='text-base md:text-lg text-white font-bold'>Talent Finder</p>
-                    </a>
+                    {/* Mobile menu toggle button */}
+                    <button
+                        className="md:hidden flex flex-col items-center justify-center w-8 h-8 space-y-1 focus:outline-none"
+                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        aria-label="Toggle mobile menu"
+                    >
+                        <span className={`block w-6 h-0.5 bg-white transition-transform duration-200 ${showMobileMenu ? 'rotate-45 translate-y-2' : ''}`}></span>
+                        <span className={`block w-6 h-0.5 bg-white transition-opacity duration-200 ${showMobileMenu ? 'opacity-0' : ''}`}></span>
+                        <span className={`block w-6 h-0.5 bg-white transition-transform duration-200 ${showMobileMenu ? '-rotate-45 -translate-y-2' : ''}`}></span>
+                    </button>
                 </div>
                 {/* Navigation links */}
-                <div className="flex flex-col md:flex-row items-center w-full md:w-max h-auto md:h-18 justify-end text-base md:text-lg relative z-50">
-                    <div className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full ${path === '/verify-cv' ? 'bg-white' : 'hover:bg-[#000032]'}`}> 
-                        <a href="/verify-cv">
+                <div className={`flex-col md:flex-row items-center w-full md:w-max h-auto md:h-18 justify-end text-base md:text-lg relative z-50 ${showMobileMenu ? 'flex' : 'hidden md:flex'}`}>
+                    <div className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/verify-cv' ? 'bg-white' : 'hover:bg-[#000032]'}`}> 
+                        <a href="/verify-cv" className="w-full md:w-auto text-center">
                             <p className={`font-medium hover:underline ${path === '/verify-cv' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>CV Verification</p>
                         </a>
                     </div>
-                    <div className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full ${path.startsWith('/search') ? 'bg-white' : 'hover:bg-[#000032]'}`}> 
-                        <a href="/search">
+                    <div className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full w-full md:w-auto ${path.startsWith('/search') ? 'bg-white' : 'hover:bg-[#000032]'}`}> 
+                        <a href="/search" className="w-full md:w-auto text-center">
                             <p className={`font-medium hover:underline ${path.startsWith('/search') ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Search Tool</p>
                         </a>
                     </div>
                     {loading && hadSession ? (
                       // Reserve space to avoid flicker when restoring session
                       <div
-                        className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full ${path === '/saved-researchers' ? 'bg-white' : ''}`}
+                        className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/saved-researchers' ? 'bg-white' : ''}`}
                         aria-hidden
                       >
                         <span className={`${path === '/saved-researchers' ? 'text-[#000054]' : 'text-white'} opacity-0`}>Saved Profiles</span>
                       </div>
                     ) : user ? (
                       <div
-                        className={`flex items-center justify-center px-8 h-full ${path === '/saved-researchers' ? 'bg-white' : 'hover:bg-[#000032]'}`}
+                        className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/saved-researchers' ? 'bg-white' : 'hover:bg-[#000032]'}`}
                         title="View your saved profiles"
                       >
-                          <a href="/saved-researchers" aria-label="Saved Profiles">
+                          <a href="/saved-researchers" aria-label="Saved Profiles" className="w-full md:w-auto text-center">
                               <p className={`font-medium hover:underline ${path === '/saved-researchers' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Saved Profiles</p>
                           </a>
                       </div>
                     ) : (
                       <div
-                        className={`flex items-center justify-center px-8 h-full ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'}`}
+                        className={`flex items-center justify-center px-4 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'}`}
                         title="Log in to access Saved Profiles"
                       >
                           <button
                             onClick={handleLoginClick}
-                            className={`font-medium hover:underline py-2 ${path === '/login' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}
+                            className={`font-medium hover:underline py-2 w-full md:w-auto ${path === '/login' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}
                             aria-label="Login"
                           >
                             Login
                           </button>
                       </div>
                     )}
-                    <div className="ml-7 relative" ref={menuRef}>
+                    <div className="ml-0 md:ml-7 relative mt-4 md:mt-0 w-full md:w-auto flex justify-center md:justify-end" ref={menuRef}>
                       <button
                         className={`w-9 md:w-10 h-9 md:h-10 rounded-full bg-white text-[#000054] flex items-center justify-center text-md font-normal shadow-lg focus:outline-none ${user ? 'hover:bg-gray-200' : 'invisible pointer-events-none'}`}
                         onClick={() => user && setShowDropdown((v) => !v)}

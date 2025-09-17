@@ -130,12 +130,12 @@ function CVUpload() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full min-h-screen">
       <Header />
-      <div className="flex flex-col items-center w-full h-lvh mt-15">
-        <h2 className="text-3xl font-bold mb-7">Verify Candidate CV</h2>
+      <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-8 px-4">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">Verify Candidate CV</h2>
         {errorInfo && (
-          <div className="w-2/3 mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm">
+          <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>
             <p>{errorInfo.message}</p>
             {errorInfo.retryable && (
@@ -155,67 +155,67 @@ function CVUpload() {
         <div
           className={`${
             isDragActive ? "bg-blue-100" : "bg-white"
-          } border-dashed border-2 border-gray-400 rounded-[5vw] flex flex-col items-center justify-center w-2/3 h-2/3`}
+          } border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
           {...getRootProps()}
         >
           <input {...getInputProps()} />
           <img
             src={fileUploadIcon}
             alt="Upload Icon"
-            className="w-24 h-24 mb-8"
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mb-6 sm:mb-8"
           />
-          <span className="font-bold text-2xl">
+          <span className="font-bold text-lg sm:text-xl md:text-2xl text-center mx-2 sm:mx-5">
             Drop your file here, or{" "}
             <span className="text-blue-400 underline cursor-pointer">
               Browse
             </span>
           </span>
 
-          <p className="text-gray-400 mt-4">Accepted file formats: .pdf</p>
+          <p className="text-gray-400 mt-3 sm:mt-4 text-sm sm:text-base text-center">Accepted file formats: .pdf</p>
         </div>
       </div>
 
       {processing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="w-1/3 min-w-[300px] bg-white rounded-lg p-8 shadow-lg flex flex-col items-center">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-sm sm:max-w-md bg-white rounded-lg p-6 sm:p-8 shadow-lg flex flex-col items-center">
             {/* Circular Progress Bar */}
-            <div className="relative w-24 h-24">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24">
               <svg className="w-full h-full transform -rotate-90">
                 <circle
                   className="text-gray-200"
-                  strokeWidth="8"
+                  strokeWidth="6"
                   stroke="currentColor"
                   fill="transparent"
-                  r="44"
-                  cx="48"
-                  cy="48"
+                  r="36"
+                  cx="40"
+                  cy="40"
                 />
                 <circle
                   className="text-blue-500 transition-all duration-300 ease-out"
-                  strokeWidth="8"
-                  strokeDasharray={2 * Math.PI * 44}
-                  strokeDashoffset={2 * Math.PI * 44 * (1 - progress / 100)}
+                  strokeWidth="6"
+                  strokeDasharray={2 * Math.PI * 36}
+                  strokeDashoffset={2 * Math.PI * 36 * (1 - progress / 100)}
                   strokeLinecap="round"
                   stroke="currentColor"
                   fill="transparent"
-                  r="44"
-                  cx="48"
-                  cy="48"
+                  r="36"
+                  cx="40"
+                  cy="40"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-lg font-semibold">
+              <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-semibold">
                 {progress}%
               </div>
             </div>
 
-            <span className="text-gray-500 mt-4 text-xl">
+            <span className="text-gray-500 mt-4 text-lg sm:text-xl text-center">
               {progressPhase === "upload" && "Uploading your file..."}
               {progressPhase === "processing" && "Analyzing CV content..."}
               {progressPhase === "complete" && "Finalizing results..."}
             </span>
 
             {progressPhase === "processing" && (
-              <p className="text-gray-400 text-sm mt-2 text-center">
+              <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center px-2">
                 This may take up to 90 seconds for complex documents
               </p>
             )}

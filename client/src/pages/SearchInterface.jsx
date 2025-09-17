@@ -38,6 +38,7 @@ function SearchInterface() {
     const restorePlannedRef = useRef(initialShouldRestore);
     const restoredRef = useRef(false);
     const navigate = useNavigate();
+    const [showFilterPanel, setShowFilterPanel] = useState(true);
     const [showCountryModal, setShowCountryModal] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
     const [selectedCountries, setSelectedCountries] = useState([]);
@@ -688,25 +689,59 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
 
     return (
         <div>
-            <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
+            <div className="w-full bg-[#000054] fixed top-0 left-0 z-30">
                 <Header />
             </div>
-            <div className='w-screen bg-[#F3F4F6] flex min-h-screen pb-20 pt-24'>
+            <div className='w-screen bg-[#F3F4F6] flex flex-col lg:flex-row min-h-screen pb-20 pt-20 sm:pt-24 relative'>
+                {/* Mobile filter toggle button */}
+                <button
+                    type="button"
+                    onClick={() => setShowFilterPanel(!showFilterPanel)}
+                    className="lg:hidden fixed top-20 sm:top-24 left-4 z-20 bg-[#E60028] text-white p-2 rounded-md shadow-lg"
+                    aria-label="Toggle filters"
+                >
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                    </svg>
+                </button>
+
                 <form>
                     {/* Left side: filter */}
-                    <div className='w-[390px] h-auto flex justify-center'>
-                        <div className='w-full bg-white py-10 pl-8 pr-10 h-full border border-[#D9D9D9]'>
-                            <div className='flex items-center mb-5'>
+                    <div className={`${showFilterPanel ? 'block' : 'hidden'} lg:block fixed lg:relative inset-0 lg:inset-auto w-full lg:w-[390px] h-screen lg:h-auto z-15 lg:z-auto bg-black/50 lg:bg-transparent`} 
+                         onClick={(e) => {
+                             // Close when clicking on overlay (only on mobile)
+                             if (e.target === e.currentTarget && window.innerWidth < 1024) {
+                                 setShowFilterPanel(false);
+                             }
+                         }}>
+                        <div className='w-full max-w-sm lg:max-w-none mx-auto lg:mx-0 bg-white py-6 lg:py-10 px-4 lg:pl-8 lg:pr-10 h-full lg:h-auto border-0 lg:border border-[#D9D9D9] overflow-y-auto'
+                             onClick={(e) => e.stopPropagation()}>
+                            {/* Mobile close button */}
+                            <div className="flex lg:hidden justify-between items-center mb-4">
+                                <h2 className='text-lg font-semibold text-[#625B71]'>FILTERS</h2>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFilterPanel(false)}
+                                    className="text-gray-500 hover:text-gray-700 p-1"
+                                    aria-label="Close filters"
+                                >
+                                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className='hidden lg:flex items-center mb-5'>
                                 <img src={filterIcon} alt='Filter' className='w-4 h-4 mr-4' />
                                 <h2 className='text-lg font-semibold text-[#625B71]'>FILTER</h2>
                             </div>
 
                             {/* Clear and Apply all filters button */}
-                            <div className='flex gap-1'>
+                            <div className='flex gap-1 sm:gap-2'>
                                 <button
                                     type="button"
                                     onClick={handleReset}
-                                    className='w-full bg-white text-[#6A6A6A] py-2 rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]'
+                                    className='w-full bg-white text-[#6A6A6A] py-2 text-sm sm:text-base rounded-lg cursor-pointer hover:bg-[#F3F4F6] border border-[#BDD7EF]'
                                 >
                                     Reset
                                 </button>
@@ -715,20 +750,20 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                     type="button"
                                     onClick={handleApply}
                                     disabled={isSearching || !hasFilters}
-                                    className={`w-full rounded-lg border ${isSearching || !hasFilters ? 'bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed' : 'bg-[#E60028] text-white py-2 hover:bg-[#B4001F] border border-[#E60028]'}`}
+                                    className={`w-full rounded-lg border text-sm sm:text-base ${isSearching || !hasFilters ? 'bg-gray-200 text-gray-500 border-gray-200 cursor-not-allowed' : 'bg-[#E60028] text-white py-2 hover:bg-[#B4001F] border border-[#E60028]'}`}
                                 >
                                     {isSearching ? 'Searching...' : 'Apply'}
                                 </button>
                             </div>
 
-                            <hr className='mt-6 mb-10' />
+                            <hr className='mt-4 sm:mt-6 mb-6 sm:mb-10' />
 
                             {/* Subsection: Academics name */}
-                            <h4 className='text-lg mb-5 font-semibold'>Academics name</h4>
+                            <h4 className='text-base sm:text-lg mb-3 sm:mb-5 font-semibold'>Academics name</h4>
                             <div className='w-full relative'>
                                 <input
                                     type="text"
-                                    className='w-full border border-gray-300 rounded-sm py-2 px-5 text-gray-500'
+                                    className='w-full border border-gray-300 rounded-sm py-2 px-3 sm:px-5 text-sm sm:text-base text-gray-500'
                                     placeholder='e.g. Michael'
                                     value={nameInput}
                                     onChange={e => setNameInput(e.target.value)}
@@ -744,13 +779,13 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                             </div>
 
                             {/* Subsection: Research-based metrics */}
-                            <div className='mt-16'>
-                                <h4 className='text-lg mb-5 font-semibold'>Research-based metrics</h4>
-                                <div className='flex items-center justify-between '>
-                                    <label htmlFor="hIndex" className='whitespace-nowrap'>h-index</label>
-                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
+                            <div className='mt-8 sm:mt-16'>
+                                <h4 className='text-base sm:text-lg mb-3 sm:mb-5 font-semibold'>Research-based metrics</h4>
+                                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0'>
+                                    <label htmlFor="hIndex" className='whitespace-nowrap text-sm sm:text-base'>h-index</label>
+                                    <div className='grid w-full sm:w-3/4 grid-cols-2 items-center gap-2 sm:gap-4'>
                                         <select
-                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center text-sm sm:text-base'
                                             style={{ textAlign: 'center', textAlignLast: 'center' }}
                                             value={hIndexOp}
                                             onChange={e => setHIndexOp(e.target.value)}
@@ -765,7 +800,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                         <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
                                             <input
                                                 type='number'
-                                                className='w-full focus:outline-0 text-center px-3'
+                                                className='w-full focus:outline-0 text-center px-2 sm:px-3 text-sm sm:text-base'
                                                 min={0}
                                                 value={hIndexVal}
                                                 onChange={e => setHIndexVal(e.target.value)}
@@ -777,11 +812,11 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                 {/* Space between elements */}
                                 <div className='h-2' />
 
-                                <div className='flex items-center justify-between'>
-                                    <label htmlFor="i10Index" className='whitespace-nowrap'>i10-index</label>
-                                    <div className='grid w-3/4 grid-cols-2 items-center gap-4'>
+                                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0'>
+                                    <label htmlFor="i10Index" className='whitespace-nowrap text-sm sm:text-base'>i10-index</label>
+                                    <div className='grid w-full sm:w-3/4 grid-cols-2 items-center gap-2 sm:gap-4'>
                                         <select
-                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center'
+                                            className='border border-gray-300 bg-white rounded-sm py-1 px-2 text-gray-600 text-center text-sm sm:text-base'
                                             style={{ textAlign: 'center', textAlignLast: 'center' }}
                                             value={i10Op}
                                             onChange={e => setI10Op(e.target.value)}
@@ -796,7 +831,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                         <div className='w-full border-b-1 border-[#6A6A6A] flex items-center py-1'>
                                             <input
                                                 type='number'
-                                                className='w-full focus:outline-0 text-center px-3'
+                                                className='w-full focus:outline-0 text-center px-2 sm:px-3 text-sm sm:text-base'
                                                 min={0}
                                                 value={i10Val}
                                                 onChange={e => setI10Val(e.target.value)}
@@ -807,31 +842,31 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                             </div>
 
                             {/* Subsection: Field */}
-                            <div className='mt-12'>
+                            <div className='mt-8 sm:mt-12'>
                                 <div className='flex items-center justify-between'>
-                                    <h4 className='text-lg mb-5 font-semibold mt-6'>Expertise field</h4>
+                                    <h4 className='text-base sm:text-lg mb-3 sm:mb-5 font-semibold mt-4 sm:mt-6'>Expertise field</h4>
                                     <button
                                         type="button"
-                                        className='text-blue-600 text-md font-normal hover:underline focus:outline-none mb-5'
+                                        className='text-blue-600 text-sm sm:text-md font-normal hover:underline focus:outline-none mb-3 sm:mb-5'
                                         style={{ visibility: selectedFields.length > 0 ? 'visible' : 'hidden' }}
                                         onClick={() => { setSelectedFields([]); setHiddenTopicsByField({}); setSelectedTopicIds([]); setTopicKeyToId({}); }}
                                     >
                                         Clear filter
                                     </button>
                                 </div>
-                                <div className='flex items-center gap-3'>
+                                <div className='flex items-center gap-2 sm:gap-3'>
                                     <img
                                         src={menuIcon}
                                         alt='Menu'
-                                        className='w-4 h-5 cursor-pointer'
+                                        className='w-3 h-4 sm:w-4 sm:h-5 cursor-pointer'
                                         onClick={() => setShowFieldModal(true)}
                                     />
                                     <div className='w-full relative'>
-                                        <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-4'>
+                                        <div className='border border-gray-300 bg-white rounded-lg flex justify-between items-center py-2 px-3 sm:px-4'>
                                             <input
                                                 type='text'
                                                 placeholder='e.g. Food nutrition'
-                                                className='focus:outline-0 w-full'
+                                                className='focus:outline-0 w-full text-sm sm:text-base'
                                                 value={expertiseInput}
                                                 onChange={e => setExpertiseInput(e.target.value)}
                                                 onFocus={() => setExpertiseInputFocused(true)}
@@ -976,29 +1011,29 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                 </form>
 
                 {/* Right side: conditional rendering */}
-                <div className='w-3/5 mt-10 mx-auto'>
+                <div className='w-full lg:w-3/5 mt-4 lg:mt-10 mx-auto px-4 lg:px-0'>
                     <div className='w-full flex flex-col'>
                         {isSearching ? (
-                            <div className="flex flex-col items-center justify-center h-[400px]">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E60028] mb-4"></div>
-                                <h3 className='font-semibold text-xl mb-2'>Searching…</h3>
-                                <p className="text-sm text-gray-500">Looking for researchers that match your filters</p>
+                            <div className="flex flex-col items-center justify-center h-[300px] lg:h-[400px]">
+                                <div className="animate-spin rounded-full h-8 w-8 lg:h-12 lg:w-12 border-b-2 border-[#E60028] mb-4"></div>
+                                <h3 className='font-semibold text-lg lg:text-xl mb-2'>Searching…</h3>
+                                <p className="text-xs lg:text-sm text-gray-500 text-center px-4">Looking for researchers that match your filters</p>
                             </div>
                         ) : searchError ? (
-                            <div className="w-full mb-6">
-                                <div className='bg-red-50 border border-red-200 text-red-700 rounded-md p-4 flex justify-between items-start'>
+                            <div className="w-full mb-4 lg:mb-6">
+                                <div className='bg-red-50 border border-red-200 text-red-700 rounded-md p-3 lg:p-4 flex flex-col sm:flex-row justify-between items-start gap-2'>
                                     <div>
-                                        <h3 className='font-semibold mb-1'>Search failed</h3>
-                                        <p className='text-sm'>{searchError}</p>
+                                        <h3 className='font-semibold mb-1 text-sm lg:text-base'>Search failed</h3>
+                                        <p className='text-xs lg:text-sm'>{searchError}</p>
                                     </div>
-                                    <button type="button" className='text-red-700 underline text-sm' onClick={() => setSearchError(null)}>Dismiss</button>
+                                    <button type="button" className='text-red-700 underline text-xs lg:text-sm self-end sm:self-start' onClick={() => setSearchError(null)}>Dismiss</button>
                                 </div>
                             </div>
                         ) : !hasSearched ? (
-                            <div className="flex flex-col items-center justify-center h-[400px]">
-                                <img src={noResultImage} alt="No results" className="w-32 h-32 mb-4" />
-                                <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
-                                <p className="text-md text-gray-500 text-center">
+                            <div className="flex flex-col items-center justify-center h-[300px] lg:h-[400px]">
+                                <img src={noResultImage} alt="No results" className="w-24 h-24 lg:w-32 lg:h-32 mb-4" />
+                                <h3 className='font-semibold text-lg lg:text-2xl mb-2'>No results to show</h3>
+                                <p className="text-sm lg:text-md text-gray-500 text-center px-4">
                                     Choose the filters on the left panel to begin.
                                 </p>
                             </div>
@@ -1020,34 +1055,34 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                     const name = String(nameInput || '').trim();
 
                                     return (
-                                        <div className='text-base text-gray-700 font-medium'>
+                                        <div className='text-sm lg:text-base text-gray-700 font-medium'>
                                             <p className='mb-1'>
                                                 Found <span className='font-semibold'>{totalResults.toLocaleString()}</span> results:
                                             </p>
                                             {(topics.length || insts.length || countriesDisp.length || name) ? (
-                                                <ul className='list-disc pl-5'>
-                                                    {topics.length ? <li>Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
-                                                    {insts.length ? <li>Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
-                                                    {countriesDisp.length ? <li>Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
-                                                    {name ? <li>Name: <span className='font-semibold'>{name}</span></li> : null}
+                                                <ul className='list-disc pl-4 lg:pl-5 space-y-1'>
+                                                    {topics.length ? <li className="text-xs lg:text-sm">Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
+                                                    {insts.length ? <li className="text-xs lg:text-sm">Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
+                                                    {countriesDisp.length ? <li className="text-xs lg:text-sm">Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
+                                                    {name ? <li className="text-xs lg:text-sm">Name: <span className='font-semibold'>{name}</span></li> : null}
                                                 </ul>
                                             ) : null}
                                         </div>
                                     );
                                 })()}
-                                <div className='w-full flex flex-col gap-6 my-10'>
-                                    <div className='w-full flex items-center justify-between gap-4'>
-                                        <div className='flex-1'>
+                                <div className='w-full flex flex-col gap-4 lg:gap-6 my-6 lg:my-10'>
+                                    <div className='w-full flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4'>
+                                        <div className='flex-1 w-full lg:w-auto'>
                                             <SortBar
                                                 sortBy={sortBy}
                                                 sortOrder={sortOrder}
                                                 onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
                                             />
                                         </div>
-                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                        <label className='shrink-0 flex items-center gap-2 text-xs lg:text-sm text-[#6A6A6A]'>
                                             <input
                                                 type='checkbox'
-                                                className='w-4 h-4 accent-[#E60028]'
+                                                className='w-3 h-3 lg:w-4 lg:h-4 accent-[#E60028]'
                                                 checked={onlyFullMatches}
                                                 onChange={(e) => setOnlyFullMatches(e.target.checked)}
                                             />
@@ -1055,10 +1090,10 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                         </label>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-center justify-center h-[300px]">
-                                    <img src={noResultImage} alt="No results" className="w-24 h-24 mb-4" />
-                                    <h3 className='font-semibold text-2xl mb-2'>No results to show</h3>
-                                    <p className="text-md text-gray-500 text-center mt-2">
+                                <div className="flex flex-col items-center justify-center h-[250px] lg:h-[300px]">
+                                    <img src={noResultImage} alt="No results" className="w-20 h-20 lg:w-24 lg:h-24 mb-4" />
+                                    <h3 className='font-semibold text-lg lg:text-2xl mb-2'>No results to show</h3>
+                                    <p className="text-sm lg:text-md text-gray-500 text-center mt-2 px-4">
                                         We couldn't find anyone matching your filter. <br />
                                         Try changing your search criteria.
                                     </p>
@@ -1083,34 +1118,34 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                     const name = String(nameInput || '').trim();
 
                                     return (
-                                        <div className='text-base text-gray-700 -mt-5 mb-8 font-medium'>
+                                        <div className='text-sm lg:text-base text-gray-700 -mt-2 lg:-mt-5 mb-4 lg:mb-8 font-medium'>
                                             <p className='mb-1'>
                                                 Found <span className='font-semibold'>{totalResults.toLocaleString()}</span> results:
                                             </p>
                                             {(topics.length || insts.length || countriesDisp.length || name) ? (
-                                                <ul className='list-disc pl-10'>
-                                                    {topics.length ? <li>Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
-                                                    {insts.length ? <li>Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
-                                                    {countriesDisp.length ? <li>Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
-                                                    {name ? <li>Name: <span className='font-semibold'>{name}</span></li> : null}
+                                                <ul className='list-disc pl-6 lg:pl-10 space-y-1'>
+                                                    {topics.length ? <li className="text-xs lg:text-sm">Topics: <span className='font-semibold'>{topics.join(', ')}</span></li> : null}
+                                                    {insts.length ? <li className="text-xs lg:text-sm">Institutions: <span className='font-semibold'>{insts.join(', ')}</span></li> : null}
+                                                    {countriesDisp.length ? <li className="text-xs lg:text-sm">Countries: <span className='font-semibold'>{countriesDisp.join(', ')}</span></li> : null}
+                                                    {name ? <li className="text-xs lg:text-sm">Name: <span className='font-semibold'>{name}</span></li> : null}
                                                 </ul>
                                             ) : null}
                                         </div>
                                     );
                                 })()}
-                                <div className='w-full flex flex-col gap-6 mb-3'>
-                                    <div className='w-full flex items-center justify-between gap-4 mb-5'>
-                                        <div className='flex-1'>
+                                <div className='w-full flex flex-col gap-4 lg:gap-6 mb-3'>
+                                    <div className='w-full flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-3 lg:mb-5'>
+                                        <div className='flex-1 w-full lg:w-auto'>
                                             <SortBar
                                                 sortBy={sortBy}
                                                 sortOrder={sortOrder}
                                                 onChange={(key, order) => { setSortBy(key); setSortOrder(order); }}
                                             />
                                         </div>
-                                        <label className='shrink-0 flex items-center gap-2 text-sm text-[#6A6A6A]'>
+                                        <label className='shrink-0 flex items-center gap-2 text-xs lg:text-sm text-[#6A6A6A]'>
                                             <input
                                                 type='checkbox'
-                                                className='w-4 h-4 accent-[#E60028]'
+                                                className='w-3 h-3 lg:w-4 lg:h-4 accent-[#E60028]'
                                                 checked={onlyFullMatches}
                                                 onChange={(e) => setOnlyFullMatches(e.target.checked)}
                                             />
@@ -1118,16 +1153,16 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                         </label>
                                     </div>
                                     {/* Results toolbar */}
-                                    <div className='w-full flex justify-between items-center relative'>
-                                        <p>
+                                    <div className='w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative'>
+                                        <p className="text-sm lg:text-base">
                                             Showing <b>
                                                 {totalResults === 0 ? 0 : ((currentPage - 1) * perPage + 1)}
                                                 -
                                                 {Math.min(currentPage * perPage, totalResults)}
                                             </b> in <b>{totalResults.toLocaleString()}</b>
                                         </p>
-                                    <div className='flex items-center gap-4'>
-                                        <label htmlFor='resultsPerPage' className='text-sm text-[#6A6A6A]'>Max results per page:</label>
+                                    <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4'>
+                                        <label htmlFor='resultsPerPage' className='text-xs lg:text-sm text-[#6A6A6A] whitespace-nowrap'>Max results per page:</label>
                                         <select
                                             name="resultsPerPage"
                                             id="resultsPerPage"
@@ -1138,7 +1173,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                 // reset to page 1 when changing page size
                                                 await loadResults({ page: 1, limit: newLimit });
                                             }}
-                                            className='border border-gray-300 bg-white rounded-lg py-1 px-2'
+                                            className='border border-gray-300 bg-white rounded-lg py-1 px-2 text-sm lg:text-base'
                                         >
                                             <option value="10">10</option>
                                             <option value="20">20</option>
@@ -1163,41 +1198,48 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                     const slug = person.slug || '';
                                     const researcherId = person._id || person.id || person.slug;
                                     return (
-                                        <div className='relative w-full h-max mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-6 pl-6 pr-8 bg-white rounded-sm' key={index}>
-                                            <div className='absolute top-0 right-3'>
-                                                <BookmarkIcon size={32} className='m-0 p-0' researcherId={String(researcherId || '')} researcherName={name} />
+                                        <div className='relative w-full h-max mb-4 lg:mb-6 flex items-center justify-between border-1 border-[#D9D9D9] py-4 lg:py-6 pl-4 lg:pl-6 pr-6 lg:pr-8 bg-white rounded-sm' key={index}>
+                                            <div className='absolute top-2 lg:top-0 right-2 lg:right-3'>
+                                                <BookmarkIcon size={24} className='lg:w-8 lg:h-8 m-0 p-0' researcherId={String(researcherId || '')} researcherName={name} />
                                             </div>
                                             <div className='w-full'>
-                                                <div className='flex gap-6 justify-between items-start w-full pr-5'>
-                                                    <div className='flex-1 min-w-0'>
-                                                        <div className='flex items-center gap-3 mb-1 min-w-0'>
-                                                            <p className='font-bold text-xl whitespace-nowrap'>{name}</p>
-                                                            <img src={Dot} alt='Dot' className='w-2 h-2' />
-                                                            <p className='text-[#6A6A6A] text-md truncate min-w-0 flex-1' title={institution}>{institution}</p>
+                                                <div className='flex flex-col lg:flex-row gap-4 lg:gap-6 justify-between items-start w-full pr-8 lg:pr-5'>
+                                                    <div className='flex-1 min-w-0 w-full'>
+                                                        <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3 lg:mb-1 min-w-0'>
+                                                            <p className='font-bold text-lg lg:text-xl'>{name}</p>
+                                                            <div className="hidden sm:flex items-center gap-3">
+                                                                <img src={Dot} alt='Dot' className='w-2 h-2' />
+                                                                <p className='text-[#6A6A6A] text-sm lg:text-md truncate min-w-0 flex-1' title={institution}>{institution}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Mobile institution display */}
+                                                        <div className="sm:hidden mb-3">
+                                                            <p className='text-[#6A6A6A] text-sm truncate' title={institution}>{institution}</p>
                                                         </div>
 
-                                                        <div className='grid grid-cols-2 gap-x-8 gap-y-1 items-start justify-start'>
-                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
-                                                                <img src={letterH} alt='H' className='w-4 h-4' />
+                                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-4 lg:gap-x-8 gap-y-2 lg:gap-y-1 items-start justify-start'>
+                                                            <div className='text-xs lg:text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={letterH} alt='H' className='w-3 h-3 lg:w-4 lg:h-4' />
                                                                 <span>h-index: {fmt(hIndex)}</span>
                                                             </div>
-                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
-                                                                <img src={documentIcon} alt='Works' className='w-4 h-4' />
+                                                            <div className='text-xs lg:text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={documentIcon} alt='Works' className='w-3 h-3 lg:w-4 lg:h-4' />
                                                                 <span>Total works: {fmt(totalWorks)}</span>
                                                             </div>
-                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
-                                                                <img src={scholarHat} alt='i10' className='w-4 h-4' />
+                                                            <div className='text-xs lg:text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={scholarHat} alt='i10' className='w-3 h-3 lg:w-4 lg:h-4' />
                                                                 <span>i10-index: {fmt(i10Index)}</span>
                                                             </div>
-                                                            <div className='text-sm text-[#6A6A6A] flex items-center gap-2'>
-                                                                <img src={citationIcon} alt='Citations' className='w-4 h-4' />
+                                                            <div className='text-xs lg:text-sm text-[#6A6A6A] flex items-center gap-2'>
+                                                                <img src={citationIcon} alt='Citations' className='w-3 h-3 lg:w-4 lg:h-4' />
                                                                 <span>Total citations: {fmt(totalCitations)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className='shrink-0 self-start flex items-center gap-3'>
+                                                    <div className='shrink-0 self-start flex items-center gap-3 w-full sm:w-auto mt-4 lg:mt-0'>
                                                         <button
-                                                            className='whitespace-nowrap text-[#3C72A5] text-md font-semibold py-2 px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed'
+                                                            className='w-full sm:w-auto whitespace-nowrap text-[#3C72A5] text-sm lg:text-md font-semibold py-2 px-4 lg:px-6 bg-[#d2e4f4] rounded-lg cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed'
                                                             onClick={() => { try { sessionStorage.setItem('restoreSearchState','1'); } catch {} if (slug) navigate(`/researcher-profile/${slug}`); }}
                                                             disabled={!slug}
                                                         >
@@ -1206,7 +1248,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                     </div>
                                                 </div>
 
-                                                <div className='mt-6'>
+                                                <div className='mt-4 lg:mt-6'>
                                                     {(() => {
                                                         const matchObj = person.match || {};
                                                         const matchedCount = Number(matchObj.matchCount || 0);
@@ -1221,7 +1263,7 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                                         ? 'bg-green-100 text-green-700 border border-green-200'
                                                                         : 'bg-gray-100 text-gray-700 border border-gray-200';
                                                                     return (
-                                                                        <div className={`inline-flex items-center py-1 px-3 rounded-full text-sm font-medium ${chipClass}`}>
+                                                                        <div className={`inline-flex items-center py-1 px-2 lg:px-3 rounded-full text-xs lg:text-sm font-medium ${chipClass}`}>
                                                                             Matches {matchedCount}/{totalFilters} filters
                                                                         </div>
                                                                     );
@@ -1229,13 +1271,13 @@ async function loadResults({ page = 1, limit = perPage } = {}) {
                                                                 {matched.length > 0 && !(totalFilters > 0 && matchedCount === totalFilters) && (
                                                                     <div className='mt-2 text-xs text-gray-700'>
                                                                         <span className='font-medium mr-1'>Matched:</span>
-                                                                        <span>{matched.join(', ')}</span>
+                                                                        <span className="break-words">{matched.join(', ')}</span>
                                                                     </div>
                                                                 )}
                                                                 {unmatched.length > 0 && (
                                                                     <div className='mt-1 text-xs text-gray-600'>
                                                                         <span className='font-medium mr-1'>Not matched:</span>
-                                                                        <span>{unmatched.join(', ')}</span>
+                                                                        <span className="break-words">{unmatched.join(', ')}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
