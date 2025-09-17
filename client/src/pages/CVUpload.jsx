@@ -117,23 +117,64 @@ function CVUpload() {
   // };
 
   const onDrop = useCallback(
-    (acceptedFiles) => {
+    (acceptedFiles, rejectedFiles) => {
+      // Check for rejected files first
+      if (rejectedFiles && rejectedFiles.length > 0) {
+        const rejectedFile = rejectedFiles[0];
+        const errorMessage =
+          rejectedFile.errors[0]?.code === "file-invalid-type"
+            ? `Invalid file type. Only PDF files are allowed. You uploaded: ${
+                rejectedFile.file.type || "unknown type"
+              }`
+            : `File rejected: ${
+                rejectedFile.errors[0]?.message || "Unknown error"
+              }`;
+
+        setErrorInfo({
+          message: errorMessage,
+          retryable: false,
+          code: "INVALID_FILE_TYPE",
+        });
+        return;
+      }
+
       const file = acceptedFiles[0];
 
       if (file) {
+        // Additional validation to ensure it's a PDF
+        if (file.type !== "application/pdf") {
+          setErrorInfo({
+            message: `Invalid file type. Only PDF files are allowed. You uploaded: ${
+              file.type || "unknown type"
+            }`,
+            retryable: false,
+            code: "INVALID_FILE_TYPE",
+          });
+          return;
+        }
+
         handleFileUpload(file);
       }
     },
     [handleFileUpload]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+    },
+    multiple: false,
+    maxFiles: 1,
+  });
 
   return (
     <div className="w-full min-h-screen">
       <Header />
       <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-8 px-4">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">Verify publications from uploaded CV</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">
+          Verify publications from uploaded CV
+        </h2>
         {errorInfo && (
           <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>
@@ -171,7 +212,9 @@ function CVUpload() {
             </span>
           </span>
 
-          <p className="text-gray-400 mt-3 sm:mt-4 text-sm sm:text-base text-center">Accepted file formats: .pdf</p>
+          <p className="text-gray-400 mt-3 sm:mt-4 text-sm sm:text-base text-center">
+            Accepted file formats: .pdf
+          </p>
         </div>
       </div>
 
