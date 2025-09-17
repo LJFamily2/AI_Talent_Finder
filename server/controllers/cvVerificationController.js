@@ -64,15 +64,9 @@ async function verifyCV(file, prioritySource, options = {}) {
   let cvText = "";
   try {
     // Parse PDF to text (with OCR fallback)
-    console.log("[CV Verification] Starting PDF text extraction...");
     const pdfStartTime = Date.now();
     cvText = await extractTextFromPDF(file.path);
     const pdfEndTime = Date.now();
-    console.log(
-      `[CV Verification] PDF text extraction completed in ${
-        pdfEndTime - pdfStartTime
-      }ms`
-    );
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 10, step: "pdf_extracted" });
 
@@ -91,19 +85,12 @@ async function verifyCV(file, prioritySource, options = {}) {
     });
 
     // Extract candidate name using AI (with robust error handling)
-    console.log("[CV Verification] Starting candidate name extraction...");
     const nameStartTime = Date.now();
     let candidateName;
     try {
       candidateName = await extractCandidateNameWithAI(model, cvText);
     } catch (aiErr) {
       const nameFailTime = Date.now();
-      console.error(
-        `[CV Verification] ERROR during candidate name extraction after ${
-          nameFailTime - nameStartTime
-        }ms:`,
-        aiErr
-      );
       // Emit socket error with retry suggestion
       if (io && jobId) {
         io.to(jobId).emit("error", {
@@ -124,28 +111,16 @@ async function verifyCV(file, prioritySource, options = {}) {
       };
     }
     const nameEndTime = Date.now();
-    console.log(
-      `[CV Verification] Candidate name extraction completed in ${
-        nameEndTime - nameStartTime
-      }ms`
-    );
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 30, step: "name_extracted" });
 
     // Extract publications using AI (with robust error handling)
-    console.log("[CV Verification] Starting publications extraction...");
     const pubStartTime = Date.now();
     let publications;
     try {
       publications = await extractPublicationsFromCV(model, cvText);
     } catch (aiErr) {
       const pubFailTime = Date.now();
-      console.error(
-        `[CV Verification] ERROR during publications extraction after ${
-          pubFailTime - pubStartTime
-        }ms:`,
-        aiErr
-      );
       // Emit socket error with retry suggestion
       if (io && jobId) {
         io.to(jobId).emit("error", {
@@ -166,11 +141,6 @@ async function verifyCV(file, prioritySource, options = {}) {
       };
     }
     const pubEndTime = Date.now();
-    console.log(
-      `[CV Verification] Publications extraction completed in ${
-        pubEndTime - pubStartTime
-      }ms`
-    );
     if (io && jobId)
       io.to(jobId).emit("progress", {
         progress: 50,
@@ -182,9 +152,6 @@ async function verifyCV(file, prioritySource, options = {}) {
     }
 
     // Verify each publication with both Google Scholar and Scopus
-    console.log(
-      `[CV Verification] Starting verification of ${publications.length} publications...`
-    );
     if (io && jobId)
       io.to(jobId).emit("progress", {
         progress: 60,
@@ -208,11 +175,6 @@ async function verifyCV(file, prioritySource, options = {}) {
       }
     }
     const verificationEndTime = Date.now();
-    console.log(
-      `[CV Verification] Publication verification completed in ${
-        verificationEndTime - verificationStartTime
-      }ms`
-    );
 
     // Aggregate author details from multiple sources
     // Find publications with author matches and collect IDs
@@ -256,7 +218,6 @@ async function verifyCV(file, prioritySource, options = {}) {
     if (Object.values(allAuthorIds).some((id) => id)) {
       try {
         // Use the aggregator to get comprehensive author details
-        console.log("[CV Verification] Starting author details aggregation...");
         const aggregationStartTime = Date.now();
         const rawAuthorDetails = await aggregateAuthorDetails(
           allAuthorIds,
@@ -264,11 +225,6 @@ async function verifyCV(file, prioritySource, options = {}) {
           prioritySource
         );
         const aggregationEndTime = Date.now();
-        console.log(
-          `[CV Verification] Author details aggregation completed in ${
-            aggregationEndTime - aggregationStartTime
-          }ms`
-        );
 
         if (rawAuthorDetails) {
           // Transform the result to match the expected structure
@@ -286,8 +242,7 @@ async function verifyCV(file, prioritySource, options = {}) {
           };
         }
       } catch (error) {
-        console.error("Failed to aggregate author details:", error.message);
-        console.warn("Failed to aggregate author details:", error.message); // Fallback to using Google Scholar author details if available
+        // Fallback to using Google Scholar author details if available
       }
     }
     if (io && jobId)
@@ -306,18 +261,7 @@ async function verifyCV(file, prioritySource, options = {}) {
       secondStageAuthorMatch = checkAuthorNameMatch(candidateName, [
         aggregatedAuthorDetails.author.name,
       ]);
-      console.log(
-        `[CV Verification] Second-stage author verification: ${
-          secondStageAuthorMatch ? "MATCH" : "NO MATCH"
-        }`
-      );
-      console.log(
-        `[CV Verification] Candidate: "${candidateName}", Aggregated Author: "${aggregatedAuthorDetails.author.name}"`
-      );
     } else {
-      console.log(
-        "[CV Verification] Second-stage author verification: NO AGGREGATED AUTHOR DATA"
-      );
     }
 
     // If second stage fails (no aggregated data OR name mismatch), update all verified publications
@@ -325,17 +269,11 @@ async function verifyCV(file, prioritySource, options = {}) {
       const beforeCount = verificationResults.filter(
         (r) => r.verification.displayData.status === "verified"
       ).length;
-      console.log(
-        `[CV Verification] Second-stage failed - updating ${beforeCount} verified publications status`
-      );
 
       verificationResults.forEach((result) => {
         if (result.verification.displayData.status === "verified") {
           result.verification.displayData.status =
             "verified but not same author name";
-          console.log(
-            `[CV Verification] Updated publication "${result.publication.title}" status to "verified but not same author name"`
-          );
         }
       });
 
@@ -344,9 +282,6 @@ async function verifyCV(file, prioritySource, options = {}) {
           r.verification.displayData.status ===
           "verified but not same author name"
       ).length;
-      console.log(
-        `[CV Verification] Second-stage verification complete: ${afterCount} publications now marked as "verified but not same author name"`
-      );
     }
 
     if (io && jobId)
@@ -373,7 +308,6 @@ async function verifyCV(file, prioritySource, options = {}) {
       authorDetails: aggregatedAuthorDetails,
     };
   } catch (error) {
-    console.error("[CV Verification] Error:", error);
     throw error;
   }
 }
@@ -586,12 +520,9 @@ const determineVerificationStatus = (
  * @returns {Promise<Object>} Verification result for the publication
  */
 const processPublicationVerification = async (pub, candidateName) => {
-  console.log(
-    `[Publication Verification] Starting verification for: "${pub.title}"`
-  );
   const overallStartTime = Date.now();
 
-  const [, /*scholarResult*/ scopusResult, openAlexResult, pubmedResult] =
+  const [,/*scholarResult*/ scopusResult, openAlexResult, pubmedResult] =
     await Promise.all([
       (async () => {
         // The following code is commented out to save Google Scholar credits:
@@ -603,11 +534,6 @@ const processPublicationVerification = async (pub, candidateName) => {
         candidateName
       );
       const end = Date.now();
-      console.log(
-        `[Publication Verification] Google Scholar verification completed in ${
-          end - start
-        }ms for: "${pub.title}"`
-      );
       return result;
       */
         // Skip Google Scholar request to save credits
@@ -621,11 +547,6 @@ const processPublicationVerification = async (pub, candidateName) => {
           candidateName
         );
         const end = Date.now();
-        console.log(
-          `[Publication Verification] Scopus verification completed in ${
-            end - start
-          }ms for: "${pub.title}"`
-        );
         return result;
       })(),
       (async () => {
@@ -636,11 +557,6 @@ const processPublicationVerification = async (pub, candidateName) => {
           candidateName
         );
         const end = Date.now();
-        console.log(
-          `[Publication Verification] OpenAlex verification completed in ${
-            end - start
-          }ms for: "${pub.title}"`
-        );
         return result;
       })(),
       (async () => {
@@ -651,21 +567,11 @@ const processPublicationVerification = async (pub, candidateName) => {
           candidateName
         );
         const end = Date.now();
-        console.log(
-          `[Publication Verification] PubMed verification completed in ${
-            end - start
-          }ms for: "${pub.title}"`
-        );
         return result;
       })(),
     ]);
 
   const overallEndTime = Date.now();
-  console.log(
-    `[Publication Verification] Overall verification completed in ${
-      overallEndTime - overallStartTime
-    }ms for: "${pub.title}"`
-  );
 
   // Combine authors from all sources
   let allAuthors = [];
