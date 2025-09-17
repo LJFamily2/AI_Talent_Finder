@@ -404,10 +404,10 @@ export default function SearchStart() {
       <div className="w-full bg-[#000054] fixed top-0 left-0 z-10">
         <Header />
       </div>
-      <div className="w-full flex justify-end px-4 pt-24">
+      <div className="w-full flex justify-end px-4 pt-20 sm:pt-24">
         <button
           onClick={() => navigate('/search/advanced')}
-          className="flex items-center gap-2 text-sm bg-transparent font-semibold transition group cursor-pointer"
+          className="flex items-center gap-2 text-xs sm:text-sm bg-transparent font-semibold transition group cursor-pointer"
           onMouseEnter={() => setIconBounce(true)}
           onMouseLeave={() => setIconBounce(false)}
           style={{ boxShadow: 'none' }}
@@ -416,28 +416,28 @@ export default function SearchStart() {
             Advanced Search
           </span>
           <span
-            className={`rounded-full bg-blue-100 p-2 transition ${iconBounce ? 'bounce-right' : ''} cursor-pointer`}
+            className={`rounded-full bg-blue-100 p-1 sm:p-2 transition ${iconBounce ? 'bounce-right' : ''} cursor-pointer`}
           >
-            <ArrowRight className="w-5 h-5 text-blue-600" />
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
           </span>
         </button>
       </div>
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 -mt-25">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 -mt-16 sm:-mt-25">
         <p
-          className="text-gray-800 text-4xl font-medium text-center mb-10 w-full whitespace-nowrap"
+          className="text-gray-800 text-2xl sm:text-3xl md:text-4xl font-medium text-center mb-8 sm:mb-10 w-full"
           style={{ fontFamily: "'Nata Sans', sans-serif" }}
         >
           Search for academic talents by a criteria of your choice
         </p>
-        <div className="flex flex-row w-full">
-          <div className='basis-3/7'></div>
+        <div className="flex flex-col lg:flex-row w-full max-w-7xl">
+          <div className='hidden lg:block lg:basis-3/7'></div>
 
           {/* Search input and select */}
-          <div className="flex w-full max-w-4xl mx-auto rounded-xl">
+          <div className="flex flex-col sm:flex-row w-full max-w-4xl mx-auto rounded-xl">
             {/* Dropdown */}
             <Select.Root value={searchField} onValueChange={setSearchField}>
               <Select.Trigger
-                className="inline-flex items-center justify-between px-3 py-2 text-gray-800 text-base bg-blue-100 border border-blue-200 border-r-0 rounded-l-xl shadow-lg focus:outline-none hover:bg-blue-100 transition-colors min-w-[140px]"
+                className="inline-flex items-center justify-between px-3 py-3 sm:py-2 text-gray-800 text-sm sm:text-base bg-blue-100 border border-blue-200 sm:border-r-0 rounded-xl sm:rounded-l-xl sm:rounded-r-none shadow-lg focus:outline-none hover:bg-blue-100 transition-colors min-w-[140px] mb-2 sm:mb-0"
                 aria-label="Search field"
               >
                 <Select.Value />
@@ -490,7 +490,7 @@ export default function SearchStart() {
                   if (e.target.value.trim()) setShowFullList(false);
                 }}
                 onKeyDown={handleKeyDown}
-                className="w-full p-4 py-4 text-base text-black bg-white border border-blue-200 rounded-r-xl shadow-lg focus:outline-none"
+                className="w-full p-3 sm:p-4 py-3 sm:py-4 text-sm sm:text-base text-black bg-white border border-blue-200 rounded-xl sm:rounded-r-xl sm:rounded-l-none shadow-lg focus:outline-none"
               />
 
               {/* Dropdown chevron */}
@@ -539,7 +539,7 @@ export default function SearchStart() {
                     return next;
                   });
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
               >
                 {showFullList ? (
                   <X className="w-4 h-4" />
@@ -578,7 +578,7 @@ export default function SearchStart() {
                           {(instFullItems || []).map((item, idx) => (
                             <div
                               key={item.search_tag}
-                              className={`px-4 py-2 text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
+                              className={`px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
                               onMouseDown={() => {
                                 goWithBootstrap({ selectedInstitutions: [item], selectedCountries: [], selectedFields: [], selectedTopicIds: [], topicKeyToId: {}, nameInput: '' }, { search_tags: [item.search_tag], page: 1, limit: 10 });
                               }}
@@ -586,7 +586,7 @@ export default function SearchStart() {
                               {item.display_name}
                             </div>
                           ))}
-                          <div className="px-4 py-2 text-sm text-gray-500">{instFullLoading ? 'Loading…' : ((instFullTotal != null && instFullOffset >= instFullTotal) ? 'End of list' : '')}</div>
+                          <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-500">{instFullLoading ? 'Loading…' : ((instFullTotal != null && instFullOffset >= instFullTotal) ? 'End of list' : '')}</div>
                         </div>
                       )}
                       {searchField === 'expertise' && (
@@ -595,17 +595,17 @@ export default function SearchStart() {
                           {(allFields || []).map((f, fIdx) => (
                             <div key={String(f._id)} className="py-2">
                               <div
-                                className={`px-4 py-2 text-gray-800 font-medium cursor-pointer flex items-center justify-between ${fIdx === highlightIndex ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
+                                className={`px-3 sm:px-4 py-2 text-gray-800 font-medium cursor-pointer flex items-center justify-between ${fIdx === highlightIndex ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
                                 onMouseDown={() => {
                                   const fid = f?._id ? String(f._id) : null;
                                   const payload = fid ? { search_tags: [`field:${fid}`], page: 1, limit: 10 } : undefined;
                                   goWithBootstrap({ selectedInstitutions: [], selectedCountries: [], selectedFields: [f.display_name], selectedTopicIds: [], topicKeyToId: {}, nameInput: '' }, payload);
                                 }}
                               >
-                                <span>{f.display_name}</span>
+                                <span className="text-sm sm:text-base">{f.display_name}</span>
                                 <button
                                   type="button"
-                                  className="text-xs text-blue-600 ml-4"
+                                  className="text-xs text-blue-600 ml-2 sm:ml-4"
                                   onMouseDown={(e) => {
                                     e.stopPropagation();
                                     const fid = f?._id ? String(f._id) : 'null';
@@ -631,7 +631,7 @@ export default function SearchStart() {
                                 </button>
                               </div>
                               {expandedFields[String(f._id) || 'null'] && (
-                                <div className="pl-8 pr-4 py-1">
+                                <div className="pl-6 sm:pl-8 pr-3 sm:pr-4 py-1">
                                   {(topicsByField[String(f._id) || 'null'] || []).map(t => (
                                     <div
                                       key={String(t._id)}
@@ -641,7 +641,7 @@ export default function SearchStart() {
                                         goWithBootstrap({ selectedInstitutions: [], selectedCountries: [], selectedFields: [key], selectedTopicIds: [String(t._id)], topicKeyToId: { [key]: String(t._id) }, nameInput: '' }, { search_tags: [`topic:${String(t._id)}`], page: 1, limit: 10 });
                                       }}
                                     >
-                                      <span className="text-sm">{t.display_name}</span>
+                                      <span className="text-xs sm:text-sm">{t.display_name}</span>
                                     </div>
                                   ))}
                                   <div className="py-1">
@@ -685,7 +685,7 @@ export default function SearchStart() {
                           {(countries || []).map((c, idx) => (
                             <li
                               key={c.search_tag}
-                              className={`px-4 py-2 text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
+                              className={`px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
                               onMouseDown={() => {
                                 goWithBootstrap({ selectedInstitutions: [], selectedCountries: [c.search_tag], selectedFields: [], selectedTopicIds: [], topicKeyToId: {}, nameInput: '' }, { search_tags: [c.search_tag], page: 1, limit: 10 });
                               }}
@@ -697,7 +697,7 @@ export default function SearchStart() {
                       )}
                       {searchField === 'name' && (
                         <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                          <div className="px-4 py-3 text-sm text-gray-600">Type a name to see suggestions</div>
+                          <div className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">Type a name to see suggestions</div>
                         </div>
                       )}
                     </>
@@ -749,7 +749,7 @@ export default function SearchStart() {
                         filteredCountries.map((c, idx) => (
                           <li
                             key={c.search_tag}
-                            className={`px-4 py-2 text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
+                            className={`px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-800 cursor-pointer ${idx === highlightIndex ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
                             onMouseDown={() => {
                               goWithBootstrap({ selectedInstitutions: [], selectedCountries: [c.search_tag], selectedFields: [], selectedTopicIds: [], topicKeyToId: {}, nameInput: '' }, { search_tags: [c.search_tag], page: 1, limit: 10 });
                             }}
@@ -759,7 +759,7 @@ export default function SearchStart() {
                           </li>
                         ))
                       ) : (
-                        <li className="px-4 py-2 text-sm text-gray-500 italic">No matches</li>
+                        <li className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-500 italic">No matches</li>
                       )}
                     </ul>
                   )}
@@ -770,16 +770,16 @@ export default function SearchStart() {
             </div>
           </div>
 
-          <div className='basis-3/7'></div>
+          <div className='hidden lg:block lg:basis-3/7'></div>
         </div>
 
         {/* Quick suggestions */}
-        <div className="max-w-5xl w-full mt-40 -mb-40">
+        <div className="max-w-5xl w-full mt-20 sm:mt-32 md:mt-40 -mb-20 sm:-mb-32 md:-mb-40 px-4">
           <div className="text-center">
-            <p className="text-gray-600 text-base mb-4">
+            <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">
               First time here? Select an expertise domain below to start.
             </p>
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
               {suggestions.map((field) => (
                 <button
                   key={field}
@@ -800,7 +800,7 @@ export default function SearchStart() {
                     setShowFullList(false);
                     setShowSuggestions(true);
                   }}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-base rounded-full transition cursor-pointer"
+                  className="px-3 sm:px-4 py-2 bg-gray-200 hover:bg-gray-300 text-xs sm:text-sm md:text-base rounded-full transition cursor-pointer"
                 >
                   {field}
                 </button>
@@ -812,10 +812,10 @@ export default function SearchStart() {
 
       {/* Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-          <div className="bg-white px-10 py-8 rounded-lg shadow-lg flex flex-col items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+          <div className="bg-white px-6 sm:px-10 py-6 sm:py-8 rounded-lg shadow-lg flex flex-col items-center max-w-sm w-full">
             <svg
-              className="animate-spin h-8 w-8 text-blue-600 mb-4"
+              className="animate-spin h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mb-3 sm:mb-4"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -834,7 +834,7 @@ export default function SearchStart() {
                 d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
               ></path>
             </svg>
-            <span className="text-lg text-gray-700">Loading, please wait...</span>
+            <span className="text-base sm:text-lg text-gray-700 text-center">Loading, please wait...</span>
           </div>
         </div>
       )}
