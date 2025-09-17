@@ -180,7 +180,11 @@ function CVUpload() {
           <div className="w-full max-w-sm sm:max-w-md bg-white rounded-lg p-6 sm:p-8 shadow-lg flex flex-col items-center">
             {/* Circular Progress Bar */}
             <div className="relative w-20 h-20 sm:w-24 sm:h-24">
-              <svg className="w-full h-full transform -rotate-90">
+              <svg
+                className="w-full h-full transform -rotate-90 origin-center"
+                viewBox="0 0 80 80"
+                preserveAspectRatio="xMidYMid meet"
+              >
                 <circle
                   className="text-gray-200"
                   strokeWidth="6"
