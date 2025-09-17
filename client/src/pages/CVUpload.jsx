@@ -65,7 +65,7 @@ function CVUpload() {
           setProgressPhase("complete");
           setTimeout(() => {
             setProcessing(false);
-            navigate("/verify-cv/results", {
+            navigate("/publication-check/results", {
               state: { publications: data.result },
             });
           }, 1000);
@@ -133,7 +133,7 @@ function CVUpload() {
     <div className="w-full min-h-screen">
       <Header />
       <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-8 px-4">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">Verify Candidate CV</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">Verify publications from uploaded CV</h2>
         {errorInfo && (
           <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>

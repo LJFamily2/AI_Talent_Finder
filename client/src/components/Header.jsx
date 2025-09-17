@@ -17,8 +17,8 @@ function Header() {
 
   useEffect(() => {
     let title = "Talent Finder";
-    if (path === "/verify-cv") title = "CV Verification";
-    else if (path === "/verify-cv/results") title = "CV Verification Results";
+    if (path === "/publication-check") title = "Publication Check";
+    else if (path === "/publication-check/results") title = "Publication Check Results";
     else if (path === "/search") title = "Search";
     else if (path.startsWith("/search/advanced")) title = "Advanced Search";
     else if (path === "/saved-researchers") title = "Saved Profiles";
@@ -143,11 +143,11 @@ function Header() {
 
           {/* Navigation links */}
           <div className={`md:flex md:flex-row md:items-center md:w-max md:h-full md:justify-end text-base md:text-lg md:relative ${showMobileMenu ? 'flex flex-col absolute top-full left-0 right-0 w-full bg-[#000054] shadow-lg border-t border-gray-600 z-[9998] min-h-max' : 'hidden md:flex'}`}>
-            <div className={`flex items-center justify-center px-0 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/verify-cv' ? 'bg-white' : 'hover:bg-[#000032]'}`}>
-              <a href="/verify-cv" className="w-full md:w-auto text-center py-3 md:py-0">
-                <p className={`font-medium hover:underline ${path === '/verify-cv' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>CV Verification</p>
-              </a>
-            </div>
+                    <div className={`flex items-center justify-center px-0 md:px-8 h-12 md:h-full w-full md:w-auto ${path === '/publication-check' ? 'bg-white' : 'hover:bg-[#000032]'}`}>
+                        <a href="/publication-check" className="w-full md:w-auto text-center py-3 md:py-0">
+                            <p className={`font-medium hover:underline ${path === '/publication-check' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Publication Check</p>
+                        </a>
+                    </div>
             <div className={`flex items-center justify-center px-0 md:px-8 h-12 md:h-full w-full md:w-auto ${path.startsWith('/search') ? 'bg-white' : 'hover:bg-[#000032]'}`}>
               <a href="/search" className="w-full md:w-auto text-center py-3 md:py-0">
                 <p className={`font-medium hover:underline ${path.startsWith('/search') ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Search Tool</p>

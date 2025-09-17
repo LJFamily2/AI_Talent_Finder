@@ -32,8 +32,8 @@ api.interceptors.response.use(
       // Public routes like CV verification should not force login
       const currentPath = window.location.pathname;
       const publicRoutes = [
-        "/verify-cv",
-        "/verify-cv/results",
+        "/publication-check",
+        "/publication-check/results",
         "/search",
         "/search/advanced",
         "/landing-page",

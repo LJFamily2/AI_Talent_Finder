@@ -187,7 +187,7 @@ function LandingPage() {
                   <h3 className="font-bold text-2xl md:text-3xl mb-4">Verify candidates’ CVs</h3>
                   <p className="text-balance text-base md:line-clamp-3">By comparing candidates’ statements in CV with some of our Internet sources, this product could give early alarms to the recruiters, highlighting which claims of the candidates are unverifiable.
                   </p>
-                  <button className="w-max bg-[#E60028] text-white px-6 md:px-8 py-3 mt-10 rounded-2xl mb-6 hover:underline text-base md:text-lg"><a href="/verify-cv">Explore now</a></button>
+                  <button className="w-max bg-[#E60028] text-white px-6 md:px-8 py-3 mt-10 rounded-2xl mb-6 hover:underline text-base md:text-lg"><a href="/publication-check">Explore now</a></button>
               </div>
               <div className="bg-white w-full h-1/2 py-8 px-0 md:px-5 border-1 rounded-b-lg border-gray-200 border-1">
                   <img src={imageVerifyCV} alt="Verify CV" className="border-white border-x-1 border-t-1 w-full"/>

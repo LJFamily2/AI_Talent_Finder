@@ -31,8 +31,8 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/verify-cv" element={<CVUpload />} />
-          <Route path="/verify-cv/results" element={<CVVerification />} />
+          <Route path="/publication-check" element={<CVUpload />} />
+          <Route path="/publication-check/results" element={<CVVerification />} />
           <Route path="/search" element={<SearchStart />} />
           <Route path="/search/advanced" element={<SearchInterface />} />
           <Route path="/" element={<LandingPage />} />
