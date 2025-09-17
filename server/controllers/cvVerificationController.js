@@ -591,7 +591,7 @@ const processPublicationVerification = async (pub, candidateName) => {
   );
   const overallStartTime = Date.now();
 
-  const [ /*scholarResult*/ scopusResult, openAlexResult, pubmedResult] =
+  const [, /*scholarResult*/ scopusResult, openAlexResult, pubmedResult] =
     await Promise.all([
       (async () => {
         // The following code is commented out to save Google Scholar credits:
