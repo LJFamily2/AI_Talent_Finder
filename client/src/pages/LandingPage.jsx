@@ -52,7 +52,7 @@ return (
                     <p className="text-justify">Pulling data from reliable databases such as Scopus, ORCID and OpenAlex, our product presents to you a list of potential academics with the necessary details already given, sparing you much time of looking up on various individual platforms.</p>
                 </div>
                 <button className="w-max bg-[#E60028] text-white px-8 py-3 mt-4 rounded-2xl mb-10 hover:underline">
-                    <a href="/search-tool">Explore now</a>
+                    <a href="/search">Explore now</a>
                 </button>
             </div>
             <div className="max-w-500 w-1/2 px-25">

@@ -17,7 +17,8 @@ function Header() {
     let title = "Talent Finder";
     if (path === "/verify-cv") title = "CV Verification";
     else if (path === "/verify-cv/results") title = "CV Verification Results";
-    else if (path === "/search-tool") title = "Search Tool";
+    else if (path === "/search") title = "Search";
+    else if (path.startsWith("/search/advanced")) title = "Advanced Search";
     else if (path === "/saved-researchers") title = "Saved Profiles";
     else if (path === "/login") title = "Login";
     else if (path === "/landing-page") title = "Talent Finder";
@@ -102,9 +103,9 @@ const userInitial = (() => {
                             <p className={`font-medium hover:underline ${path === '/verify-cv' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>CV Verification</p>
                         </a>
                     </div>
-                    <div className={`flex items-center justify-center px-8 h-full ${path === '/search-tool' ? 'bg-white' : 'hover:bg-[#000032]'}`}>
-                        <a href="/search-tool">
-                            <p className={`font-medium hover:underline ${path === '/search-tool' ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Search Tool</p>
+                    <div className={`flex items-center justify-center px-8 h-full ${path.startsWith('/search') ? 'bg-white' : 'hover:bg-[#000032]'}`}>
+                        <a href="/search">
+                            <p className={`font-medium hover:underline ${path.startsWith('/search') ? 'text-[#000054] font-semibold underline' : 'text-white'}`}>Search Tool</p>
                         </a>
                     </div>
                     {loading && hadSession ? (
