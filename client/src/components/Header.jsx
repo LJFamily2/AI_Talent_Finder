@@ -125,7 +125,7 @@ const userInitial = (() => {
                       </div>
                     ) : (
                       <div
-                        className={`flex items-center justify-center px-8 h-full ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'} md:ml-8`}
+                        className={`flex items-center justify-center px-8 h-full ${path === '/login' ? 'bg-white' : 'hover:bg-[#000032]'}`}
                         title="Log in to access Saved Profiles"
                       >
                           <button
