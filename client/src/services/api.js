@@ -7,7 +7,8 @@
 
 import { API_BASE_URL as CONFIG_API_BASE_URL } from "../config/api";
 // fall back to env var if config export is not available
-const API_BASE_URL = CONFIG_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || "";
+const API_BASE_URL =
+  CONFIG_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || "";
 
 /**
  * Generic function to make API requests
@@ -31,7 +32,9 @@ const apiRequest = async (endpoint, options = {}) => {
       const text = await response.text();
       throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
     }
-    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    const contentType = (
+      response.headers.get("content-type") || ""
+    ).toLowerCase();
     if (contentType.includes("application/json")) {
       const json = await response.json();
       if (Object.prototype.hasOwnProperty.call(json, "success")) {
@@ -56,7 +59,9 @@ const apiRequest = async (endpoint, options = {}) => {
  * @returns {Promise<Object>} Researcher profile data
  */
 export const getResearcherProfile = async (researcherId) => {
-  return await apiRequest(`/api/researcher/${encodeURIComponent(researcherId)}`);
+  return await apiRequest(
+    `/api/researcher/${encodeURIComponent(researcherId)}`
+  );
 };
 
 /**
@@ -66,9 +71,15 @@ export const getResearcherProfile = async (researcherId) => {
  * @param {number} perPage - Number of works per page (default: 20)
  * @returns {Promise<Object>} Researcher works data from OpenAlex
  */
-export const getResearcherWorks = async (researcherId, page = 1, perPage = 20) => {
+export const getResearcherWorks = async (
+  researcherId,
+  page = 1,
+  perPage = 20
+) => {
   return await apiRequest(
-    `/api/researcher/${encodeURIComponent(researcherId)}/works?page=${Number(page)}&perPage=${Number(perPage)}`
+    `/api/researcher/${encodeURIComponent(researcherId)}/works?page=${Number(
+      page
+    )}&perPage=${Number(perPage)}`
   );
 };
 
@@ -94,4 +105,29 @@ export const exportResearcherProfile = async (researcherId) => {
     console.error("Export request error:", error);
     throw error;
   }
+};
+
+/**
+ * Find contact information for a researcher using GPT
+ * @param {string} researcherName - Name of the researcher
+ * @param {string} affiliation - Current affiliation
+ * @param {string} orcid - ORCID identifier
+ * @param {Array<string>} researchAreas - Research areas/topics
+ * @returns {Promise<Object>} Contact information (email, phone, linkedin)
+ */
+export const findResearcherContact = async (
+  researcherName,
+  affiliation = "",
+  orcid = "",
+  researchAreas = []
+) => {
+  return await apiRequest("/api/contact/find", {
+    method: "POST",
+    body: JSON.stringify({
+      researcherName,
+      affiliation,
+      orcid,
+      researchAreas,
+    }),
+  });
 };

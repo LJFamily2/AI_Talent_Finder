@@ -12,17 +12,94 @@ import {
   CircularProgress,
   Skeleton,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography,
+  IconButton,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ContactPageIcon from "@mui/icons-material/ContactPage";
+import CloseIcon from "@mui/icons-material/Close";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import {
   getResearcherProfile,
   getResearcherWorks,
   exportResearcherProfile,
+  findResearcherContact,
 } from "../services/api";
 import { exportResearcherById } from "../services/pdfExportService";
 import BookmarkIcon from "../components/BookmarkIcon";
-import PaginationBar from '@/components/PaginationBar';
+import PaginationBar from "@/components/PaginationBar";
+
+// Add custom styles for animations
+const animationStyles = `
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(139, 69, 19, 0.2), 0 0 16px rgba(255, 193, 7, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(139, 69, 19, 0.4), 0 0 24px rgba(255, 193, 7, 0.3);
+    }
+  }
+  
+  @keyframes spin-gentle {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  @keyframes sparkle {
+    0%, 100% { 
+      transform: scale(1) rotate(0deg);
+      opacity: 0.8;
+    }
+    25% { 
+      transform: scale(1.2) rotate(90deg);
+      opacity: 1;
+    }
+    50% { 
+      transform: scale(1.1) rotate(180deg);
+      opacity: 0.9;
+    }
+    75% { 
+      transform: scale(1.2) rotate(270deg);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes ai-search-pulse {
+    0% { 
+      transform: scale(1);
+      opacity: 0.7;
+    }
+    50% { 
+      transform: scale(1.05);
+      opacity: 1;
+    }
+    100% { 
+      transform: scale(1);
+      opacity: 0.7;
+    }
+  }
+  
+  @keyframes magic-shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(0deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  }
+`;
+
+// Inject styles into the document head
+if (typeof document !== "undefined") {
+  const styleElement = document.createElement("style");
+  styleElement.textContent = animationStyles;
+  if (!document.head.querySelector("style[data-ai-search-animations]")) {
+    styleElement.setAttribute("data-ai-search-animations", "true");
+    document.head.appendChild(styleElement);
+  }
+}
 
 export default function ResearcherProfile() {
   const { slug } = useParams();
@@ -39,6 +116,12 @@ export default function ResearcherProfile() {
   // Dropdown state for export button
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+
+  // Contact finder state
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactInfo, setContactInfo] = useState(null);
+  const [contactError, setContactError] = useState(null);
 
   // Function to fetch works for a specific page
   const fetchWorksPage = useCallback(
@@ -102,6 +185,96 @@ export default function ResearcherProfile() {
     } catch (error) {
       console.error("PDF export failed:", error);
       alert("Failed to export PDF. Please try again.");
+    }
+  };
+
+  // Contact finder functions
+  const handleContactSearch = async () => {
+    if (!researcher) return;
+
+    setContactLoading(true);
+    setContactError(null);
+    setContactDialogOpen(true);
+    setContactInfo(null);
+
+    try {
+      const {
+        basic_info: { name = "" } = {},
+        identifiers: { orcid = "" } = {},
+      } = researcher;
+
+      // Get current affiliation
+      const currentAffiliations =
+        Array.isArray(researcher.current_affiliations) &&
+        researcher.current_affiliations.length > 0
+          ? researcher.current_affiliations
+          : [];
+      const affiliation =
+        currentAffiliations.length > 0
+          ? currentAffiliations[0].display_name
+          : "";
+
+      // Get research areas
+      const { research_areas: { fields = [] } = {} } = researcher;
+      const researchAreas = fields.map((field) => field.display_name);
+
+      const contactData = await findResearcherContact(
+        name,
+        affiliation,
+        orcid,
+        researchAreas
+      );
+      setContactInfo(contactData);
+    } catch (error) {
+      console.error("Contact search failed:", error);
+      setContactError(error.message || "Failed to find profile links");
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const handleContactDialogClose = () => {
+    setContactDialogOpen(false);
+    setContactInfo(null);
+    setContactError(null);
+  };
+
+  // Helper function to get profile type and display name
+  const getProfileInfo = (url) => {
+    if (url.includes("linkedin.com")) {
+      return { type: "LinkedIn", icon: "💼", displayName: "LinkedIn Profile" };
+    } else if (url.includes("scholar.google.com")) {
+      return {
+        type: "Google Scholar",
+        icon: "📚",
+        displayName: "Google Scholar Profile",
+      };
+    } else if (url.includes("researchgate.net")) {
+      return {
+        type: "ResearchGate",
+        icon: "🔬",
+        displayName: "ResearchGate Profile",
+      };
+    } else if (url.includes("orcid.org")) {
+      return { type: "ORCID", icon: "🆔", displayName: "ORCID Profile" };
+    } else if (url.includes("academia.edu")) {
+      return {
+        type: "Academia.edu",
+        icon: "🎓",
+        displayName: "Academia.edu Profile",
+      };
+    } else if (
+      url.includes(".edu") ||
+      url.includes(".ac.") ||
+      url.includes("university")
+    ) {
+      return {
+        type: "Institutional",
+        icon: "🏫",
+        displayName: "Institutional Profile",
+      };
+    } else {
+      return { type: "Other", icon: "🌐", displayName: "Academic Profile" };
     }
   };
 
@@ -233,13 +406,15 @@ export default function ResearcherProfile() {
     }
   } else if (Array.isArray(legacyTopics) && legacyTopics.length > 0) {
     topics = legacyTopics.map((t) =>
-      typeof t === "string" ? { display_name: t } : { display_name: t.display_name || t.name || "" }
+      typeof t === "string"
+        ? { display_name: t }
+        : { display_name: t.display_name || t.name || "" }
     );
   }
 
   const currentAffiliations =
     Array.isArray(researcher.current_affiliations) &&
-      researcher.current_affiliations.length > 0
+    researcher.current_affiliations.length > 0
       ? researcher.current_affiliations
       : [];
 
@@ -342,7 +517,7 @@ export default function ResearcherProfile() {
           {/* Researcher Info Card */}
           <div className="bg-white p-4 rounded-md shadow space-y-4 self-start relative">
             {/* Bookmark Icon */}
-            <div className="absolute top-4 right-4">
+            <div className="absolute top-4 right-4 flex items-center space-x-2">
               <BookmarkIcon
                 researcherId={researcher._id}
                 researcherName={name}
@@ -353,9 +528,75 @@ export default function ResearcherProfile() {
               />
             </div>
 
-            {/* Top: Name + ORCID */}
+            {/* Top: Name + AI Contact Button inline */}
             <div className="flex flex-col space-y-2">
-              <h2 className="text-2xl font-semibold">{name}</h2>
+              <div className="flex items-center space-x-3">
+                <h2 className="text-2xl font-semibold">{name}</h2>
+                <Button
+                  onClick={handleContactSearch}
+                  disabled={contactLoading}
+                  variant="outlined"
+                  size="small"
+                  startIcon={
+                    contactLoading ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <SmartToyIcon />
+                    )
+                  }
+                  endIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
+                  sx={{
+                    background:
+                      "linear-gradient(45deg, rgba(139, 69, 19, 0.08), rgba(255, 193, 7, 0.08))",
+                    borderColor: "rgba(139, 69, 19, 0.4)",
+                    color: "rgb(139, 69, 19)",
+                    fontSize: "0.75rem",
+                    padding: "4px 12px",
+                    minWidth: "auto",
+                    border: "2px solid",
+                    borderImage:
+                      "linear-gradient(45deg, rgba(139, 69, 19, 0.4), rgba(255, 193, 7, 0.4)) 1",
+                    borderRadius: "12px",
+                    position: "relative",
+                    overflow: "hidden",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(45deg, rgba(139, 69, 19, 0.15), rgba(255, 193, 7, 0.15))",
+                      borderColor: "rgba(139, 69, 19, 0.6)",
+                      transform: "translateY(-2px) scale(1.05)",
+                      boxShadow:
+                        "0 8px 20px rgba(139, 69, 19, 0.3), 0 0 20px rgba(255, 193, 7, 0.4)",
+                      animation: "none",
+                    },
+                    "&:active": {
+                      transform: "translateY(0) scale(1.02)",
+                    },
+                    "& .MuiButton-startIcon": {
+                      marginRight: "6px",
+                    },
+                    "& .MuiButton-endIcon": {
+                      marginLeft: "6px",
+                    },
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      top: 0,
+                      left: "-100%",
+                      width: "100%",
+                      height: "100%",
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)",
+                      transition: "left 0.6s",
+                    },
+                    "&:hover::before": {
+                      left: "100%",
+                    },
+                  }}
+                >
+                  AI Contact Search
+                </Button>
+              </div>
               {orcid && (
                 <p className="text-md">
                   <span className="">ORCID:</span>{" "}
@@ -596,6 +837,243 @@ export default function ResearcherProfile() {
           )}
         </div>
       </div>
+
+      {/* Profile Links Dialog */}
+      <Dialog
+        open={contactDialogOpen}
+        onClose={handleContactDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Contact Information</DialogTitle>
+        <DialogContent>
+          {/* AI Disclaimer */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "rgb(133, 77, 14)",
+                display: "flex",
+                alignItems: "center",
+                fontSize: "0.875rem",
+              }}
+            >
+              <AutoAwesomeIcon sx={{ fontSize: 16, marginRight: 1 }} />
+              AI can make mistakes. Check important info.
+            </Typography>
+          </div>
+
+          {contactLoading ? (
+            <div className="flex flex-col justify-center items-center py-8">
+              <div className="relative mb-6">
+                {/* Enhanced rotating AI brain/robot icon with glow */}
+                <div
+                  className="animate-spin"
+                  style={{
+                    animation: "spin-gentle 2s linear infinite",
+                    filter: "drop-shadow(0 0 12px rgba(139, 69, 19, 0.4))",
+                  }}
+                >
+                  <SmartToyIcon
+                    sx={{
+                      fontSize: 56,
+                      color: "rgb(139, 69, 19)",
+                      background:
+                        "linear-gradient(45deg, rgb(139, 69, 19), rgb(184, 134, 11))",
+                      backgroundClip: "text",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  />
+                </div>
+
+                {/* Orbiting sparkles with enhanced animations */}
+                <div
+                  className="absolute -top-3 -right-3"
+                  style={{
+                    animation:
+                      "sparkle 1.5s ease-in-out infinite, ai-search-pulse 2s ease-in-out infinite",
+                  }}
+                >
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 18,
+                      color: "rgb(255, 193, 7)",
+                      filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
+                    }}
+                  />
+                </div>
+                <div
+                  className="absolute -bottom-3 -left-3"
+                  style={{
+                    animation:
+                      "sparkle 1.5s ease-in-out infinite 0.5s, ai-search-pulse 2s ease-in-out infinite 0.5s",
+                  }}
+                >
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 16,
+                      color: "rgb(255, 193, 7)",
+                      filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
+                    }}
+                  />
+                </div>
+                <div
+                  className="absolute top-0 -left-4"
+                  style={{
+                    animation:
+                      "sparkle 1.5s ease-in-out infinite 1s, ai-search-pulse 2s ease-in-out infinite 1s",
+                  }}
+                >
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 14,
+                      color: "rgb(255, 193, 7)",
+                      filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
+                    }}
+                  />
+                </div>
+                <div
+                  className="absolute -top-1 left-8"
+                  style={{
+                    animation:
+                      "sparkle 1.5s ease-in-out infinite 1.5s, ai-search-pulse 2s ease-in-out infinite 1.5s",
+                  }}
+                >
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 12,
+                      color: "rgb(255, 193, 7)",
+                      filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
+                    }}
+                  />
+                </div>
+
+                {/* Magic shimmer effect overlay */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%)",
+                    animation: "magic-shimmer 3s linear infinite",
+                    borderRadius: "50%",
+                  }}
+                />
+              </div>
+
+              <Typography
+                sx={{
+                  color: "rgb(139, 69, 19)",
+                  fontWeight: 600,
+                  fontSize: "1.2rem",
+                  background:
+                    "linear-gradient(45deg, rgb(139, 69, 19), rgb(184, 134, 11))",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  textAlign: "center",
+                  mb: 1,
+                }}
+              >
+                🤖 AI is searching for contact information...
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  textAlign: "center",
+                  fontStyle: "italic",
+                  animation: "ai-search-pulse 2s ease-in-out infinite",
+                }}
+              >
+                ✨ Analyzing academic databases and professional networks
+              </Typography>
+            </div>
+          ) : contactError ? (
+            <div className="text-center py-4">
+              <Typography color="error" gutterBottom>
+                Error: {contactError}
+              </Typography>
+              <Button
+                onClick={handleContactSearch}
+                variant="outlined"
+                size="small"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : contactInfo ? (
+            <div className="space-y-4">
+              {contactInfo.links && contactInfo.links.length > 0 ? (
+                <>
+                  {contactInfo.links.map((link, index) => {
+                    const profileInfo = getProfileInfo(link);
+                    return (
+                      <div
+                        key={index}
+                        className="border-l-4 border-blue-500 pl-4 py-2"
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 600, color: "text.primary" }}
+                        >
+                          {profileInfo.icon} {profileInfo.displayName}
+                        </Typography>
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline break-all"
+                        >
+                          <Typography variant="body2">{link}</Typography>
+                        </a>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ color: "text.primary" }}
+                  >
+                    🔍 No Profile Links Found
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    No academic or professional profile links were found for
+                    this researcher.
+                  </Typography>
+                  <div className="mt-4">
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", mb: 1, mt: 2 }}
+                    >
+                      Try searching manually:
+                    </Typography>
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(
+                        researcher?.basic_info?.name || ""
+                      )} LinkedIn`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-blue-600 hover:underline"
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        🔍 Search "{researcher?.basic_info?.name}" on Google
+                      </Typography>
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleContactDialogClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
       <Footer />
     </div>
   );
