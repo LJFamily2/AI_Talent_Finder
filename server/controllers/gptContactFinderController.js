@@ -299,8 +299,11 @@ function parseContactResponseAdvanced(response) {
         const urls = linksSection
           .split("\n")
           .map((line) => {
-            // Remove quotes and trim whitespace
-            let cleanLine = line.trim().replace(/^["']|["']$/g, "");
+            // Remove quotes, trim whitespace, and remove leading "- " if present
+            let cleanLine = line
+              .trim()
+              .replace(/^- /, "")
+              .replace(/^["']|["']$/g, "");
             return cleanLine;
           })
           .filter((line) => {

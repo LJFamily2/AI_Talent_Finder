@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { BarChart } from "@mui/x-charts/BarChart";
@@ -18,6 +20,7 @@ import {
   DialogActions,
   Typography,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -103,6 +106,8 @@ if (typeof document !== "undefined") {
 
 export default function ResearcherProfile() {
   const { slug } = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [researcher, setResearcher] = useState(null);
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +127,18 @@ export default function ResearcherProfile() {
   const [contactLoading, setContactLoading] = useState(false);
   const [contactInfo, setContactInfo] = useState(null);
   const [contactError, setContactError] = useState(null);
+
+  // Contact caching and rate limiting state
+  const [contactCache, setContactCache] = useState(null);
+  const [contactCacheTime, setContactCacheTime] = useState(null);
+  const [contactClickCount, setContactClickCount] = useState(0);
+  const [contactLastClickTime, setContactLastClickTime] = useState(null);
+  const [contactRateLimitTime, setContactRateLimitTime] = useState(null);
+
+  // Refresh button rate limiting state (separate from search)
+  const [refreshClickCount, setRefreshClickCount] = useState(0);
+  const [refreshLastClickTime, setRefreshLastClickTime] = useState(null);
+  const [refreshRateLimitTime, setRefreshRateLimitTime] = useState(null);
 
   // Function to fetch works for a specific page
   const fetchWorksPage = useCallback(
@@ -189,8 +206,53 @@ export default function ResearcherProfile() {
   };
 
   // Contact finder functions
-  const handleContactSearch = async () => {
+  const handleContactSearch = async (forceRefresh = false) => {
     if (!researcher) return;
+
+    const now = Date.now();
+    const cacheKey = `contact_${slug}`;
+
+    // Check cache first if not forcing refresh
+    if (
+      !forceRefresh &&
+      contactCache &&
+      contactCacheTime &&
+      now - contactCacheTime < 5 * 60 * 1000
+    ) {
+      setContactInfo(contactCache);
+      setContactDialogOpen(true);
+      return;
+    }
+
+    // Check rate limiting for refresh button
+    if (forceRefresh) {
+      if (refreshRateLimitTime && now < refreshRateLimitTime) {
+        setContactError(
+          `Refresh rate limit exceeded. Try again in ${Math.ceil(
+            (refreshRateLimitTime - now) / 1000 / 60
+          )} minutes.`
+        );
+        setContactDialogOpen(true);
+        return;
+      }
+
+      // Check if within 5 minutes and already clicked 3 times
+      if (
+        refreshLastClickTime &&
+        now - refreshLastClickTime < 5 * 60 * 1000 &&
+        refreshClickCount >= 3
+      ) {
+        const resetTime = refreshLastClickTime + 5 * 60 * 1000;
+        setRefreshRateLimitTime(resetTime);
+        setContactError(
+          `Refresh rate limit exceeded. Try again in ${Math.ceil(
+            (resetTime - now) / 1000 / 60
+          )} minutes.`
+        );
+        setContactDialogOpen(true);
+        return;
+      }
+    }
 
     setContactLoading(true);
     setContactError(null);
@@ -224,7 +286,47 @@ export default function ResearcherProfile() {
         orcid,
         researchAreas
       );
+
       setContactInfo(contactData);
+
+      // Cache the data
+      const timestamp = Date.now();
+      setContactCache(contactData);
+      setContactCacheTime(timestamp);
+
+      // Update click count and rate limiting
+      if (forceRefresh) {
+        // Update refresh click count
+        const newRefreshClickCount = refreshClickCount + 1;
+        const newRefreshLastClickTime = now;
+
+        setRefreshClickCount(newRefreshClickCount);
+        setRefreshLastClickTime(newRefreshLastClickTime);
+
+        // Set refresh rate limit if reached 3 clicks
+        if (newRefreshClickCount >= 3) {
+          const refreshRateLimitEnd = now + 5 * 60 * 1000;
+          setRefreshRateLimitTime(refreshRateLimitEnd);
+        }
+      }
+
+      // Save to localStorage
+      const cacheData = {
+        data: contactData,
+        timestamp,
+        clickCount: contactClickCount,
+        lastClickTime: contactLastClickTime,
+        rateLimitTime: contactRateLimitTime,
+        refreshClickCount: forceRefresh
+          ? refreshClickCount + 1
+          : refreshClickCount,
+        refreshLastClickTime: forceRefresh ? now : refreshLastClickTime,
+        refreshRateLimitTime:
+          forceRefresh && refreshClickCount + 1 >= 3
+            ? now + 5 * 60 * 1000
+            : refreshRateLimitTime,
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
       console.error("Contact search failed:", error);
       setContactError(error.message || "Failed to find profile links");
@@ -304,6 +406,62 @@ export default function ResearcherProfile() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, researcher]);
+
+  // Load contact cache and rate limiting data from localStorage
+  useEffect(() => {
+    if (!slug) return;
+
+    const cacheKey = `contact_${slug}`;
+    const stored = localStorage.getItem(cacheKey);
+    if (stored) {
+      try {
+        const {
+          data,
+          timestamp,
+          clickCount,
+          lastClickTime,
+          rateLimitTime,
+          refreshClickCount,
+          refreshLastClickTime,
+          refreshRateLimitTime,
+        } = JSON.parse(stored);
+        const now = Date.now();
+
+        // Check if cache is still valid (5 minutes)
+        if (data && timestamp && now - timestamp < 5 * 60 * 1000) {
+          setContactCache(data);
+          setContactCacheTime(timestamp);
+        }
+
+        // Load rate limiting data
+        if (clickCount !== undefined) setContactClickCount(clickCount);
+        if (lastClickTime) setContactLastClickTime(lastClickTime);
+        if (rateLimitTime && now < rateLimitTime) {
+          setContactRateLimitTime(rateLimitTime);
+        } else if (rateLimitTime && now >= rateLimitTime) {
+          // Reset if rate limit has expired
+          setContactClickCount(0);
+          setContactRateLimitTime(null);
+          setContactLastClickTime(null);
+        }
+
+        // Load refresh rate limiting data
+        if (refreshClickCount !== undefined)
+          setRefreshClickCount(refreshClickCount);
+        if (refreshLastClickTime) setRefreshLastClickTime(refreshLastClickTime);
+        if (refreshRateLimitTime && now < refreshRateLimitTime) {
+          setRefreshRateLimitTime(refreshRateLimitTime);
+        } else if (refreshRateLimitTime && now >= refreshRateLimitTime) {
+          // Reset if refresh rate limit has expired
+          setRefreshClickCount(0);
+          setRefreshRateLimitTime(null);
+          setRefreshLastClickTime(null);
+        }
+      } catch (error) {
+        console.error("Error loading contact cache:", error);
+      }
+    }
+  }, [slug]);
 
   if (loading) {
     return (
@@ -528,74 +686,89 @@ export default function ResearcherProfile() {
               />
             </div>
 
-            {/* Top: Name + AI Contact Button inline */}
+            {/* Top: Name + AI Contact Button - responsive layout */}
             <div className="flex flex-col space-y-2">
-              <div className="flex items-center space-x-3">
-                <h2 className="text-2xl font-semibold">{name}</h2>
-                <Button
-                  onClick={handleContactSearch}
-                  disabled={contactLoading}
-                  variant="outlined"
-                  size="small"
-                  startIcon={
-                    contactLoading ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      <SmartToyIcon />
-                    )
-                  }
-                  endIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
-                  sx={{
-                    background:
-                      "linear-gradient(45deg, rgba(139, 69, 19, 0.08), rgba(255, 193, 7, 0.08))",
-                    borderColor: "rgba(139, 69, 19, 0.4)",
-                    color: "rgb(139, 69, 19)",
-                    fontSize: "0.75rem",
-                    padding: "4px 12px",
-                    minWidth: "auto",
-                    border: "2px solid",
-                    borderImage:
-                      "linear-gradient(45deg, rgba(139, 69, 19, 0.4), rgba(255, 193, 7, 0.4)) 1",
-                    borderRadius: "12px",
-                    position: "relative",
-                    overflow: "hidden",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    "&:hover": {
-                      background:
-                        "linear-gradient(45deg, rgba(139, 69, 19, 0.15), rgba(255, 193, 7, 0.15))",
-                      borderColor: "rgba(139, 69, 19, 0.6)",
-                      transform: "translateY(-2px) scale(1.05)",
-                      boxShadow:
-                        "0 8px 20px rgba(139, 69, 19, 0.3), 0 0 20px rgba(255, 193, 7, 0.4)",
-                      animation: "none",
-                    },
-                    "&:active": {
-                      transform: "translateY(0) scale(1.02)",
-                    },
-                    "& .MuiButton-startIcon": {
-                      marginRight: "6px",
-                    },
-                    "& .MuiButton-endIcon": {
-                      marginLeft: "6px",
-                    },
-                    "&::before": {
-                      content: '""',
-                      position: "absolute",
-                      top: 0,
-                      left: "-100%",
-                      width: "100%",
-                      height: "100%",
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)",
-                      transition: "left 0.6s",
-                    },
-                    "&:hover::before": {
-                      left: "100%",
-                    },
-                  }}
-                >
-                  AI Contact Search
-                </Button>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
+                <h2 className="text-xl sm:text-2xl font-semibold">{name}</h2>
+                <div className="flex flex-col items-start space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={() => handleContactSearch(false)}
+                      disabled={contactLoading}
+                      variant="outlined"
+                      size="small"
+                      startIcon={
+                        contactLoading ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <SmartToyIcon />
+                        )
+                      }
+                      endIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
+                      sx={{
+                        background:
+                          "linear-gradient(45deg, rgba(139, 69, 19, 0.08), rgba(255, 193, 7, 0.08))",
+                        borderColor: "rgba(139, 69, 19, 0.4)",
+                        color: "rgb(139, 69, 19)",
+                        fontSize: { xs: "0.65rem", sm: "0.75rem" },
+                        padding: { xs: "3px 8px", sm: "4px 12px" },
+                        minWidth: "auto",
+                        border: "2px solid",
+                        borderImage:
+                          "linear-gradient(45deg, rgba(139, 69, 19, 0.4), rgba(255, 193, 7, 0.4)) 1",
+                        borderRadius: "12px",
+                        position: "relative",
+                        overflow: "hidden",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        "&:hover": {
+                          background:
+                            "linear-gradient(45deg, rgba(139, 69, 19, 0.15), rgba(255, 193, 7, 0.15))",
+                          borderColor: "rgba(139, 69, 19, 0.6)",
+                          transform: "translateY(-2px) scale(1.05)",
+                          boxShadow:
+                            "0 8px 20px rgba(139, 69, 19, 0.3), 0 0 20px rgba(255, 193, 7, 0.4)",
+                          animation: "none",
+                        },
+                        "&:active": {
+                          transform: "translateY(0) scale(1.02)",
+                        },
+                        "& .MuiButton-startIcon": {
+                          marginRight: { xs: "4px", sm: "6px" },
+                        },
+                        "& .MuiButton-endIcon": {
+                          marginLeft: { xs: "4px", sm: "6px" },
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: "-100%",
+                          width: "100%",
+                          height: "100%",
+                          background:
+                            "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)",
+                          transition: "left 0.6s",
+                        },
+                        "&:hover::before": {
+                          left: "100%",
+                        },
+                      }}
+                    >
+                      {contactCache &&
+                      contactCacheTime &&
+                      Date.now() - contactCacheTime < 5 * 60 * 1000 ? (
+                        "View Cached Results"
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">
+                            AI Contact Search
+                          </span>
+                          <span className="sm:hidden">AI Search</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
               {orcid && (
                 <p className="text-md">
@@ -844,25 +1017,87 @@ export default function ResearcherProfile() {
         onClose={handleContactDialogClose}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
+        sx={{
+          "& .MuiDialog-paper": isMobile
+            ? {
+                width: "100vw",
+                maxWidth: "100vw",
+                minHeight: "100vh",
+                boxSizing: "border-box",
+                margin: 0,
+                borderRadius: 0,
+              }
+            : {
+                margin: 2,
+                height: "auto",
+                maxHeight: "90vh",
+              },
+        }}
       >
-        <DialogTitle>Contact Information</DialogTitle>
-        <DialogContent>
-          {/* AI Disclaimer */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-            <Typography
-              variant="body2"
-              sx={{
-                color: "rgb(133, 77, 14)",
-                display: "flex",
-                alignItems: "center",
-                fontSize: "0.875rem",
-              }}
+        <DialogTitle
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "flex-start", sm: "center" },
+            justifyContent: { xs: "flex-start", sm: "space-between" },
+            gap: { xs: 1, sm: 0 },
+            padding: isMobile ? 2 : 3,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{ fontSize: { xs: "1.1rem", sm: "1.25rem" } }}
+          >
+            Contact Information
+          </Typography>
+          {contactCache && contactCacheTime && contactInfo === contactCache && (
+            <Tooltip
+              title={
+                refreshRateLimitTime && Date.now() < refreshRateLimitTime
+                  ? `Refresh rate limited: ${Math.ceil(
+                      (refreshRateLimitTime - Date.now()) / 1000 / 60
+                    )} min remaining`
+                  : "Refresh AI scanning"
+              }
             >
-              <AutoAwesomeIcon sx={{ fontSize: 16, marginRight: 1 }} />
-              AI can make mistakes. Check important info.
-            </Typography>
-          </div>
-
+              <span>
+                <Button
+                  onClick={() => handleContactSearch(true)}
+                  disabled={
+                    contactLoading ||
+                    (refreshRateLimitTime && Date.now() < refreshRateLimitTime)
+                  }
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    color: "rgb(139, 69, 19)",
+                    borderColor: "rgb(139, 69, 19)",
+                    fontSize: "0.7rem",
+                    padding: "2px 8px",
+                    minWidth: "auto",
+                    "&:hover": {
+                      backgroundColor: "rgba(139, 69, 19, 0.1)",
+                      borderColor: "rgb(139, 69, 19)",
+                    },
+                  }}
+                >
+                  Refresh
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            padding: isMobile ? 2 : 3,
+            overflowY: "auto",
+            maxHeight: isMobile ? "calc(100vh - 140px)" : "60vh",
+            width: isMobile ? "100vw" : undefined,
+            overflowX: isMobile ? "hidden" : undefined,
+            boxSizing: isMobile ? "border-box" : undefined,
+          }}
+        >
           {contactLoading ? (
             <div className="flex flex-col justify-center items-center py-8">
               <div className="relative mb-6">
@@ -876,7 +1111,7 @@ export default function ResearcherProfile() {
                 >
                   <SmartToyIcon
                     sx={{
-                      fontSize: 56,
+                      fontSize: { xs: 40, sm: 56 },
                       color: "rgb(139, 69, 19)",
                       background:
                         "linear-gradient(45deg, rgb(139, 69, 19), rgb(184, 134, 11))",
@@ -889,7 +1124,7 @@ export default function ResearcherProfile() {
 
                 {/* Orbiting sparkles with enhanced animations */}
                 <div
-                  className="absolute -top-3 -right-3"
+                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3"
                   style={{
                     animation:
                       "sparkle 1.5s ease-in-out infinite, ai-search-pulse 2s ease-in-out infinite",
@@ -897,14 +1132,14 @@ export default function ResearcherProfile() {
                 >
                   <AutoAwesomeIcon
                     sx={{
-                      fontSize: 18,
+                      fontSize: { xs: 14, sm: 18 },
                       color: "rgb(255, 193, 7)",
                       filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
                     }}
                   />
                 </div>
                 <div
-                  className="absolute -bottom-3 -left-3"
+                  className="absolute -bottom-2 -left-2 sm:-bottom-3 sm:-left-3"
                   style={{
                     animation:
                       "sparkle 1.5s ease-in-out infinite 0.5s, ai-search-pulse 2s ease-in-out infinite 0.5s",
@@ -912,14 +1147,14 @@ export default function ResearcherProfile() {
                 >
                   <AutoAwesomeIcon
                     sx={{
-                      fontSize: 16,
+                      fontSize: { xs: 12, sm: 16 },
                       color: "rgb(255, 193, 7)",
                       filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
                     }}
                   />
                 </div>
                 <div
-                  className="absolute top-0 -left-4"
+                  className="absolute top-0 -left-3 sm:-left-4"
                   style={{
                     animation:
                       "sparkle 1.5s ease-in-out infinite 1s, ai-search-pulse 2s ease-in-out infinite 1s",
@@ -927,14 +1162,14 @@ export default function ResearcherProfile() {
                 >
                   <AutoAwesomeIcon
                     sx={{
-                      fontSize: 14,
+                      fontSize: { xs: 10, sm: 14 },
                       color: "rgb(255, 193, 7)",
                       filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
                     }}
                   />
                 </div>
                 <div
-                  className="absolute -top-1 left-8"
+                  className="absolute -top-1 left-6 sm:left-8"
                   style={{
                     animation:
                       "sparkle 1.5s ease-in-out infinite 1.5s, ai-search-pulse 2s ease-in-out infinite 1.5s",
@@ -942,7 +1177,7 @@ export default function ResearcherProfile() {
                 >
                   <AutoAwesomeIcon
                     sx={{
-                      fontSize: 12,
+                      fontSize: { xs: 8, sm: 12 },
                       color: "rgb(255, 193, 7)",
                       filter: "drop-shadow(0 0 6px rgba(255, 193, 7, 0.8))",
                     }}
@@ -994,16 +1229,33 @@ export default function ResearcherProfile() {
               <Typography color="error" gutterBottom>
                 Error: {contactError}
               </Typography>
-              <Button
-                onClick={handleContactSearch}
-                variant="outlined"
-                size="small"
-              >
-                Try Again
-              </Button>
             </div>
           ) : contactInfo ? (
             <div className="space-y-4">
+              {contactCache &&
+                contactCacheTime &&
+                contactInfo === contactCache && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-2 mb-4">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "rgb(34, 197, 94)",
+                        fontSize: "0.75rem",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <AutoAwesomeIcon sx={{ fontSize: 14, marginRight: 1 }} />
+                      Results saved for{" "}
+                      {Math.ceil(
+                        (5 * 60 * 1000 - (Date.now() - contactCacheTime)) /
+                          1000 /
+                          60
+                      )}{" "}
+                      more minutes
+                    </Typography>
+                  </div>
+                )}
               {contactInfo.links && contactInfo.links.length > 0 ? (
                 <>
                   {contactInfo.links.map((link, index) => {
@@ -1069,8 +1321,41 @@ export default function ResearcherProfile() {
             </div>
           ) : null}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleContactDialogClose}>Close</Button>
+        <div className="flex justify-center pb-2 px-2 sm:px-0">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "rgb(133, 77, 14)",
+              display: "flex",
+              alignItems: "center",
+              fontSize: { xs: "0.65rem", sm: "0.7rem" },
+              textAlign: "center",
+              maxWidth: "100%",
+            }}
+          >
+            <AutoAwesomeIcon
+              sx={{ fontSize: { xs: 10, sm: 12 }, marginRight: 0.5 }}
+            />
+            AI can make mistakes. Check important info.
+          </Typography>
+        </div>
+        <DialogActions
+          sx={{
+            padding: isMobile ? 2 : 3,
+            justifyContent: "flex-end",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 0 },
+          }}
+        >
+          <Button
+            onClick={handleContactDialogClose}
+            fullWidth={isMobile}
+            sx={{
+              minWidth: { xs: "100%", sm: "auto" },
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
