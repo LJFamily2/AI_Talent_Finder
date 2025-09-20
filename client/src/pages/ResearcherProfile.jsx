@@ -180,7 +180,11 @@ export default function ResearcherProfile() {
   const handleExportXLSX = async () => {
     handleExportMenuClose();
     try {
-      const blob = await exportResearcherProfile(slug);
+      const idForExport = researcher?._id || slug;
+      if (!idForExport) {
+        throw new Error("Missing researcher identifier for export");
+      }
+      const blob = await exportResearcherProfile(idForExport);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
