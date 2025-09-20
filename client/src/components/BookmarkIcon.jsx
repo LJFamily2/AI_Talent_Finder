@@ -19,6 +19,7 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
     const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false); // State for the "Create Folder" modal
     const [folders, setFolders] = useState([]); // State to store folder names and researcher IDs
     const [selectedFolders, setSelectedFolders] = useState([]);
+    const [initialSelectedFolders, setInitialSelectedFolders] = useState([]);
     const [newFolderName, setNewFolderName] = useState(""); // State for the new folder name
     const [snackbarOpenSave, setSnackbarOpenSave] = useState(false); // State for Snackbar
     const [snackbarOpen, setSnackbarOpen] = useState(false); // State for Snackbar
@@ -53,7 +54,7 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
     const toggleBookmark = async () => {
         if (isBookmarked) {
             // Open the modal to allow the user to manage bookmarks
-            setMoveFolderModalOpen(true);
+            openManageFoldersModal();
         } else {
             try {
                 // Save the profile to the default folder
@@ -81,14 +82,18 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
         );
     };
 
+    const openManageFoldersModal = () => {
+        setInitialSelectedFolders(selectedFolders);
+        setMoveFolderModalOpen(true);
+    };
+
     // Save changes to folders
     const handleSaveToFolders = async () => {
         try {
             // Remove the researcher from folders that were unchecked
-            const foldersToRemove = folders
-                .filter((folder) => folder.researcherIds.includes(researcherId))
-                .map((folder) => folder.name)
-                .filter((folderName) => !selectedFolders.includes(folderName));
+            const foldersToRemove = initialSelectedFolders.filter(
+                (folderName) => !selectedFolders.includes(folderName)
+            );
             await Promise.all(
                 foldersToRemove.map((folderName) =>
                     removeBookmark(researcherId, folderName)
@@ -97,17 +102,15 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
 
             // Add the researcher to folders that were newly checked
             const foldersToAdd = selectedFolders.filter(
-                (folderName) =>
-                    !folders
-                        .filter((folder) => folder.researcherIds.includes(researcherId))
-                        .map((folder) => folder.name)
-                        .includes(folderName)
+                (folderName) => !initialSelectedFolders.includes(folderName)
             );
             await Promise.all(
                 foldersToAdd.map((folderName) =>
                     addBookmarks([researcherId], folderName)
                 )
             );
+
+            await fetchFolderIds();
 
             // Update the bookmark status
             const stillBookmarked = selectedFolders.length > 0;
@@ -213,7 +216,7 @@ const BookmarkIcon = ({ researcherId, researcherName, onBookmarkChange, size = 2
                             size="small"
                             onClick={() => {
                                 setSnackbarOpen(false); // Close the Snackbar
-                                setMoveFolderModalOpen(true); // Open the modal
+                                openManageFoldersModal(); // Open the modal
                             }}
                             sx={{
                                 textTransform: "none", // Disable uppercase
