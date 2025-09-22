@@ -38,7 +38,7 @@ function CVUpload() {
           },
           onUploadProgress: (e) => {
             const uploadPercent = Math.round((e.loaded * 100) / e.total);
-            setProgress(Math.min(uploadPercent * 0.2, 20)); // Scale to 0-20%
+            setProgress(Math.round(Math.min(uploadPercent * 0.2, 20))); // Round to ensure integer
           },
         });
 
