@@ -24,7 +24,6 @@ app.use(
       process.env.VITE_API_URL,
       process.env.CLIENT_URL,
       "https://ai-talent-finder-t1h6.onrender.com",
-      "https://dangquangrubber.com",
       "http://localhost:3000",
       "http://localhost:5173",
 
@@ -78,7 +77,6 @@ const io = new Server(server, {
       process.env.VITE_API_URL,
       process.env.CLIENT_URL,
       "https://ai-talent-finder-t1h6.onrender.com",
-      "https://dangquangrubber.com",
       "http://localhost:3000",
       "http://localhost:5173"
     ].filter(Boolean),
