@@ -14,21 +14,18 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 
 // Create Express app
 const app = express();
-console.log("Client URL:", process.env.CLIENT_URL);
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      process.env.VITE_API_URL,
-      process.env.CLIENT_URL,
-      "https://ai-talent-finder-t1h6.onrender.com",
-      "https://www.talentfinder.solutions",
-      "http://localhost:3000",
-      "http://localhost:5173",
-
-    ].filter(Boolean),
+    origin: allowedOrigins,
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent
     preflightContinue: true,
@@ -74,14 +71,7 @@ const { Server } = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.VITE_API_URL,
-      process.env.CLIENT_URL,
-      "https://ai-talent-finder-t1h6.onrender.com",
-      "https://www.talentfinder.solutions",
-      "http://localhost:3000",
-      "http://localhost:5173"
-    ].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
   },
 });
