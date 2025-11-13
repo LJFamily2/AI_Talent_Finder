@@ -21,7 +21,8 @@ const OpenAI = require("openai");
 const axios = require("axios");
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 });
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -212,8 +213,6 @@ async function processWithGPT(tavilyResults) {
       })) || [],
   };
 
-  console.log("Preparing GPT prompt...", filteredResults);
-
   // Extract researcher name from the query (first part before affiliation/research areas)
   const researcherName = tavilyResults.query.split(" ").slice(0, 2).join(" "); // Take first 2 words as name
 
@@ -257,7 +256,7 @@ Links: [array of profile URLs, one per line, or "No profile links found"]
 `;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "openai/gpt-oss-120b",
     messages: [
       {
         role: "system",
@@ -272,7 +271,6 @@ Links: [array of profile URLs, one per line, or "No profile links found"]
     max_completion_tokens: 800,
   });
 
-  console.log("GPT response received", completion.choices[0].message.content);
   return completion.choices[0].message.content;
 }
 
