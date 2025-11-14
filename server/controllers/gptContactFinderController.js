@@ -256,7 +256,7 @@ Links: [array of profile URLs, one per line, or "No profile links found"]
 `;
 
   const completion = await openai.chat.completions.create({
-    model: "openai/gpt-oss-120b",
+    model: "x-ai/grok-code-fast-1",
     messages: [
       {
         role: "system",
