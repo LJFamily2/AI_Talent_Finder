@@ -41,8 +41,6 @@ async function findResearcherContact(req, res) {
       });
     }
 
-    console.log(`[STEP 1] Tavily search for: ${researcherName}`);
-
     let tavilyResults = null;
     let searchError = null;
 
@@ -65,8 +63,6 @@ async function findResearcherContact(req, res) {
       };
     }
 
-    console.log(`[STEP 2] GPT-4 processing Tavily results...`);
-
     // STEP 2: GPT-4 Processing (even with limited/no search results)
     let gptResponse;
     try {
@@ -75,36 +71,15 @@ async function findResearcherContact(req, res) {
       console.error("GPT processing failed:", error.message);
 
       // Fallback response when both Tavily and GPT fail
-      return res.status(503).json({
-        success: false,
-        error: "Profile search services temporarily unavailable",
-        details: {
-          tavilyError: searchError,
-          gptError: error.message,
-        },
-        fallback: {
-          message:
-            "Please try searching manually on the researcher's institution website or academic platforms",
-          suggestions: [
-            affiliation
-              ? `Search "${researcherName}" on ${affiliation} website`
-              : null,
-            `Search "${researcherName}" on LinkedIn`,
-            `Search "${researcherName}" on Google Scholar`,
-            `Search "${researcherName}" on ResearchGate`,
-            orcid ? `Check ORCID profile: ${orcid}` : null,
-          ].filter(Boolean),
-        },
-        flow: "Tavily → GPT-4 → Regex Parser → JSON (with fallbacks)",
+      // Return success: true with empty links so frontend displays "No Profile Links Found" gracefully instead of an error
+      return res.json({
+        success: true,
+        data: { links: [] },
       });
     }
 
-    console.log(`[STEP 3] Regex parsing GPT response...`);
-
     // STEP 3: Regex Parser
     const contactInfo = parseContactResponseAdvanced(gptResponse);
-
-    console.log(`[STEP 4] Returning JSON response`);
 
     // STEP 4: JSON Response
     res.json({
@@ -156,8 +131,6 @@ async function performTavilySearch(researcherName, affiliation, researchAreas) {
 
   const query = searchTerms.join(" ");
 
-  console.log(`Tavily search query: ${query}`);
-
   try {
     const tavilyResponse = await axios.post(
       "https://api.tavily.com/search",
@@ -190,8 +163,6 @@ async function performTavilySearch(researcherName, affiliation, researchAreas) {
       }
     );
 
-    console.log(`Tavily search successful`);
-    console.log(tavilyResponse.data);
     return tavilyResponse.data;
   } catch (error) {
     console.error(`Tavily search failed:`, error.message);
@@ -255,23 +226,41 @@ OUTPUT FORMAT (EXACTLY):
 Links: [array of profile URLs, one per line, or "No profile links found"]
 `;
 
-  const completion = await openai.chat.completions.create({
-    model: "x-ai/grok-code-fast-1",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a professional profile verification specialist. Your task is to identify profile URLs that belong to the EXACT researcher specified in the query. Be extremely careful about name matching - reject any profiles that belong to different people, even if names are similar. Always cross-reference the researcher's name with both the URL and title before including any profile. Only include official academic and professional profiles. Never fabricate URLs that weren't in the search results.",
-      },
-      {
-        role: "user",
-        content: gptPrompt,
-      },
-    ],
-    max_completion_tokens: 800,
-  });
+  const models = [
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3-8b-instruct:free",
+  ];
 
-  return completion.choices[0].message.content;
+  let lastError;
+
+  for (const model of models) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a professional profile verification specialist. Your task is to identify profile URLs that belong to the EXACT researcher specified in the query. Be extremely careful about name matching - reject any profiles that belong to different people, even if names are similar. Always cross-reference the researcher's name with both the URL and title before including any profile. Only include official academic and professional profiles. Never fabricate URLs that weren't in the search results.",
+          },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
+        ],
+        max_completion_tokens: 800,
+      });
+
+      return completion.choices[0].message.content;
+    } catch (error) {
+      console.warn(`Model ${model} failed:`, error.message);
+      lastError = error;
+      continue;
+    }
+  }
+
+  throw lastError || new Error("All models failed");
 }
 
 /**
