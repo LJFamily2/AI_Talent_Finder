@@ -16,7 +16,7 @@
  */
 
 const fs = require("fs");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
 const {
   verifyWithGoogleScholar,
   createGoogleScholarSearchUrl,
@@ -73,16 +73,41 @@ async function verifyCV(file, prioritySource, options = {}) {
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
-    // Initialize Google AI model
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite-preview-06-17",
-      generationConfig: {
-        temperature: 0.0,
-        topP: 0.0,
-        maxOutputTokens: 4096,
-      },
+    // Initialize OpenAI client (OpenRouter)
+    const openai = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
     });
+
+    // Create an adapter to match the expected Google Generative AI interface
+    // This allows us to switch models without rewriting all the helper functions
+    const model = {
+      generateContent: async (prompt) => {
+        try {
+          const completion = await openai.chat.completions.create({
+            model: "kwaipilot/kat-coder-pro:free",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a helpful AI assistant that extracts information from documents.",
+              },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.1, // Low temperature for extraction tasks
+          });
+
+          return {
+            response: {
+              text: () => completion.choices[0].message.content,
+            },
+          };
+        } catch (error) {
+          console.error("OpenRouter API Error:", error);
+          throw error;
+        }
+      },
+    };
 
     // Extract candidate name using AI (with robust error handling)
     const nameStartTime = Date.now();
