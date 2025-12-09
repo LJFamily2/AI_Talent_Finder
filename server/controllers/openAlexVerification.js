@@ -95,9 +95,107 @@ const verifyWithOpenAlex = async (
   }
 };
 
+/**
+ * Verifies a batch of publications using OpenAlex search
+ *
+ * @param {Array<string>} titles - List of publication titles to search for
+ * @param {string} candidateName - Name of the candidate to match against authors
+ * @returns {Promise<Object>} Map of titles to verification results
+ */
+const verifyWithOpenAlexBatch = async (titles, candidateName) => {
+  if (!titles || titles.length === 0) return {};
+
+  try {
+    // Clean titles and remove empty ones
+    const validTitles = titles.filter((t) => t && t.trim().length > 0);
+    if (validTitles.length === 0) return {};
+
+    // Construct the filter query
+    // We use quotes for each title to ensure phrase matching and separate with |
+    const titleQuery = validTitles
+      .map((t) => `"${sanitizeTitleForSearch(t)}"`)
+      .join("|");
+
+    const apiKey = process.env.OPENALEX_API_KEY;
+    // Use a higher per-page limit to ensure we get matches for all titles
+    // Max per-page is usually 200 for OpenAlex
+    // We increase this to 200 to handle cases where multiple titles have many matches
+    const perPage = Math.min(validTitles.length * 5, 200);
+
+    let openAlexApiUrl = `https://api.openalex.org/works?per-page=${perPage}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics,cited_by_count&filter=title.search:${encodeURIComponent(
+      titleQuery
+    )}`;
+
+    if (apiKey) {
+      openAlexApiUrl += `&api_key=${apiKey}`;
+    }
+
+    const { data: openAlexResult } = await axios.get(openAlexApiUrl, {
+      timeout: 20000, // Increased timeout for batch
+    });
+
+    const results = openAlexResult.results || [];
+    const verificationMap = {};
+
+    // Process each input title
+    for (const title of validTitles) {
+      const matchedPublication = findMatchingPublication(results, title);
+
+      if (matchedPublication) {
+        const authorInfo = extractAuthorInformation(
+          matchedPublication,
+          candidateName
+        );
+        const details = buildPublicationDetails(matchedPublication, authorInfo);
+        const verificationStatus = authorInfo.hasAuthorMatch
+          ? "verified"
+          : "verified but not same author name";
+
+        verificationMap[title] = createOpenAlexResponse(
+          verificationStatus,
+          details,
+          { results: [matchedPublication] }
+        );
+      } else {
+        verificationMap[title] = createOpenAlexResponse(
+          "unable to verify",
+          null,
+          null
+        );
+      }
+    }
+
+    return verificationMap;
+  } catch (err) {
+    console.error("❌ [OpenAlex] Batch verification error:", err.message);
+    return {};
+  }
+};
+
 //=============================================================================
 // HELPER FUNCTIONS FOR OPENALEX VERIFICATION
 //=============================================================================
+
+/**
+ * Sanitizes a title for OpenAlex search query
+ * @param {string} title - Title to sanitize
+ * @returns {string} Sanitized title
+ * @private
+ */
+const sanitizeTitleForSearch = (title) => {
+  if (!title) return "";
+  // Truncate title to first 15 words to avoid URL length issues and 400 errors
+  // while maintaining enough specificity for search
+  const words = title
+    .replace(/['′´`‘’]/g, "'") // Normalize quotes
+    .replace(/[""″“”]/g, "") // Remove double quotes
+    .replace(/[|:()\[\],]/g, " ") // Remove special chars including comma
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ");
+
+  return words.slice(0, 15).join(" ");
+};
 
 /**
  * Searches the OpenAlex database
@@ -110,8 +208,13 @@ const searchOpenAlex = async (title, maxResults) => {
   try {
     // Add api_key parameter using the OPENALEX_API_KEY from environment variables
     const apiKey = process.env.OPENALEX_API_KEY;
-    const openAlexApiUrl = `https://api.openalex.org/works?per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics&filter=title.search:${encodeURIComponent(
-      title
+
+    // Sanitize title for search and wrap in quotes for phrase search
+    const sanitizedTitle = sanitizeTitleForSearch(title);
+    const query = `"${sanitizedTitle}"`;
+
+    const openAlexApiUrl = `https://api.openalex.org/works?per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics,cited_by_count&filter=title.search:${encodeURIComponent(
+      query
     )}&api_key=${apiKey}`;
 
     const { data: openAlexResult } = await axios.get(openAlexApiUrl, {
@@ -238,6 +341,7 @@ const buildPublicationDetails = (publication, authorInfo) => {
     hasAuthorMatch: authorInfo.hasAuthorMatch,
     authorId: authorInfo.authorId,
     topics: publication.topics?.map((topic) => topic.display_name) || [],
+    cited_by_count: publication.cited_by_count,
   };
 };
 
@@ -260,4 +364,5 @@ const createOpenAlexResponse = (status, details, rawData) => {
 
 module.exports = {
   verifyWithOpenAlex,
+  verifyWithOpenAlexBatch,
 };

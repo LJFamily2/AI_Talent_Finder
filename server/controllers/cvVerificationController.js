@@ -22,7 +22,10 @@ const {
   createGoogleScholarSearchUrl,
 } = require("./googleScholarVerification");
 const { verifyWithScopus } = require("./scopusVerification");
-const { verifyWithOpenAlex } = require("./openAlexVerification");
+const {
+  verifyWithOpenAlex,
+  verifyWithOpenAlexBatch,
+} = require("./openAlexVerification");
 const { verifyWithPubMed } = require("./pubmedVerification");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
@@ -176,6 +179,29 @@ async function verifyCV(file, prioritySource, options = {}) {
       throw new Error("Invalid publications array format");
     }
 
+    // Batch verify with OpenAlex first
+    const openAlexBatchResults = {};
+    try {
+      const titles = publications.map((p) => p.title).filter((t) => t);
+      // Reduced batch size to avoid 400 Bad Request errors from OpenAlex due to long URLs
+      const batchSize = 3;
+
+      // Process in chunks
+      for (let i = 0; i < titles.length; i += batchSize) {
+        const chunk = titles.slice(i, i + batchSize);
+        const batchResult = await verifyWithOpenAlexBatch(chunk, candidateName);
+        Object.assign(openAlexBatchResults, batchResult);
+
+        // Delay to respect rate limits and avoid server overload
+        if (i + batchSize < titles.length) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
+    } catch (err) {
+      console.error("Batch OpenAlex verification failed:", err);
+      // Continue without batch results
+    }
+
     // Verify each publication with both Google Scholar and Scopus
     if (io && jobId)
       io.to(jobId).emit("progress", {
@@ -186,7 +212,12 @@ async function verifyCV(file, prioritySource, options = {}) {
     const verificationResults = [];
     for (let i = 0; i < publications.length; i++) {
       const pub = publications[i];
-      const result = await processPublicationVerification(pub, candidateName);
+      const preFetchedOpenAlex = openAlexBatchResults[pub.title];
+      const result = await processPublicationVerification(
+        pub,
+        candidateName,
+        preFetchedOpenAlex
+      );
       verificationResults.push(result);
       if (io && jobId) {
         // Progress between 60 and 80%
@@ -464,19 +495,27 @@ const extractPublicationYear = (
  * Extract citation count from verification results
  * @param {Object} scholarResult - Google Scholar verification result
  * @param {Object} scopusResult - Scopus verification result
+ * @param {Object} openAlexResult - OpenAlex verification result
  * @returns {string} Citation count
  */
-const extractCitationCount = (scholarResult, scopusResult) => {
-  // Get citation counts from both sources
+const extractCitationCount = (scholarResult, scopusResult, openAlexResult) => {
+  // Get citation counts from sources
   const scholarCitations = parseInt(
     scholarResult.details?.inline_links?.cited_by?.total || "0"
   );
   const scopusCitations = parseInt(
     scopusResult.details?.["citedby-count"] || "0"
   );
+  const openAlexCitations = parseInt(
+    openAlexResult?.details?.cited_by_count || "0"
+  );
 
   // Return the higher citation count
-  return Math.max(scholarCitations, scopusCitations).toString();
+  return Math.max(
+    scholarCitations,
+    scopusCitations,
+    openAlexCitations
+  ).toString();
 };
 
 /**
@@ -542,14 +581,30 @@ const determineVerificationStatus = (
  * Process a single publication through verification pipeline
  * @param {Object} pub - Publication object with title, doi, etc.
  * @param {string} candidateName - Name of the candidate
+ * @param {Object} preFetchedOpenAlex - Optional pre-fetched OpenAlex result
  * @returns {Promise<Object>} Verification result for the publication
  */
-const processPublicationVerification = async (pub, candidateName) => {
+const processPublicationVerification = async (
+  pub,
+  candidateName,
+  preFetchedOpenAlex = null
+) => {
   const overallStartTime = Date.now();
+
+  // Check if we can skip other verifications based on preFetchedOpenAlex
+  let skipOthers = false;
+  if (
+    preFetchedOpenAlex &&
+    (preFetchedOpenAlex.status === "verified" ||
+      preFetchedOpenAlex.status === "verified but not same author name")
+  ) {
+    skipOthers = true;
+  }
 
   const [scholarResult, scopusResult, openAlexResult, pubmedResult] =
     await Promise.all([
       (async () => {
+        if (skipOthers) return { status: "not verified", details: null };
         // The following code is commented out to save Google Scholar credits:
 
         const start = Date.now();
@@ -565,6 +620,7 @@ const processPublicationVerification = async (pub, candidateName) => {
         return null;
       })(),
       (async () => {
+        if (skipOthers) return { status: "not verified", details: null };
         const start = Date.now();
         const result = await verifyWithScopus(
           pub.title,
@@ -575,16 +631,19 @@ const processPublicationVerification = async (pub, candidateName) => {
         return result;
       })(),
       (async () => {
-        const start = Date.now();
-        const result = await verifyWithOpenAlex(
-          pub.title,
-          pub.doi,
-          candidateName
-        );
-        const end = Date.now();
-        return result;
+        // Use pre-fetched result or return not verified
+        // We only use batch verification for OpenAlex as requested
+        if (preFetchedOpenAlex) return preFetchedOpenAlex;
+
+        return {
+          source: "openalex",
+          status: "not verified",
+          details: null,
+          rawData: null,
+        };
       })(),
       (async () => {
+        if (skipOthers) return { status: "not verified", details: null };
         const start = Date.now();
         const result = await verifyWithPubMed(
           pub.title,
@@ -693,7 +752,11 @@ const processPublicationVerification = async (pub, candidateName) => {
           openAlexResult,
           pubmedResult
         ),
-        citedBy: extractCitationCount(scholarResult, scopusResult),
+        citedBy: extractCitationCount(
+          scholarResult,
+          scopusResult,
+          openAlexResult
+        ),
         link: extractBestLink(
           scholarLink,
           scopusLink,
