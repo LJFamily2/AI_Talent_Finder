@@ -88,7 +88,7 @@ async function verifyCV(file, prioritySource, options = {}) {
       generateContent: async (prompt) => {
         try {
           const completion = await openai.chat.completions.create({
-            model: "kwaipilot/kat-coder-pro:free",
+            model: "google/gemini-3.1-flash-lite-preview",
             messages: [
               {
                 role: "system",
