@@ -45,7 +45,7 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
 
   return async (req, res, next) => {
     const redis = req.app?.locals?.redisClient || redisClient;
-    if (!redis) return next();
+    if (!redis || !redis.isReady) return next();
 
     // allow keyBuilder to return string | array | object | Promise<...>
     let segments = await Promise.resolve().then(() => keyBuilder(req));
@@ -96,7 +96,7 @@ function cacheRedisInsight(ttlSeconds, keyBuilder) {
 //==================================================================
 async function deleteCacheKey(key) {
   try {
-    if (!redisClient) throw new Error("Redis client not initialized");
+    if (!redisClient || !redisClient.isReady) throw new Error("Redis client not ready");
     const result = await redisClient.del(key);
     if (result > 0) {
       console.log(`🔴 [CACHE DEL] ${key}`);
@@ -114,7 +114,7 @@ async function deleteCacheKey(key) {
 //==================================================================
 async function flushAllCache() {
   try {
-    if (!redisClient) throw new Error("Redis client not initialized");
+    if (!redisClient || !redisClient.isReady) throw new Error("Redis client not ready");
     await redisClient.flushAll();
     console.log(`🔄 [CACHE RESET] Redis FLUSHALL completed`);
   } catch (err) {

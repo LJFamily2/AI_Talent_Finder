@@ -7,16 +7,251 @@ import api from "../config/api";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 import SimplePDFViewer from "../components/SimplePDFViewer";
+import { useAuth } from "../context/AuthContext";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+} from "@mui/material";
 
 function CVUpload() {
+  const { user, loading: authLoading } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
   const [errorInfo, setErrorInfo] = useState(null); // {message, retryable, code}
   const [uploadedFile, setUploadedFile] = useState(null); // Store the uploaded file for preview
+  const [batchFiles, setBatchFiles] = useState([]);
+  const [batchJobs, setBatchJobs] = useState([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [batchMessage, setBatchMessage] = useState("");
+  const [batchError, setBatchError] = useState(null);
+  const [removeConfirmJob, setRemoveConfirmJob] = useState(null);
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const fileRef = useRef(null); // Store file reference for socket callbacks
+
+  const loadBatchJobs = useCallback(async () => {
+    if (!user) {
+      setBatchJobs([]);
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const response = await api.get("/api/cv/batch-jobs");
+      setBatchJobs(response.data.data || []);
+    } catch (error) {
+      console.error("Failed to load batch jobs:", error);
+    } finally {
+      setBatchLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadBatchJobs();
+  }, [loadBatchJobs]);
+
+  // Establish socket connection for batch job updates and join recent job rooms
+  useEffect(() => {
+    if (!user) return;
+
+    const backendUrl =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+    if (!socketRef.current) {
+      socketRef.current = io(backendUrl, { withCredentials: true });
+    }
+
+    const socket = socketRef.current;
+
+    const onProgress = (payload) => {
+      const jobId = payload?.jobId || payload?.id || null;
+      const progress = payload?.progress ?? payload?.p ?? null;
+      const stage = payload?.step || payload?.stage || null;
+      const status = payload?.status || null;
+
+      if (!jobId) return;
+
+      setBatchJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId
+            ? {
+                ...j,
+                progress: typeof progress === "number" ? progress : j.progress,
+                stage: stage ?? j.stage,
+                status: status ?? j.status,
+                updatedAt: new Date().toISOString(),
+              }
+            : j,
+        ),
+      );
+    };
+
+    const onComplete = (payload) => {
+      const jobId = payload?.jobId || payload?.id || null;
+      const result = payload?.result || null;
+      if (!jobId) return;
+
+      setBatchJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId
+            ? {
+                ...j,
+                progress: 100,
+                stage: "done",
+                status: result?.success === false ? "failed" : "completed",
+                result: result ?? j.result,
+                updatedAt: new Date().toISOString(),
+              }
+            : j,
+        ),
+      );
+    };
+
+    const onError = (payload) => {
+      const jobId = payload?.jobId || payload?.id || null;
+      const errorMsg = payload?.error || payload?.message || null;
+      if (!jobId) return;
+
+      setBatchJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId
+            ? {
+                ...j,
+                status: "failed",
+                stage: payload?.stage || "failed",
+                errorMessage: errorMsg ?? j.errorMessage,
+                updatedAt: new Date().toISOString(),
+              }
+            : j,
+        ),
+      );
+    };
+
+    socket.on("progress", onProgress);
+    socket.on("complete", onComplete);
+    socket.on("error", onError);
+
+    // When jobs are loaded, join each job room so we receive updates
+    // Use an interval to ensure jobs loaded after mount are joined too
+    const joinJobs = () => {
+      if (!Array.isArray(batchJobs)) return;
+      batchJobs.forEach((job) => {
+        try {
+          socket.emit("joinJob", job.id);
+        } catch {
+          // ignore
+        }
+      });
+    };
+
+    joinJobs();
+
+    return () => {
+      socket.off("progress", onProgress);
+      socket.off("complete", onComplete);
+      socket.off("error", onError);
+    };
+  }, [user, batchJobs]);
+
+  const handleBatchLoginClick = () => {
+    try {
+      const target =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
+      sessionStorage.setItem("postLoginRedirect", target);
+    } catch {
+      // ignore storage failures
+    }
+    navigate("/login");
+  };
+
+  const handleBatchUpload = useCallback(
+    async (files) => {
+      const filesToUpload = Array.isArray(files)
+        ? files.filter(Boolean)
+        : files
+          ? [files]
+          : [];
+
+      if (filesToUpload.length === 0) return;
+
+      setBatchSubmitting(true);
+      setBatchError(null);
+      setBatchMessage("");
+
+      try {
+        const formData = new FormData();
+        filesToUpload.forEach((file) => {
+          formData.append("cv", file);
+        });
+        formData.append("prioritySource", "scopus");
+
+        const response = await api.post("/api/cv/batch-verify", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        await loadBatchJobs();
+        setBatchFiles([]);
+
+        const jobIds = response.data?.jobIds || [];
+        if (jobIds.length === 1) {
+          setBatchMessage(
+            `${filesToUpload[0].name} is now verifying in the background. Check the Recent batch jobs below to track progress.`,
+          );
+        } else {
+          setBatchMessage(
+            `${jobIds.length || filesToUpload.length} CVs are now verifying in the background. Check the Recent batch jobs below to track progress.`,
+          );
+        }
+      } catch (error) {
+        console.error("Error starting batch verification:", error);
+        setBatchError(
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.message ||
+            "Failed to start background verification.",
+        );
+      } finally {
+        setBatchSubmitting(false);
+      }
+    },
+    [loadBatchJobs],
+  );
+
+  const handleRemoveBatchJob = useCallback((jobId) => {
+    setRemoveConfirmJob(jobId);
+  }, []);
+
+  const confirmRemoveBatchJob = useCallback(async () => {
+    if (!removeConfirmJob) return;
+
+    const jobId = removeConfirmJob;
+    setRemoveConfirmJob(null);
+
+    try {
+      await api.delete(`/api/cv/batch-jobs/${jobId}`);
+      await loadBatchJobs();
+    } catch (error) {
+      setBatchError(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to remove this job.",
+      );
+    }
+  }, [loadBatchJobs, removeConfirmJob]);
+
+  const cancelRemoveBatchJob = useCallback(() => {
+    setRemoveConfirmJob(null);
+  }, []);
 
   const handleFileUpload = useCallback(
     async (file) => {
@@ -109,7 +344,7 @@ function CVUpload() {
         });
       }
     },
-    [navigate]
+    [navigate],
   );
 
   // Cleanup effect
@@ -172,7 +407,7 @@ function CVUpload() {
         handleFileUpload(file);
       }
     },
-    [handleFileUpload]
+    [handleFileUpload],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -191,6 +426,193 @@ function CVUpload() {
         <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">
           Verify publications from uploaded CV
         </h2>
+
+        <div className="w-full max-w-4xl mb-8 mx-4 rounded-2xl border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+                Batch verification
+              </p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                {user
+                  ? "Upload once, keep verifying in the background"
+                  : "Sign in to verify publication in batch"}
+              </h3>
+              <p className="text-sm sm:text-base text-slate-700 mt-2">
+                {user
+                  ? "Your batch jobs are saved to your account, so you can leave the page and come back later to check the status or results."
+                  : "Account mode keeps your CV verification job running and saves the result history for later review."}
+              </p>
+            </div>
+
+            {!user && !authLoading ? (
+              <button
+                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                onClick={handleBatchLoginClick}
+              >
+                Sign in to start batch verification
+              </button>
+            ) : null}
+          </div>
+
+          {user ? (
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5">
+                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                  Batch CV file
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  multiple
+                  className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700"
+                  onChange={(event) => {
+                    const selectedFiles = Array.from(event.target.files || []);
+                    const invalidFile = selectedFiles.find(
+                      (file) => file.type !== "application/pdf",
+                    );
+
+                    if (invalidFile) {
+                      setBatchError(
+                        "Only PDF files are allowed for batch verification.",
+                      );
+                      setBatchFiles([]);
+                      return;
+                    }
+
+                    setBatchError(null);
+                    setBatchFiles(selectedFiles);
+                  }}
+                />
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <button
+                    className="inline-flex items-center justify-center rounded-full bg-[#000054] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                    disabled={batchFiles.length === 0 || batchSubmitting}
+                    onClick={() => handleBatchUpload(batchFiles)}
+                  >
+                    {batchSubmitting
+                      ? "Starting batch..."
+                      : batchFiles.length > 1
+                        ? `Start ${batchFiles.length} background verifications`
+                        : "Start background verification"}
+                  </button>
+                  {batchFiles.length > 0 ? (
+                    <span className="text-sm text-slate-600 break-all">
+                      Selected: {batchFiles.map((file) => file.name).join(", ")}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-slate-500">
+                      Choose one or more PDFs to launch saved background jobs.
+                    </span>
+                  )}
+                </div>
+                {batchError && (
+                  <p className="mt-3 text-sm text-red-600">{batchError}</p>
+                )}
+                {batchMessage && (
+                  <p className="mt-3 text-sm text-green-700">{batchMessage}</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h4 className="text-sm font-semibold text-slate-800">
+                    Recent batch jobs
+                  </h4>
+                  <button
+                    className="text-xs font-medium text-blue-700 hover:underline"
+                    onClick={loadBatchJobs}
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {batchLoading ? (
+                  <p className="text-sm text-slate-500">Loading jobs...</p>
+                ) : batchJobs.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No batch jobs yet. Upload a PDF to start one.
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-72 overflow-auto pr-1">
+                    {batchJobs.map((job) => (
+                      <div
+                        key={job.id}
+                        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 break-all">
+                              {job.originalFileName}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {job.status} • {job.progress}% • {job.stage}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-blue-700 hover:underline whitespace-nowrap"
+                              onClick={() =>
+                                navigate(`/publication-check/results/${job.id}`)
+                              }
+                            >
+                              Open
+                            </button>
+                            {job.status === "queued" ||
+                            job.status === "processing" ? (
+                              <button
+                                className="text-xs font-semibold text-amber-700 hover:underline whitespace-nowrap"
+                                onClick={() => handleRemoveBatchJob(job.id)}
+                              >
+                                Cancel
+                              </button>
+                            ) : null}
+                            <button
+                              className="text-xs font-semibold text-red-700 hover:underline whitespace-nowrap"
+                              onClick={() => handleRemoveBatchJob(job.id)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <Dialog
+          open={Boolean(removeConfirmJob)}
+          onClose={cancelRemoveBatchJob}
+          aria-labelledby="remove-batch-job-title"
+          aria-describedby="remove-batch-job-description"
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle id="remove-batch-job-title">
+            Remove batch job?
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="remove-batch-job-description">
+              This will delete the saved job and its uploaded file. You cannot
+              undo this action.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelRemoveBatchJob}>Cancel</Button>
+            <Button
+              onClick={confirmRemoveBatchJob}
+              color="error"
+              variant="contained"
+            >
+              Remove
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {errorInfo && (
           <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>

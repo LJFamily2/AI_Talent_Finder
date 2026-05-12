@@ -6,6 +6,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const dotenv = require("dotenv");
 const path = require("path");
+const morgan = require("morgan");
 const routes = require("../routes");
 const { createClient } = require("redis");
 
@@ -18,10 +19,9 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+app.use(morgan("dev"));
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-].filter(Boolean);
+const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
 
 app.use(
   cors({
@@ -29,24 +29,42 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent
     preflightContinue: true,
-  })
+  }),
 );
 
 // Mount routes
 app.use(routes);
 
 // Redis Client Setup
-const redisClient = createClient({ url: process.env.REDIS_URL });
-redisClient.on("error", (err) => console.error("Redis Client Error", err));
+const redisClient = process.env.REDIS_URL
+  ? createClient({
+      url: process.env.REDIS_URL,
+      socket: {
+        connectTimeout: 5000,
+      },
+    })
+  : null;
+
+if (redisClient) {
+  redisClient.on("error", (err) => console.error("Redis Client Error", err));
+}
 
 (async () => {
   try {
+    if (!redisClient) {
+      console.warn("Redis is disabled because REDIS_URL is not set.");
+      return;
+    }
+
     await redisClient.connect();
     // Initialize Redis client for manual cache deletion
     const { initRedisClient } = require("../middleware/cacheRedisInsight");
     initRedisClient(redisClient);
   } catch (err) {
-    console.error("Redis connection failed:", err);
+    console.warn(
+      "Redis connection failed; continuing without cache:",
+      err.message,
+    );
   }
 })();
 
@@ -67,6 +85,7 @@ app.use((err, req, res, next) => {
 // --- Socket.io Setup ---
 const http = require("http");
 const { Server } = require("socket.io");
+const initSockets = require("./socketHandler");
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -79,13 +98,11 @@ const io = new Server(server, {
 // Make io accessible in controllers
 app.set("io", io);
 
-// Example: handle socket connections (expand later as needed)
-io.on("connection", (socket) => {
-  socket.on("joinJob", (jobId) => {
-    socket.join(jobId);
-  });
-});
+// Initialize socket handlers in a separate module
+initSockets(io);
 
 // Start the HTTP Server
 const PORT = process.env.PORT || 8000;
-server.listen(PORT,'0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server running on port ${PORT}`),
+);

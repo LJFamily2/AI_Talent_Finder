@@ -36,6 +36,14 @@ function App() {
             path="/publication-check/results"
             element={<CVVerification />}
           />
+          <Route
+            path="/publication-check/results/:jobId"
+            element={
+              <ProtectedRoute>
+                <CVVerification />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/search" element={<SearchStart />} />
           <Route path="/search/advanced" element={<SearchInterface />} />
           <Route path="/" element={<LandingPage />} />
