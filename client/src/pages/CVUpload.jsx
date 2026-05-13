@@ -19,6 +19,7 @@ import {
 
 function CVUpload() {
   const { user, loading: authLoading } = useAuth();
+  const showSingleUpload = false;
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
@@ -613,7 +614,7 @@ function CVUpload() {
           </DialogActions>
         </Dialog>
 
-        {errorInfo && (
+        {showSingleUpload && errorInfo && (
           <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>
             <p>{errorInfo.message}</p>
@@ -631,32 +632,32 @@ function CVUpload() {
             </button>
           </div>
         )}
-        <div
-          className={`${
-            isDragActive ? "bg-blue-100" : "bg-white"
-          } border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
-          {...getRootProps()}
-        >
-          <input {...getInputProps()} />
-          <img
-            src={fileUploadIcon}
-            alt="Upload Icon"
-            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mb-6 sm:mb-8"
-          />
-          <span className="font-bold text-lg sm:text-xl md:text-2xl text-center mx-2 sm:mx-5">
-            Drop your file here, or{" "}
-            <span className="text-blue-400 underline cursor-pointer">
-              Browse
+        {showSingleUpload ? (
+          <div
+            className={`${isDragActive ? "bg-blue-100" : "bg-white"} border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
+            {...getRootProps()}
+          >
+            <input {...getInputProps()} />
+            <img
+              src={fileUploadIcon}
+              alt="Upload Icon"
+              className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mb-6 sm:mb-8"
+            />
+            <span className="font-bold text-lg sm:text-xl md:text-2xl text-center mx-2 sm:mx-5">
+              Drop your file here, or{" "}
+              <span className="text-blue-400 underline cursor-pointer">
+                Browse
+              </span>
             </span>
-          </span>
 
-          <p className="text-gray-400 mt-3 sm:mt-4 text-sm sm:text-base text-center">
-            Accepted file formats: .pdf
-          </p>
-        </div>
+            <p className="text-gray-400 mt-3 sm:mt-4 text-sm sm:text-base text-center">
+              Accepted file formats: .pdf
+            </p>
+          </div>
+        ) : null}
       </div>
 
-      {processing && uploadedFile && (
+      {showSingleUpload && processing && uploadedFile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-6xl bg-white rounded-lg shadow-lg overflow-hidden">
             {/* Header */}
