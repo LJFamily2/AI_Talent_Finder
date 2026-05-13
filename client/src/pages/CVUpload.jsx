@@ -19,8 +19,7 @@ import {
 
 function CVUpload() {
   const { user, loading: authLoading } = useAuth();
-  const BATCH_MAX_FILES = 10;
-  const showSingleUpload = false;
+  const showSingleUpload = !authLoading && !user;
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState("upload"); // 'upload', 'processing', 'complete'
@@ -412,7 +411,7 @@ function CVUpload() {
     [handleFileUpload],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
@@ -426,7 +425,7 @@ function CVUpload() {
       <Header />
       <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-8 px-4">
         <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">
-          Verify publications from uploaded CV
+          Verify CV Publications
         </h2>
 
         <div className="w-full max-w-4xl mb-8 mx-4 rounded-2xl border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
@@ -437,19 +436,19 @@ function CVUpload() {
               </p>
               <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
                 {user
-                  ? "Upload once, keep verifying in the background"
-                  : "Sign in to verify publication in batch"}
+                  ? "Upload once, verify in the background"
+                  : "Sign in to verify in batch"}
               </h3>
               <p className="text-sm sm:text-base text-slate-700 mt-2">
                 {user
-                  ? "Your batch jobs are saved to your account, so you can leave the page and come back later to check the status or results."
-                  : "Account mode keeps your CV verification job running and saves the result history for later review."}
+                  ? "Jobs run in the background. You can leave and check results later."
+                  : "Sign in to save your batch results."}
               </p>
             </div>
 
             {!user && !authLoading ? (
               <button
-                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 cursor-pointer"
                 onClick={handleBatchLoginClick}
               >
                 Sign in to start batch verification
@@ -461,92 +460,118 @@ function CVUpload() {
             <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
               <div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5">
                 <label className="block text-sm font-semibold text-slate-800 mb-2">
-                  Batch CV file
+                  Batch CV files
                 </label>
-                <input
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  multiple
-                  className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700"
-                  onChange={(event) => {
-                    const selectedFiles = Array.from(event.target.files || []);
-                    const invalidFile = selectedFiles.find(
-                      (file) => file.type !== "application/pdf",
-                    );
-
-                    if (invalidFile) {
-                      setBatchError(
-                        "Only PDF files are allowed for batch verification.",
+                <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-6 hover:bg-slate-50 transition-colors cursor-pointer text-center group">
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    multiple
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={(event) => {
+                      const selectedFiles = Array.from(event.target.files || []);
+                      const invalidFile = selectedFiles.find(
+                        (file) => file.type !== "application/pdf",
                       );
-                      event.target.value = "";
-                      return;
-                    }
 
-                    setBatchFiles((prev) => {
-                      const merged = [...prev];
-
-                      selectedFiles.forEach((file) => {
-                        const exists = merged.some(
-                          (f) =>
-                            f.name === file.name &&
-                            f.size === file.size &&
-                            f.lastModified === file.lastModified,
-                        );
-                        if (!exists) merged.push(file);
-                      });
-
-                      if (merged.length > BATCH_MAX_FILES) {
+                      if (invalidFile) {
                         setBatchError(
-                          `You can upload up to ${BATCH_MAX_FILES} PDFs per batch.`,
+                          "Only PDF files are allowed for batch verification.",
                         );
-                        return merged.slice(0, BATCH_MAX_FILES);
+                        event.target.value = "";
+                        return;
                       }
 
-                      setBatchError(null);
-                      return merged;
-                    });
+                      setBatchFiles((prev) => {
+                        const merged = [...prev];
 
-                    event.target.value = "";
-                  }}
-                />
+                        selectedFiles.forEach((file) => {
+                          const exists = merged.some(
+                            (f) =>
+                              f.name === file.name &&
+                              f.size === file.size &&
+                              f.lastModified === file.lastModified,
+                          );
+                          if (!exists) merged.push(file);
+                        });
+
+                        if (merged.length > 10) {
+                          setBatchError("You can upload up to 10 PDFs per batch.");
+                          return merged.slice(0, 10);
+                        }
+
+                        setBatchError(null);
+                        return merged;
+                      });
+
+                      event.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                    <svg className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <div>
+                      <span className="font-semibold text-blue-600">Click to upload</span>
+                      <span className="text-slate-500"> or drag and drop</span>
+                    </div>
+                    <p className="text-xs text-slate-500">PDF only, up to 10 files</p>
+                  </div>
+                </div>
+
+                {batchFiles.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-700">
+                        Selected CVs ({batchFiles.length})
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-slate-600 hover:text-red-600 hover:underline cursor-pointer"
+                        onClick={() => {
+                          setBatchFiles([]);
+                          setBatchError(null);
+                          setBatchMessage("");
+                        }}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    <ul className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                      {batchFiles.map((file, index) => (
+                        <li key={`${file.name}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-slate-50 border border-slate-200">
+                          <span className="text-sm text-slate-700 truncate mr-2" title={file.name}>{file.name}</span>
+                          <button
+                            type="button"
+                            className="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-slate-200 transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
+                            onClick={() => {
+                              setBatchFiles((prev) => prev.filter((_, i) => i !== index));
+                            }}
+                            title="Remove file"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <button
-                    className="inline-flex items-center justify-center rounded-full bg-[#000054] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 transition-colors"
                     disabled={batchFiles.length === 0 || batchSubmitting}
                     onClick={() => handleBatchUpload(batchFiles)}
                   >
                     {batchSubmitting
                       ? "Starting batch..."
                       : batchFiles.length > 1
-                        ? `Start ${batchFiles.length} background verifications`
-                        : "Start background verification"}
+                        ? `Verify ${batchFiles.length} CVs`
+                        : "Verify CV"}
                   </button>
-                  {batchFiles.length > 0 ? (
-                    <span className="text-sm text-slate-600 break-all">
-                      Selected: {batchFiles.map((file) => file.name).join(", ")}
-                    </span>
-                  ) : (
-                    <span className="text-sm text-slate-500">
-                      Choose one or more PDFs (up to {BATCH_MAX_FILES}) to
-                      launch saved background jobs.
-                    </span>
-                  )}
                 </div>
-                {batchFiles.length > 0 ? (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-slate-600 hover:underline"
-                      onClick={() => {
-                        setBatchFiles([]);
-                        setBatchError(null);
-                        setBatchMessage("");
-                      }}
-                    >
-                      Clear selected files
-                    </button>
-                  </div>
-                ) : null}
                 {batchError && (
                   <p className="mt-3 text-sm text-red-600">{batchError}</p>
                 )}
@@ -561,7 +586,7 @@ function CVUpload() {
                     Recent batch jobs
                   </h4>
                   <button
-                    className="text-xs font-medium text-blue-700 hover:underline"
+                    className="text-xs font-medium text-blue-700 hover:underline cursor-pointer"
                     onClick={loadBatchJobs}
                   >
                     Refresh
@@ -574,48 +599,58 @@ function CVUpload() {
                     No batch jobs yet. Upload a PDF to start one.
                   </p>
                 ) : (
-                  <div className="space-y-3 max-h-72 overflow-auto pr-1">
+                  <div className="space-y-4 max-h-96 overflow-auto pr-1">
                     {batchJobs.map((job) => (
                       <div
                         key={job.id}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3"
+                        className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-sm"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 break-all">
-                              {job.originalFileName}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              {job.status} • {job.progress}% • {job.stage}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
+                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-white">
+                          <p className="text-sm font-semibold text-slate-900 truncate" title={job.originalFileName}>
+                            {job.originalFileName}
+                          </p>
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
-                              className="text-xs font-semibold text-blue-700 hover:underline whitespace-nowrap"
+                              className="text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline cursor-pointer mr-1"
                               onClick={() =>
                                 navigate(`/publication-check/results/${job.id}`)
                               }
                             >
                               Open
                             </button>
-                            {job.status === "queued" ||
-                            job.status === "processing" ? (
-                              <button
-                                className="text-xs font-semibold text-amber-700 hover:underline whitespace-nowrap"
-                                onClick={() => handleRemoveBatchJob(job.id)}
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
                             <button
-                              className="text-xs font-semibold text-red-700 hover:underline whitespace-nowrap"
+                              type="button"
+                              className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center justify-center"
                               onClick={() => handleRemoveBatchJob(job.id)}
+                              title={job.status === "queued" || job.status === "processing" ? "Cancel job" : "Remove job"}
                             >
-                              Remove
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
                           </div>
                         </div>
+                        {job.status !== "completed" ? (
+                          <div className="px-4 py-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                {job.status === "failed" ? "FAILED" : job.stage || "PROCESSING"}
+                              </span>
+                              <span className="text-xs font-bold text-slate-700">
+                                {job.progress}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                              <div
+                                className={`h-2.5 rounded-full transition-all duration-500 ease-out ${job.status === "failed" ? "bg-red-500" : "bg-blue-600"}`}
+                                style={{
+                                  width: `${Math.min(100, Math.max(0, job.progress || 0))}%`,
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -672,9 +707,11 @@ function CVUpload() {
             </button>
           </div>
         )}
-        {showSingleUpload ? (
+        {showSingleUpload && (
           <div
-            className={`${isDragActive ? "bg-blue-100" : "bg-white"} border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
+            className={`$
+              isDragActive ? "bg-blue-100" : "bg-white"
+            } border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
             {...getRootProps()}
           >
             <input {...getInputProps()} />
@@ -694,7 +731,7 @@ function CVUpload() {
               Accepted file formats: .pdf
             </p>
           </div>
-        ) : null}
+        )}
       </div>
 
       {showSingleUpload && processing && uploadedFile && (

@@ -153,6 +153,7 @@ async function runBatchJob(jobId) {
         jobId,
         io: proxyIo,
         shouldCancel: () => isJobCancelled(jobId),
+        keepFile: true,
       },
     );
 
@@ -232,7 +233,7 @@ async function runBatchJob(jobId) {
       },
     });
   } finally {
-    await deleteUploadedFile(job.storedFileName);
+    // Keep the uploaded file for later PDF viewing; cleanup happens on removal.
   }
 }
 
@@ -478,10 +479,51 @@ async function removeBatchJob(req, res) {
   }
 }
 
+async function getBatchJobPdf(req, res) {
+  try {
+    const job = await VerificationJob.findOne({
+      _id: req.params.jobId,
+      userId: req.user._id,
+      jobType: "publication-check",
+    }).lean();
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: "Job not found" });
+    }
+
+    if (!job.storedFileName) {
+      return res
+        .status(404)
+        .json({ success: false, error: "No file available" });
+    }
+
+    const filePath = resolveUploadPath(job.storedFileName);
+    if (!fs.existsSync(filePath)) {
+      return res
+        .status(404)
+        .json({ success: false, error: "File not found" });
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${path.basename(job.originalFileName)}"`,
+    );
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error("[Publication Check] Failed to stream PDF:", error);
+    return res.status(500).json({
+      error: "Unable to load PDF",
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   startBatchVerification,
   listBatchJobs,
   getBatchJob,
+  getBatchJobPdf,
   cancelBatchJob,
   removeBatchJob,
 };

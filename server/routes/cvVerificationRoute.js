@@ -6,6 +6,7 @@ const {
   startBatchVerification,
   listBatchJobs,
   getBatchJob,
+  getBatchJobPdf,
   cancelBatchJob,
   removeBatchJob,
 } = require("../controllers/publicationCheckJobController");
@@ -203,6 +204,7 @@ router.post("/batch-verify", protect, (req, res) => {
 
 router.get("/batch-jobs", protect, listBatchJobs);
 router.get("/batch-jobs/:jobId", protect, getBatchJob);
+router.get("/batch-jobs/:jobId/pdf", protect, getBatchJobPdf);
 router.post("/batch-jobs/:jobId/cancel", protect, cancelBatchJob);
 router.delete("/batch-jobs/:jobId", protect, removeBatchJob);
 

@@ -50,6 +50,10 @@ export default function CVVerification() {
 
   // PDF viewing state
   const [showPDFModal, setShowPDFModal] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const pdfObjectUrlRef = useRef(null);
   const [jobRecord, setJobRecord] = useState(null);
   const [jobLoading, setJobLoading] = useState(false);
   const [jobError, setJobError] = useState(null);
@@ -65,6 +69,53 @@ export default function CVVerification() {
 
   const transientPublications = location.state?.publications;
   const originalFile = location.state?.originalFile;
+
+  const closePdfModal = () => {
+    setShowPDFModal(false);
+    setPdfError(null);
+    setPdfLoading(false);
+    setPdfBlobUrl(null);
+    if (pdfObjectUrlRef.current) {
+      URL.revokeObjectURL(pdfObjectUrlRef.current);
+      pdfObjectUrlRef.current = null;
+    }
+  };
+
+  const loadPdfForJob = async () => {
+    if (!jobId || pdfLoading) return;
+
+    setPdfError(null);
+    setPdfLoading(true);
+
+    try {
+      const response = await api.get(`/api/cv/batch-jobs/${jobId}/pdf`, {
+        responseType: "blob",
+      });
+
+      const url = URL.createObjectURL(response.data);
+      if (pdfObjectUrlRef.current) {
+        URL.revokeObjectURL(pdfObjectUrlRef.current);
+      }
+      pdfObjectUrlRef.current = url;
+      setPdfBlobUrl(url);
+    } catch (error) {
+      setPdfError(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Unable to load the PDF.",
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const openPdfModal = () => {
+    setShowPDFModal(true);
+    if (!originalFile) {
+      void loadPdfForJob();
+    }
+  };
 
   useEffect(() => {
     if (!jobId || transientPublications) {
@@ -624,7 +675,7 @@ export default function CVVerification() {
             <Button
               variant="outlined"
               startIcon={<PictureAsPdfIcon />}
-              onClick={() => setShowPDFModal(true)}
+              onClick={openPdfModal}
               size="small"
               sx={{ ml: 2 }}
             >
@@ -724,7 +775,7 @@ export default function CVVerification() {
                 Uploaded CV
               </h3>
               <button
-                onClick={() => setShowPDFModal(false)}
+                onClick={closePdfModal}
                 className="text-gray-500 hover:text-gray-700 text-xl font-semibold px-2"
               >
                 ×
@@ -735,10 +786,19 @@ export default function CVVerification() {
             <div className="h-[80vh] p-4">
               {originalFile ? (
                 <SimplePDFViewer file={originalFile} className="h-full" />
+              ) : pdfLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-600">Loading PDF...</p>
+                </div>
+              ) : pdfBlobUrl ? (
+                <SimplePDFViewer file={pdfBlobUrl} className="h-full" />
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <p className="text-gray-600 mb-4">No PDF file available</p>
+                    {pdfError ? (
+                      <p className="text-sm text-red-600">{pdfError}</p>
+                    ) : null}
                     <p className="text-sm text-gray-500">
                       Debug: originalFile = {JSON.stringify(originalFile)}
                     </p>

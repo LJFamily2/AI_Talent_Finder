@@ -63,7 +63,7 @@ module.exports = {
  */
 
 async function verifyCV(file, prioritySource, options = {}) {
-  const { jobId, io, shouldCancel } = options;
+  const { jobId, io, shouldCancel, keepFile = false } = options;
   let cvText = "";
   try {
     const checkCancellation = async (stage) => {
@@ -416,7 +416,7 @@ async function verifyCV(file, prioritySource, options = {}) {
   } catch (error) {
     throw error;
   } finally {
-    if (file?.path && fs.existsSync(file.path)) {
+    if (!keepFile && file?.path && fs.existsSync(file.path)) {
       try {
         fs.unlinkSync(file.path);
       } catch (cleanupError) {
