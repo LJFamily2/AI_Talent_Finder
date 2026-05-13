@@ -88,15 +88,13 @@ export default function CVVerification() {
     setPdfLoading(true);
 
     try {
-      const response = await api.get(`/api/cv/batch-jobs/${jobId}/pdf`, {
-        responseType: "blob",
-      });
+      const response = await api.get(`/api/cv/batch-jobs/${jobId}/pdf`);
 
-      const url = URL.createObjectURL(response.data);
-      if (pdfObjectUrlRef.current) {
-        URL.revokeObjectURL(pdfObjectUrlRef.current);
+      const url = response.data.url;
+      if (!url) {
+        throw new Error("No PDF URL returned from server.");
       }
-      pdfObjectUrlRef.current = url;
+
       setPdfBlobUrl(url);
     } catch (error) {
       setPdfError(

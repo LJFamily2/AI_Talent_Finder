@@ -17,7 +17,8 @@
 //======================== CONSTANTS & CONFIG ========================
 const fs = require("fs");
 const Anthropic = require("@anthropic-ai/sdk");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const {
   initializeHeaderClassifier,
@@ -56,9 +57,10 @@ module.exports = {
  * @returns {Promise<Object>} Verification results in traditional format
  */
 async function verifyCVWithClaude(file, prioritySource = "claude") {
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
     const anthropic = new Anthropic({
       apiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
     });
@@ -124,12 +126,13 @@ async function verifyCVWithClaude(file, prioritySource = "claude") {
       authorDetails: null,
     };
   } finally {
-    if (file && file.path) {
+    if (storedFileName) {
       try {
-        fs.unlinkSync(file.path);
+        await deleteFromSupabase(storedFileName);
+        console.log("[Claude CV Verification] File cleaned up from Supabase");
       } catch (cleanupError) {
         console.warn(
-          "[Claude CV Verification] File cleanup failed:",
+          "[Claude CV Verification] File cleanup from Supabase failed:",
           cleanupError.message
         );
       }

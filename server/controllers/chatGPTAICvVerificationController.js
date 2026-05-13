@@ -20,7 +20,8 @@ const OpenAI = require("openai");
 const {
   initializeHeaderClassifier,
 } = require("../utils/headerClassifierUtils");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const axios = require("axios");
 
@@ -32,9 +33,10 @@ module.exports = {
 };
 
 async function verifyCVWithChatGPT(file, prioritySource = "chatgpt") {
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || process.env.CHATGPT_API_KEY,
     });
@@ -87,12 +89,13 @@ async function verifyCVWithChatGPT(file, prioritySource = "chatgpt") {
     console.error("[ChatGPT CV Verification] Error:", error);
     throw error;
   } finally {
-    if (file && file.path) {
+    if (storedFileName) {
       try {
-        fs.unlinkSync(file.path);
+        await deleteFromSupabase(storedFileName);
+        console.log("[ChatGPT CV Verification] File cleaned up from Supabase");
       } catch (cleanupError) {
         console.warn(
-          "[ChatGPT CV Verification] File cleanup failed:",
+          "[ChatGPT CV Verification] File cleanup from Supabase failed:",
           cleanupError.message
         );
       }

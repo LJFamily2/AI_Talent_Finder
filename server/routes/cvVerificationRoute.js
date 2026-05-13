@@ -12,19 +12,11 @@ const {
 } = require("../controllers/publicationCheckJobController");
 const { protect } = require("../middleware/auth");
 const { v4: uuidv4 } = require("uuid");
+const { uploadToSupabase, deleteFromSupabase } = require("../utils/supabaseStorage");
 const router = express.Router();
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../uploads/"));
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, "cv-" + uniqueSuffix + path.extname(file.originalname));
-  },
-});
+// Multer storage configuration - using memory storage for Supabase uploads
+const storage = multer.memoryStorage();
 
 // File filter to accept only PDF files
 const fileFilter = (req, file, cb) => {
@@ -43,6 +35,12 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
+
+// Helper function to generate a unique stored filename
+const generateStoredFileName = (originalname) => {
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  return "cv-" + uniqueSuffix + path.extname(originalname);
+};
 
 // CV verification endpoint
 router.post("/verify-cv", (req, res) => {
@@ -72,6 +70,25 @@ router.post("/verify-cv", (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    // Upload to Supabase
+    const storedFileName = generateStoredFileName(req.file.originalname);
+    const { error: uploadError } = await uploadToSupabase(
+      req.file.buffer,
+      storedFileName,
+      req.file.mimetype
+    );
+
+    if (uploadError) {
+      console.error("[CV Verification Route] Supabase Upload Error:", uploadError);
+      return res.status(500).json({
+        error: "Upload failed",
+        message: "Failed to upload file to cloud storage",
+      });
+    }
+
+    // Attach storedFileName to req.file for the controller
+    req.file.storedFileName = storedFileName;
+
     try {
       // Get priority source from request body, default to 'scopus'
       const prioritySource = req.body.prioritySource || "scopus";
@@ -84,6 +101,8 @@ router.post("/verify-cv", (req, res) => {
         "crossref",
       ];
       if (!validSources.includes(prioritySource)) {
+        // Cleanup file from Supabase if validation fails
+        await deleteFromSupabase(storedFileName);
         return res.status(400).json({
           error: "Invalid priority source",
           message:
@@ -170,6 +189,8 @@ router.post("/verify-cv", (req, res) => {
         }
       })();
     } catch (error) {
+      // Cleanup file from Supabase if processing setup fails
+      await deleteFromSupabase(storedFileName);
       res.status(500).json({
         error: "Error processing CV",
         details: error.message,
@@ -195,6 +216,40 @@ router.post("/batch-verify", protect, (req, res) => {
       return res.status(400).json({
         error: "Invalid file type",
         message: "Only PDF files are allowed",
+      });
+    }
+
+    // Check if files were uploaded
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
+    }
+
+    // Upload each file to Supabase
+    try {
+      for (const file of req.files) {
+        const storedFileName = generateStoredFileName(file.originalname);
+        const { error: uploadError } = await uploadToSupabase(
+          file.buffer,
+          storedFileName,
+          file.mimetype
+        );
+
+        if (uploadError) {
+          throw new Error(`Failed to upload ${file.originalname} to Supabase`);
+        }
+
+        file.storedFileName = storedFileName;
+      }
+    } catch (error) {
+      // Cleanup any files that were already uploaded before the error
+      for (const file of req.files) {
+        if (file.storedFileName) {
+          await deleteFromSupabase(file.storedFileName);
+        }
+      }
+      return res.status(500).json({
+        error: "Upload failed",
+        message: error.message,
       });
     }
 

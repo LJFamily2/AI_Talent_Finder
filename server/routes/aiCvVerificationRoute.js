@@ -25,6 +25,7 @@ const {
 const {
   verifyCVWithGrok,
 } = require("../controllers/grokAICvVerificationController");
+const { uploadToSupabase, deleteFromSupabase } = require("../utils/supabaseStorage");
 
 const router = express.Router();
 
@@ -32,17 +33,8 @@ const router = express.Router();
 // MULTER CONFIGURATION FOR FILE UPLOADS
 //=============================================================================
 
-// Configure multer for PDF file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../uploads/"));
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, "cv-" + uniqueSuffix + path.extname(file.originalname));
-  },
-});
+// Configure multer for PDF file uploads - using memory storage for Supabase
+const storage = multer.memoryStorage();
 
 // File filter to accept only PDF files
 const fileFilter = (req, file, cb) => {
@@ -62,6 +54,12 @@ const upload = multer({
   },
 });
 
+// Helper function to generate a unique stored filename
+const generateStoredFileName = (originalname) => {
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  return "cv-" + uniqueSuffix + path.extname(originalname);
+};
+
 //=============================================================================
 // ROUTE DEFINITIONS
 //=============================================================================
@@ -70,21 +68,9 @@ const upload = multer({
  * POST /api/ai-verify-cv
  *
  * Main endpoint for AI-based CV verification
- *
- * @body {File} cv - PDF file of the CV to be verified
- * @body {string} [prioritySource] - Priority source for analysis (default: "ai")
- *
- * @returns {Object} Verification results in traditional format
- * @returns {boolean} success - Whether verification was successful
- * @returns {string} candidateName - Extracted candidate name
- * @returns {number} total - Total number of publications found
- * @returns {number} verifiedPublications - Number of verified publications
- * @returns {number} verifiedWithAuthorMatch - Number of verified publications with author match
- * @returns {number} verifiedButDifferentAuthor - Number of verified publications but different author
- * @returns {Array} results - Detailed verification of each publication
- * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
 router.post("/gemini-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  let storedFileName = null;
   try {
     // Validate file upload
     if (!req.file) {
@@ -94,12 +80,32 @@ router.post("/gemini-ai-verify-cv", upload.single("cv"), async (req, res) => {
       });
     }
 
+    // Upload to Supabase
+    storedFileName = generateStoredFileName(req.file.originalname);
+    const { error: uploadError } = await uploadToSupabase(
+      req.file.buffer,
+      storedFileName,
+      req.file.mimetype
+    );
+
+    if (uploadError) {
+      console.error("[Gemini AI] Supabase Upload Error:", uploadError);
+      return res.status(500).json({
+        success: false,
+        error: "Upload failed",
+        message: "Failed to upload file to cloud storage",
+      });
+    }
+
+    // Attach storedFileName to req.file for the controller
+    req.file.storedFileName = storedFileName;
+
     // Extract priority source from request body
     const prioritySource = req.body.prioritySource;
 
     // Log verification attempt
     console.log(
-      `[AI CV Verification] Starting verification for file: ${req.file.filename}`
+      `[AI CV Verification] Starting verification for file: ${storedFileName}`
     );
     console.log(`[AI CV Verification] Priority source: ${prioritySource}`);
 
@@ -123,11 +129,10 @@ router.post("/gemini-ai-verify-cv", upload.single("cv"), async (req, res) => {
   } catch (error) {
     console.error("[AI CV Verification] Error:", error);
 
-    // Clean up uploaded file if it exists
-    if (req.file && req.file.path) {
+    // Clean up uploaded file from Supabase if it exists
+    if (storedFileName) {
       try {
-        const fs = require("fs");
-        fs.unlinkSync(req.file.path);
+        await deleteFromSupabase(storedFileName);
       } catch (cleanupError) {
         console.error("[AI CV Verification] File cleanup error:", cleanupError);
       }
@@ -147,21 +152,9 @@ router.post("/gemini-ai-verify-cv", upload.single("cv"), async (req, res) => {
  * POST /api/chatgpt-ai-verify-cv
  *
  * Main endpoint for ChatGPT-based CV verification
- *
- * @body {File} cv - PDF file of the CV to be verified
- * @body {string} [prioritySource] - Priority source for analysis (default: "chatgpt")
- *
- * @returns {Object} Verification results in traditional format
- * @returns {boolean} success - Whether verification was successful
- * @returns {string} candidateName - Extracted candidate name
- * @returns {number} total - Total number of publications found
- * @returns {number} verifiedPublications - Number of verified publications
- * @returns {number} verifiedWithAuthorMatch - Number of verified publications with author match
- * @returns {number} verifiedButDifferentAuthor - Number of verified publications but different author
- * @returns {Array} results - Detailed verification of each publication
- * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
 router.post("/chatgpt-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  let storedFileName = null;
   try {
     // Validate file upload
     if (!req.file) {
@@ -171,12 +164,32 @@ router.post("/chatgpt-ai-verify-cv", upload.single("cv"), async (req, res) => {
       });
     }
 
+    // Upload to Supabase
+    storedFileName = generateStoredFileName(req.file.originalname);
+    const { error: uploadError } = await uploadToSupabase(
+      req.file.buffer,
+      storedFileName,
+      req.file.mimetype
+    );
+
+    if (uploadError) {
+      console.error("[ChatGPT AI] Supabase Upload Error:", uploadError);
+      return res.status(500).json({
+        success: false,
+        error: "Upload failed",
+        message: "Failed to upload file to cloud storage",
+      });
+    }
+
+    // Attach storedFileName to req.file for the controller
+    req.file.storedFileName = storedFileName;
+
     // Extract priority source from request body
     const prioritySource = req.body.prioritySource;
 
     // Log verification attempt
     console.log(
-      `[ChatGPT CV Verification] Starting verification for file: ${req.file.filename}`
+      `[ChatGPT CV Verification] Starting verification for file: ${storedFileName}`
     );
     console.log(`[ChatGPT CV Verification] Priority source: ${prioritySource}`);
 
@@ -203,11 +216,10 @@ router.post("/chatgpt-ai-verify-cv", upload.single("cv"), async (req, res) => {
   } catch (error) {
     console.error("[ChatGPT CV Verification] Error:", error);
 
-    // Clean up uploaded file if it exists
-    if (req.file && req.file.path) {
+    // Clean up uploaded file from Supabase if it exists
+    if (storedFileName) {
       try {
-        const fs = require("fs");
-        fs.unlinkSync(req.file.path);
+        await deleteFromSupabase(storedFileName);
       } catch (cleanupError) {
         console.error(
           "[ChatGPT CV Verification] File cleanup error:",
@@ -230,21 +242,9 @@ router.post("/chatgpt-ai-verify-cv", upload.single("cv"), async (req, res) => {
  * POST /api/claude-ai-verify-cv
  *
  * Main endpoint for Claude-based CV verification
- *
- * @body {File} cv - PDF file of the CV to be verified
- * @body {string} [prioritySource] - Priority source for analysis (default: "claude")
- *
- * @returns {Object} Verification results in traditional format
- * @returns {boolean} success - Whether verification was successful
- * @returns {string} candidateName - Extracted candidate name
- * @returns {number} total - Total number of publications found
- * @returns {number} verifiedPublications - Number of verified publications
- * @returns {number} verifiedWithAuthorMatch - Number of verified publications with author match
- * @returns {number} verifiedButDifferentAuthor - Number of verified publications but different author
- * @returns {Array} results - Detailed verification of each publication
- * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
 router.post("/claude-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  let storedFileName = null;
   try {
     // Validate file upload
     if (!req.file) {
@@ -254,12 +254,32 @@ router.post("/claude-ai-verify-cv", upload.single("cv"), async (req, res) => {
       });
     }
 
+    // Upload to Supabase
+    storedFileName = generateStoredFileName(req.file.originalname);
+    const { error: uploadError } = await uploadToSupabase(
+      req.file.buffer,
+      storedFileName,
+      req.file.mimetype
+    );
+
+    if (uploadError) {
+      console.error("[Claude AI] Supabase Upload Error:", uploadError);
+      return res.status(500).json({
+        success: false,
+        error: "Upload failed",
+        message: "Failed to upload file to cloud storage",
+      });
+    }
+
+    // Attach storedFileName to req.file for the controller
+    req.file.storedFileName = storedFileName;
+
     // Extract priority source from request body
     const prioritySource = req.body.prioritySource;
 
     // Log verification attempt
     console.log(
-      `[Claude CV Verification] Starting verification for file: ${req.file.filename}`
+      `[Claude CV Verification] Starting verification for file: ${storedFileName}`
     );
     console.log(`[Claude CV Verification] Priority source: ${prioritySource}`);
 
@@ -286,11 +306,10 @@ router.post("/claude-ai-verify-cv", upload.single("cv"), async (req, res) => {
   } catch (error) {
     console.error("[Claude CV Verification] Error:", error);
 
-    // Clean up uploaded file if it exists
-    if (req.file && req.file.path) {
+    // Clean up uploaded file from Supabase if it exists
+    if (storedFileName) {
       try {
-        const fs = require("fs");
-        fs.unlinkSync(req.file.path);
+        await deleteFromSupabase(storedFileName);
       } catch (cleanupError) {
         console.error(
           "[Claude CV Verification] File cleanup error:",
@@ -313,21 +332,9 @@ router.post("/claude-ai-verify-cv", upload.single("cv"), async (req, res) => {
  * POST /api/grok-ai-verify-cv
  *
  * Main endpoint for Grok AI-based CV verification
- *
- * @body {File} cv - PDF file of the CV to be verified
- * @body {string} [prioritySource] - Priority source for analysis (default: "grok")
- *
- * @returns {Object} Verification results in traditional format
- * @returns {boolean} success - Whether verification was successful
- * @returns {string} candidateName - Extracted candidate name
- * @returns {number} total - Total number of publications found
- * @returns {number} verifiedPublications - Number of verified publications
- * @returns {number} verifiedWithAuthorMatch - Number of verified publications with author match
- * @returns {number} verifiedButDifferentAuthor - Number of verified publications but different author
- * @returns {Array} results - Detailed verification of each publication
- * @returns {Object} authorDetails - Author profile and metrics (if verified publications exist)
  */
 router.post("/grok-ai-verify-cv", upload.single("cv"), async (req, res) => {
+  let storedFileName = null;
   try {
     // Validate file upload
     if (!req.file) {
@@ -337,12 +344,32 @@ router.post("/grok-ai-verify-cv", upload.single("cv"), async (req, res) => {
       });
     }
 
+    // Upload to Supabase
+    storedFileName = generateStoredFileName(req.file.originalname);
+    const { error: uploadError } = await uploadToSupabase(
+      req.file.buffer,
+      storedFileName,
+      req.file.mimetype
+    );
+
+    if (uploadError) {
+      console.error("[Grok AI] Supabase Upload Error:", uploadError);
+      return res.status(500).json({
+        success: false,
+        error: "Upload failed",
+        message: "Failed to upload file to cloud storage",
+      });
+    }
+
+    // Attach storedFileName to req.file for the controller
+    req.file.storedFileName = storedFileName;
+
     // Extract priority source from request body
     const prioritySource = req.body.prioritySource;
 
     // Log verification attempt
     console.log(
-      `[Grok CV Verification] Starting verification for file: ${req.file.filename}`
+      `[Grok CV Verification] Starting verification for file: ${storedFileName}`
     );
     console.log(`[Grok CV Verification] Priority source: ${prioritySource}`);
 
@@ -366,11 +393,10 @@ router.post("/grok-ai-verify-cv", upload.single("cv"), async (req, res) => {
   } catch (error) {
     console.error("[Grok CV Verification] Error:", error);
 
-    // Clean up uploaded file if it exists
-    if (req.file && req.file.path) {
+    // Clean up uploaded file from Supabase if it exists
+    if (storedFileName) {
       try {
-        const fs = require("fs");
-        fs.unlinkSync(req.file.path);
+        await deleteFromSupabase(storedFileName);
       } catch (cleanupError) {
         console.error(
           "[Grok CV Verification] File cleanup error:",

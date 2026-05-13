@@ -1,7 +1,6 @@
-const fs = require("fs");
-const path = require("path");
 const VerificationJob = require("../models/VerificationJob");
 const { verifyCV } = require("./cvVerificationController");
+const { deleteFromSupabase, getSignedUrl } = require("../utils/supabaseStorage");
 
 const VALID_PRIORITY_SOURCES = [
   "googleScholar",
@@ -11,7 +10,6 @@ const VALID_PRIORITY_SOURCES = [
   "crossref",
 ];
 
-const UPLOAD_DIR = path.join(__dirname, "../uploads");
 const MAX_CONCURRENT_BATCH_JOBS = Number(
   process.env.BATCH_JOB_CONCURRENCY || 2,
 );
@@ -55,19 +53,13 @@ async function safeUpdateJob(jobId, update) {
   }
 }
 
-function resolveUploadPath(storedFileName) {
-  return path.join(UPLOAD_DIR, storedFileName);
-}
-
 async function deleteUploadedFile(storedFileName) {
   if (!storedFileName) return;
 
   try {
-    await fs.promises.unlink(resolveUploadPath(storedFileName));
+    await deleteFromSupabase(storedFileName);
   } catch (error) {
-    if (error.code !== "ENOENT") {
-      console.error("[Publication Check] Failed to delete upload:", error);
-    }
+    console.error("[Publication Check] Failed to delete upload from Supabase:", error);
   }
 }
 
@@ -130,7 +122,6 @@ async function runBatchJob(jobId) {
   }
 
   const proxyIo = createJobIoProxy(batchIo, jobId);
-  const filePath = resolveUploadPath(job.storedFileName);
 
   try {
     await safeUpdateJob(jobId, {
@@ -143,7 +134,7 @@ async function runBatchJob(jobId) {
 
     const result = await verifyCV(
       {
-        path: filePath,
+        storedFileName: job.storedFileName,
         filename: job.storedFileName,
         originalname: job.originalFileName,
         size: job.fileSize,
@@ -318,7 +309,7 @@ async function startBatchVerification(req, res) {
         jobType: "publication-check",
         prioritySource,
         originalFileName: file.originalname,
-        storedFileName: file.filename,
+        storedFileName: file.filename || file.storedFileName,
         fileSize: file.size || 0,
         status: "queued",
         progress: 0,
@@ -498,19 +489,26 @@ async function getBatchJobPdf(req, res) {
         .json({ success: false, error: "No file available" });
     }
 
-    const filePath = resolveUploadPath(job.storedFileName);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, error: "File not found" });
+    // Generate a signed URL for the PDF in Supabase Storage
+    // Expiration set to 300 seconds (5 minutes)
+    const { signedUrl, error } = await getSignedUrl(job.storedFileName, 300);
+
+    if (error || !signedUrl) {
+      console.error("[Publication Check] Failed to generate signed URL:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Unable to generate secure viewing link",
+      });
     }
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${path.basename(job.originalFileName)}"`,
-    );
-    return res.sendFile(filePath);
+    // Return the signed URL instead of streaming the file
+    return res.json({
+      success: true,
+      url: signedUrl,
+      originalName: job.originalFileName,
+    });
   } catch (error) {
-    console.error("[Publication Check] Failed to stream PDF:", error);
+    console.error("[Publication Check] Failed to get signed PDF URL:", error);
     return res.status(500).json({
       error: "Unable to load PDF",
       message: error.message,

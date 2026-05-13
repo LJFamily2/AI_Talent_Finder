@@ -33,7 +33,8 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
 
 //=============================================================================
 // MODULE EXPORTS
@@ -64,6 +65,7 @@ module.exports = {
 
 async function verifyCV(file, prioritySource, options = {}) {
   const { jobId, io, shouldCancel, keepFile = false } = options;
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
     const checkCancellation = async (stage) => {
@@ -92,7 +94,7 @@ async function verifyCV(file, prioritySource, options = {}) {
 
     // Parse PDF to text (with OCR fallback)
     const pdfStartTime = Date.now();
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
     const pdfEndTime = Date.now();
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 10, step: "pdf_extracted" });
@@ -416,12 +418,12 @@ async function verifyCV(file, prioritySource, options = {}) {
   } catch (error) {
     throw error;
   } finally {
-    if (!keepFile && file?.path && fs.existsSync(file.path)) {
+    if (!keepFile && storedFileName) {
       try {
-        fs.unlinkSync(file.path);
+        await deleteFromSupabase(storedFileName);
       } catch (cleanupError) {
         console.error(
-          "[CV Verification] Failed to clean up upload:",
+          "[CV Verification] Failed to clean up upload from Supabase:",
           cleanupError,
         );
       }
