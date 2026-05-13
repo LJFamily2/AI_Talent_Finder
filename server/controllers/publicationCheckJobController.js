@@ -358,6 +358,7 @@ async function listBatchJobs(req, res) {
       userId: req.user._id,
       jobType: "publication-check",
     })
+      .select("-result") // Exclude large result field for better performance
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -499,9 +500,7 @@ async function getBatchJobPdf(req, res) {
 
     const filePath = resolveUploadPath(job.storedFileName);
     if (!fs.existsSync(filePath)) {
-      return res
-        .status(404)
-        .json({ success: false, error: "File not found" });
+      return res.status(404).json({ success: false, error: "File not found" });
     }
 
     res.setHeader("Content-Type", "application/pdf");
