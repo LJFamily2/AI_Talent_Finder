@@ -19,6 +19,7 @@ import {
 
 function CVUpload() {
   const { user, loading: authLoading } = useAuth();
+  const BATCH_MAX_FILES = 10;
   const showSingleUpload = false;
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -477,12 +478,35 @@ function CVUpload() {
                       setBatchError(
                         "Only PDF files are allowed for batch verification.",
                       );
-                      setBatchFiles([]);
+                      event.target.value = "";
                       return;
                     }
 
-                    setBatchError(null);
-                    setBatchFiles(selectedFiles);
+                    setBatchFiles((prev) => {
+                      const merged = [...prev];
+
+                      selectedFiles.forEach((file) => {
+                        const exists = merged.some(
+                          (f) =>
+                            f.name === file.name &&
+                            f.size === file.size &&
+                            f.lastModified === file.lastModified,
+                        );
+                        if (!exists) merged.push(file);
+                      });
+
+                      if (merged.length > BATCH_MAX_FILES) {
+                        setBatchError(
+                          `You can upload up to ${BATCH_MAX_FILES} PDFs per batch.`,
+                        );
+                        return merged.slice(0, BATCH_MAX_FILES);
+                      }
+
+                      setBatchError(null);
+                      return merged;
+                    });
+
+                    event.target.value = "";
                   }}
                 />
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -503,10 +527,26 @@ function CVUpload() {
                     </span>
                   ) : (
                     <span className="text-sm text-slate-500">
-                      Choose one or more PDFs to launch saved background jobs.
+                      Choose one or more PDFs (up to {BATCH_MAX_FILES}) to
+                      launch saved background jobs.
                     </span>
                   )}
                 </div>
+                {batchFiles.length > 0 ? (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-slate-600 hover:underline"
+                      onClick={() => {
+                        setBatchFiles([]);
+                        setBatchError(null);
+                        setBatchMessage("");
+                      }}
+                    >
+                      Clear selected files
+                    </button>
+                  </div>
+                ) : null}
                 {batchError && (
                   <p className="mt-3 text-sm text-red-600">{batchError}</p>
                 )}
