@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 const { verifyCV } = require("../controllers/cvVerificationController");
 const {
   startBatchVerification,
@@ -11,8 +11,11 @@ const {
   removeBatchJob,
 } = require("../controllers/publicationCheckJobController");
 const { protect } = require("../middleware/auth");
-const { v4: uuidv4 } = require("uuid");
-const { uploadToSupabase, deleteFromSupabase } = require("../utils/supabaseStorage");
+const { 
+  uploadToSupabase, 
+  deleteFromSupabase,
+  generateStoredFileName
+} = require("../utils/supabaseStorage");
 const router = express.Router();
 
 // Multer storage configuration - using memory storage for Supabase uploads
@@ -35,12 +38,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
-
-// Helper function to generate a unique stored filename
-const generateStoredFileName = (originalname) => {
-  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-  return "cv-" + uniqueSuffix + path.extname(originalname);
-};
 
 // CV verification endpoint
 router.post("/verify-cv", (req, res) => {
@@ -224,35 +221,8 @@ router.post("/batch-verify", protect, (req, res) => {
       return res.status(400).json({ error: "No files uploaded" });
     }
 
-    // Upload each file to Supabase
-    try {
-      for (const file of req.files) {
-        const storedFileName = generateStoredFileName(file.originalname);
-        const { error: uploadError } = await uploadToSupabase(
-          file.buffer,
-          storedFileName,
-          file.mimetype
-        );
-
-        if (uploadError) {
-          throw new Error(`Failed to upload ${file.originalname} to Supabase`);
-        }
-
-        file.storedFileName = storedFileName;
-      }
-    } catch (error) {
-      // Cleanup any files that were already uploaded before the error
-      for (const file of req.files) {
-        if (file.storedFileName) {
-          await deleteFromSupabase(file.storedFileName);
-        }
-      }
-      return res.status(500).json({
-        error: "Upload failed",
-        message: error.message,
-      });
-    }
-
+    // The Supabase upload now happens in the background within startBatchVerification
+    // to ensure an immediate response to the client.
     await startBatchVerification(req, res);
   });
 });

@@ -15,7 +15,6 @@
  * @version 1.0.0
  */
 
-const fs = require("fs");
 const OpenAI = require("openai");
 const {
   verifyWithGoogleScholar,

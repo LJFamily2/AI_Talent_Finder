@@ -1,6 +1,12 @@
+const path = require("path");
 const VerificationJob = require("../models/VerificationJob");
 const { verifyCV } = require("./cvVerificationController");
-const { deleteFromSupabase, getSignedUrl } = require("../utils/supabaseStorage");
+const {
+  uploadToSupabase,
+  deleteFromSupabase,
+  getSignedUrl,
+  generateStoredFileName,
+} = require("../utils/supabaseStorage");
 
 const VALID_PRIORITY_SOURCES = [
   "googleScholar",
@@ -13,6 +19,9 @@ const VALID_PRIORITY_SOURCES = [
 const MAX_CONCURRENT_BATCH_JOBS = Number(
   process.env.BATCH_JOB_CONCURRENCY || 2,
 );
+
+// Global timeout for a single verification job (10 minutes)
+const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 const queuedBatchJobIds = [];
 const activeBatchJobIds = new Set();
@@ -59,7 +68,10 @@ async function deleteUploadedFile(storedFileName) {
   try {
     await deleteFromSupabase(storedFileName);
   } catch (error) {
-    console.error("[Publication Check] Failed to delete upload from Supabase:", error);
+    console.error(
+      "[Publication Check] Failed to delete upload from Supabase:",
+      error,
+    );
   }
 }
 
@@ -102,10 +114,17 @@ async function drainBatchQueue() {
       }
 
       activeBatchJobIds.add(jobId);
-      void runBatchJob(jobId).finally(() => {
-        activeBatchJobIds.delete(jobId);
-        void drainBatchQueue();
-      });
+      void runBatchJob(jobId)
+        .catch((err) => {
+          console.error(
+            `[Publication Check] Unhandled error in job ${jobId}:`,
+            err,
+          );
+        })
+        .finally(() => {
+          activeBatchJobIds.delete(jobId);
+          void drainBatchQueue();
+        });
     }
   } finally {
     queueDrainInProgress = false;
@@ -123,6 +142,21 @@ async function runBatchJob(jobId) {
 
   const proxyIo = createJobIoProxy(batchIo, jobId);
 
+  // Set up a timeout to prevent jobs from hanging indefinitely
+  let timeoutId = null;
+  let timedOut = false;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      reject(
+        new Error(
+          `Verification timed out after ${VERIFICATION_TIMEOUT_MS / 1000 / 60} minutes`,
+        ),
+      );
+    }, VERIFICATION_TIMEOUT_MS);
+  });
+
   try {
     await safeUpdateJob(jobId, {
       $set: {
@@ -132,7 +166,7 @@ async function runBatchJob(jobId) {
       },
     });
 
-    const result = await verifyCV(
+    const verifyPromise = verifyCV(
       {
         storedFileName: job.storedFileName,
         filename: job.storedFileName,
@@ -148,7 +182,17 @@ async function runBatchJob(jobId) {
       },
     );
 
-    if ((await isJobCancelled(jobId)) || result?.code === "JOB_CANCELLED") {
+    // Race between verification and timeout
+    const result = await Promise.race([verifyPromise, timeoutPromise]);
+
+    // Clear the timeout if verification completed
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (
+      timedOut ||
+      (await isJobCancelled(jobId)) ||
+      result?.code === "JOB_CANCELLED"
+    ) {
       await safeUpdateJob(jobId, {
         $set: {
           status: "canceled",
@@ -194,6 +238,26 @@ async function runBatchJob(jobId) {
       },
     });
   } catch (error) {
+    // Clear the timeout on error
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (timedOut) {
+      console.error(`[Publication Check] Job ${jobId} timed out`);
+      await safeUpdateJob(jobId, {
+        $set: {
+          status: "failed",
+          progress: 100,
+          completedAt: new Date(),
+          stage: "timeout",
+          errorMessage: `Verification timed out after ${VERIFICATION_TIMEOUT_MS / 1000 / 60} minutes`,
+          errorCode: "VERIFICATION_TIMEOUT",
+          retryable: true,
+          updatedAt: new Date(),
+        },
+      });
+      return;
+    }
+
     if (await isJobCancelled(jobId)) {
       await safeUpdateJob(jobId, {
         $set: {
@@ -250,6 +314,7 @@ function createJobIoProxy(realIo, jobId) {
             safeUpdateJob(jobId, {
               $set: {
                 status: "failed",
+                progress: 100, // Mark as complete (failed) so it doesn't appear stuck
                 errorMessage: payload?.error || "Verification failed",
                 errorCode: payload?.code || null,
                 retryable: Boolean(payload?.retryable),
@@ -303,25 +368,27 @@ async function startBatchVerification(req, res) {
       });
     }
 
-    const jobs = await VerificationJob.insertMany(
-      uploadedFiles.map((file) => ({
+    // Prepare job data - files are in memory buffers at this point
+    const jobData = uploadedFiles.map((file) => {
+      const storedFileName = generateStoredFileName(file.originalname);
+      return {
         userId: req.user._id,
         jobType: "publication-check",
         prioritySource,
         originalFileName: file.originalname,
-        storedFileName: file.filename || file.storedFileName,
+        storedFileName: storedFileName, // Pre-generate the name
         fileSize: file.size || 0,
-        status: "queued",
+        status: "uploading", // Initial status is uploading
         progress: 0,
-        stage: "queued",
+        stage: "uploading",
         cancelRequested: false,
-      })),
-    );
+      };
+    });
 
+    const jobs = await VerificationJob.insertMany(jobData);
     batchIo = req.app.get("io");
 
-    jobs.forEach((job) => scheduleBatchJob(job._id.toString()));
-
+    // Send immediate response to the client
     res.status(202).json({
       success: true,
       message:
@@ -331,6 +398,55 @@ async function startBatchVerification(req, res) {
       jobs: jobs.map((job) => serializeJob(job)),
       jobIds: jobs.map((job) => job._id.toString()),
     });
+
+    // Start background process: Upload to Supabase then schedule
+    (async () => {
+      try {
+        await Promise.all(
+          jobs.map(async (job, index) => {
+            const file = uploadedFiles[index];
+
+            // 1. Upload the buffer to Supabase
+            const { error: uploadError } = await uploadToSupabase(
+              file.buffer,
+              job.storedFileName,
+              file.mimetype,
+            );
+
+            if (uploadError) {
+              console.error(
+                `[Publication Check] Background upload failed for ${job.originalFileName}:`,
+                uploadError,
+              );
+              await safeUpdateJob(job._id, {
+                $set: {
+                  status: "failed",
+                  stage: "upload_failed",
+                  errorMessage: "Failed to upload file to cloud storage",
+                },
+              });
+              return;
+            }
+
+            // 2. Update job status to queued
+            await safeUpdateJob(job._id, {
+              $set: {
+                status: "queued",
+                stage: "queued",
+              },
+            });
+
+            // 3. Schedule for processing
+            scheduleBatchJob(job._id.toString());
+          }),
+        );
+      } catch (bgError) {
+        console.error(
+          "[Publication Check] Critical error in background upload process:",
+          bgError,
+        );
+      }
+    })();
   } catch (error) {
     console.error(
       "[Publication Check] Could not start batch verification:",
@@ -340,6 +456,60 @@ async function startBatchVerification(req, res) {
       error: "Unable to start background verification",
       message: error.message,
     });
+  }
+}
+
+/**
+ * Initializes the batch job queue on server start
+ * Picks up any 'queued' or 'processing' jobs from database
+ */
+async function initBatchQueue(io) {
+  try {
+    batchIo = io;
+    console.log("[Publication Check] Initializing background job queue...");
+
+    // Find all jobs that should be in the queue
+    const pendingJobs = await VerificationJob.find({
+      status: { $in: ["queued", "processing", "uploading"] },
+      jobType: "publication-check",
+    });
+
+    if (pendingJobs.length === 0) {
+      return;
+    }
+
+    console.log(
+      `[Publication Check] Found ${pendingJobs.length} pending jobs to resume.`,
+    );
+
+    for (const job of pendingJobs) {
+      if (job.status === "processing" || job.status === "uploading") {
+        // Reset to queued for a fresh start on server reboot
+        // Unless it was uploading and we don't have the buffer anymore...
+        // If it was 'uploading' when server crashed, we don't have the buffer, so it must fail.
+        if (job.status === "uploading") {
+          await safeUpdateJob(job._id, {
+            $set: {
+              status: "failed",
+              stage: "failed",
+              errorMessage: "Upload interrupted by server restart",
+            },
+          });
+          continue;
+        }
+
+        await safeUpdateJob(job._id, {
+          $set: {
+            status: "queued",
+            stage: "resumed",
+          },
+        });
+      }
+
+      scheduleBatchJob(job._id.toString());
+    }
+  } catch (error) {
+    console.error("[Publication Check] Queue initialization failed:", error);
   }
 }
 
@@ -494,7 +664,10 @@ async function getBatchJobPdf(req, res) {
     const { signedUrl, error } = await getSignedUrl(job.storedFileName, 300);
 
     if (error || !signedUrl) {
-      console.error("[Publication Check] Failed to generate signed URL:", error);
+      console.error(
+        "[Publication Check] Failed to generate signed URL:",
+        error,
+      );
       return res.status(500).json({
         success: false,
         error: "Unable to generate secure viewing link",
@@ -523,4 +696,5 @@ module.exports = {
   getBatchJobPdf,
   cancelBatchJob,
   removeBatchJob,
+  initBatchQueue,
 };

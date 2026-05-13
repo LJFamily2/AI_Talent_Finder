@@ -33,8 +33,8 @@ const VerificationJobSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["queued", "processing", "completed", "failed"],
-      default: "queued",
+      enum: ["uploading", "queued", "processing", "completed", "failed"],
+      default: "uploading",
       index: true,
     },
     progress: {

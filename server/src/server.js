@@ -85,7 +85,6 @@ app.use((err, req, res, next) => {
 // --- Socket.io Setup ---
 const http = require("http");
 const { Server } = require("socket.io");
-const initSockets = require("./socketHandler");
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -98,8 +97,11 @@ const io = new Server(server, {
 // Make io accessible in controllers
 app.set("io", io);
 
-// Initialize socket handlers in a separate module
-initSockets(io);
+io.on("connection", (socket) => {
+  socket.on("joinJob", (jobId) => {
+    socket.join(jobId);
+  });
+});
 
 // Start the HTTP Server
 const PORT = process.env.PORT || 8000;

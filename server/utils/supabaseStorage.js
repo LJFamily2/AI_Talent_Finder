@@ -98,10 +98,22 @@ async function getSignedUrl(fileName, expiresIn = 300) {
   }
 }
 
+/**
+ * Helper function to generate a unique stored filename for Supabase
+ * @param {string} originalname - The original name of the file
+ * @returns {string} - A unique stored filename
+ */
+const generateStoredFileName = (originalname) => {
+  const path = require("path");
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  return "cv-" + uniqueSuffix + path.extname(originalname);
+};
+
 module.exports = {
   supabase,
   uploadToSupabase,
   downloadFromSupabase,
   deleteFromSupabase,
   getSignedUrl,
+  generateStoredFileName,
 };

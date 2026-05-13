@@ -29,7 +29,6 @@ function CVUpload() {
   const [batchJobs, setBatchJobs] = useState([]);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
-  const [batchMessage, setBatchMessage] = useState("");
   const [batchError, setBatchError] = useState(null);
   const [removeConfirmJob, setRemoveConfirmJob] = useState(null);
   const navigate = useNavigate();
@@ -57,7 +56,9 @@ function CVUpload() {
     loadBatchJobs();
   }, [loadBatchJobs]);
 
-  // Establish socket connection for batch job updates and join recent job rooms
+  const joinedJobsRef = useRef(new Set());
+
+  // Establish socket connection for batch job updates
   useEffect(() => {
     if (!user) return;
 
@@ -137,27 +138,30 @@ function CVUpload() {
     socket.on("complete", onComplete);
     socket.on("error", onError);
 
-    // When jobs are loaded, join each job room so we receive updates
-    // Use an interval to ensure jobs loaded after mount are joined too
-    const joinJobs = () => {
-      if (!Array.isArray(batchJobs)) return;
-      batchJobs.forEach((job) => {
-        try {
-          socket.emit("joinJob", job.id);
-        } catch {
-          // ignore
-        }
-      });
-    };
-
-    joinJobs();
-
     return () => {
       socket.off("progress", onProgress);
       socket.off("complete", onComplete);
       socket.off("error", onError);
     };
-  }, [user, batchJobs]);
+  }, [user]);
+
+  // Handle joining job rooms when new jobs are loaded
+  useEffect(() => {
+    if (!socketRef.current || !Array.isArray(batchJobs)) return;
+
+    const socket = socketRef.current;
+
+    batchJobs.forEach((job) => {
+      if (!joinedJobsRef.current.has(job.id)) {
+        try {
+          socket.emit("joinJob", job.id);
+          joinedJobsRef.current.add(job.id);
+        } catch (err) {
+          console.warn("Failed to join job room:", err);
+        }
+      }
+    });
+  }, [batchJobs]);
 
   const handleBatchLoginClick = () => {
     try {
@@ -184,7 +188,6 @@ function CVUpload() {
 
       setBatchSubmitting(true);
       setBatchError(null);
-      setBatchMessage("");
 
       try {
         const formData = new FormData();
@@ -193,7 +196,7 @@ function CVUpload() {
         });
         formData.append("prioritySource", "scopus");
 
-        const response = await api.post("/api/cv/batch-verify", formData, {
+        await api.post("/api/cv/batch-verify", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -201,17 +204,6 @@ function CVUpload() {
 
         await loadBatchJobs();
         setBatchFiles([]);
-
-        const jobIds = response.data?.jobIds || [];
-        if (jobIds.length === 1) {
-          setBatchMessage(
-            `${filesToUpload[0].name} is now verifying in the background. Check the Recent batch jobs below to track progress.`,
-          );
-        } else {
-          setBatchMessage(
-            `${jobIds.length || filesToUpload.length} CVs are now verifying in the background. Check the Recent batch jobs below to track progress.`,
-          );
-        }
       } catch (error) {
         console.error("Error starting batch verification:", error);
         setBatchError(
@@ -423,242 +415,441 @@ function CVUpload() {
   return (
     <div className="w-full min-h-screen">
       <Header />
-      <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-8 px-4">
+      <div className="flex flex-col items-center w-full min-h-screen pt-20 pb-16 px-4 bg-[#f8fafc]">
         <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-7 text-center">
           Verify CV Publications
         </h2>
 
-        <div className="w-full max-w-4xl mb-8 mx-4 rounded-2xl border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
-                Batch verification
-              </p>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
-                {user
-                  ? "Upload once, verify in the background"
-                  : "Sign in to verify in batch"}
-              </h3>
-              <p className="text-sm sm:text-base text-slate-700 mt-2">
-                {user
-                  ? "Jobs run in the background. You can leave and check results later."
-                  : "Sign in to save your batch results."}
-              </p>
+        {/* Redesigned Batch Verification Section */}
+        <div className="w-full max-w-6xl mb-12 mx-4 bg-white/90 backdrop-blur-xl rounded-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] border border-slate-200/60 overflow-hidden transition-all duration-500">
+          <div className="bg-[#000054] p-8 sm:p-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-100 mb-2 px-3 py-1 bg-[#E60028] rounded-none w-max">
+                  Batch Verification
+                </p>
+                <h3 className="text-3xl font-extrabold text-white tracking-tight mb-2">
+                  {user
+                    ? "Scale your verification"
+                    : "Sign in for batch processing"}
+                </h3>
+                <p className="text-slate-100/80 mt-1 max-w-md leading-relaxed">
+                  {user
+                    ? "Upload multiple CVs and let our AI process them in the background while you work."
+                    : "Create an account to verify up to 10 CVs simultaneously and track their progress."}
+                </p>
+              </div>
+              {!user && !authLoading && (
+                <button
+                  className="inline-flex items-center justify-center rounded-none bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg  hover:bg-blue-700 hover:-translate-y-0.5 transition-all cursor-pointer"
+                  onClick={handleBatchLoginClick}
+                >
+                  Get Started with Batch
+                </button>
+              )}
             </div>
-
-            {!user && !authLoading ? (
-              <button
-                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 cursor-pointer"
-                onClick={handleBatchLoginClick}
-              >
-                Sign in to start batch verification
-              </button>
-            ) : null}
           </div>
 
-          {user ? (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
-              <div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5">
-                <label className="block text-sm font-semibold text-slate-800 mb-2">
-                  Batch CV files
-                </label>
-                <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-6 hover:bg-slate-50 transition-colors cursor-pointer text-center group">
-                  <input
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    multiple
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={(event) => {
-                      const selectedFiles = Array.from(event.target.files || []);
-                      const invalidFile = selectedFiles.find(
-                        (file) => file.type !== "application/pdf",
-                      );
+          {user && (
+            <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 bg-white">
+              {/* Left Column: Upload Zone */}
+              <div className="p-8 sm:p-10 flex flex-col h-full">
+                <div className="flex flex-col h-full">
+                  <div className="mb-6 flex items-start justify-between">
+                    <div>
+                      <h4 className="text-xl font-bold text-[#000054] mb-1">
+                        Upload CVs
+                      </h4>
+                      <p className="text-sm text-slate-500">
+                        Drag and drop your PDF files to start
+                      </p>
+                    </div>
+                    <span className="bg-[#E60028] w-8 h-1 rounded-none mt-2"></span>
+                  </div>
 
-                      if (invalidFile) {
-                        setBatchError(
-                          "Only PDF files are allowed for batch verification.",
+                  <div className="relative group">
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      multiple
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      onChange={(event) => {
+                        const selectedFiles = Array.from(
+                          event.target.files || [],
                         );
-                        event.target.value = "";
-                        return;
-                      }
+                        const invalidFile = selectedFiles.find(
+                          (file) => file.type !== "application/pdf",
+                        );
 
-                      setBatchFiles((prev) => {
-                        const merged = [...prev];
-
-                        selectedFiles.forEach((file) => {
-                          const exists = merged.some(
-                            (f) =>
-                              f.name === file.name &&
-                              f.size === file.size &&
-                              f.lastModified === file.lastModified,
+                        if (invalidFile) {
+                          setBatchError(
+                            "Only PDF files are allowed for batch verification.",
                           );
-                          if (!exists) merged.push(file);
-                        });
-
-                        if (merged.length > 10) {
-                          setBatchError("You can upload up to 10 PDFs per batch.");
-                          return merged.slice(0, 10);
+                          event.target.value = "";
+                          return;
                         }
 
-                        setBatchError(null);
-                        return merged;
-                      });
+                        setBatchFiles((prev) => {
+                          const merged = [...prev];
+                          selectedFiles.forEach((file) => {
+                            const exists = merged.some(
+                              (f) =>
+                                f.name === file.name &&
+                                f.size === file.size &&
+                                f.lastModified === file.lastModified,
+                            );
+                            if (!exists) merged.push(file);
+                          });
 
-                      event.target.value = "";
-                    }}
-                  />
-                  <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                    <svg className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <div>
-                      <span className="font-semibold text-blue-600">Click to upload</span>
-                      <span className="text-slate-500"> or drag and drop</span>
-                    </div>
-                    <p className="text-xs text-slate-500">PDF only, up to 10 files</p>
-                  </div>
-                </div>
+                          if (merged.length > 10) {
+                            setBatchError(
+                              "Maximum 10 files allowed per batch.",
+                            );
+                            return merged.slice(0, 10);
+                          }
 
-                {batchFiles.length > 0 && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-slate-700">
-                        Selected CVs ({batchFiles.length})
-                      </span>
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-slate-600 hover:text-red-600 hover:underline cursor-pointer"
-                        onClick={() => {
-                          setBatchFiles([]);
                           setBatchError(null);
-                          setBatchMessage("");
-                        }}
-                      >
-                        Clear all
-                      </button>
+                          return merged;
+                        });
+                        event.target.value = "";
+                      }}
+                    />
+                    <div className="flex flex-col items-center justify-center py-10 px-6 border-2 border-dashed border-slate-200 rounded-none bg-slate-50/30 group-hover:bg-white group-hover:border-blue-500 group-hover:shadow-md transition-all duration-300">
+                      <div className="w-16 h-16 mb-4 rounded-none bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <svg
+                          className="w-8 h-8 text-blue-600 animate-bounce-slow"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-base font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                        Drop CVs here or{" "}
+                        <span className="text-blue-600">click to browse</span>
+                      </p>
+                      <p className="text-xs text-slate-400 mt-2">
+                        Supports PDF, Max 10 files
+                      </p>
                     </div>
-                    <ul className="max-h-48 overflow-y-auto space-y-2 pr-1">
-                      {batchFiles.map((file, index) => (
-                        <li key={`${file.name}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-slate-50 border border-slate-200">
-                          <span className="text-sm text-slate-700 truncate mr-2" title={file.name}>{file.name}</span>
-                          <button
-                            type="button"
-                            className="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-slate-200 transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
-                            onClick={() => {
-                              setBatchFiles((prev) => prev.filter((_, i) => i !== index));
-                            }}
-                            title="Remove file"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
-                )}
 
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <button
-                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 transition-colors"
-                    disabled={batchFiles.length === 0 || batchSubmitting}
-                    onClick={() => handleBatchUpload(batchFiles)}
-                  >
-                    {batchSubmitting
-                      ? "Starting batch..."
-                      : batchFiles.length > 1
-                        ? `Verify ${batchFiles.length} CVs`
-                        : "Verify CV"}
-                  </button>
-                </div>
-                {batchError && (
-                  <p className="mt-3 text-sm text-red-600">{batchError}</p>
-                )}
-                {batchMessage && (
-                  <p className="mt-3 text-sm text-green-700">{batchMessage}</p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <h4 className="text-sm font-semibold text-slate-800">
-                    Recent batch jobs
-                  </h4>
-                  <button
-                    className="text-xs font-medium text-blue-700 hover:underline cursor-pointer"
-                    onClick={loadBatchJobs}
-                  >
-                    Refresh
-                  </button>
-                </div>
-                {batchLoading ? (
-                  <p className="text-sm text-slate-500">Loading jobs...</p>
-                ) : batchJobs.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No batch jobs yet. Upload a PDF to start one.
-                  </p>
-                ) : (
-                  <div className="space-y-4 max-h-96 overflow-auto pr-1">
-                    {batchJobs.map((job) => (
-                      <div
-                        key={job.id}
-                        className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-sm"
-                      >
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-white">
-                          <p className="text-sm font-semibold text-slate-900 truncate" title={job.originalFileName}>
-                            {job.originalFileName}
-                          </p>
-                          <div className="flex items-center gap-2 shrink-0">
+                  {batchFiles.length > 0 && (
+                    <div className="mt-6 flex-grow">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          Ready to Verify ({batchFiles.length})
+                        </span>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setBatchFiles([]);
+                            setBatchError(null);
+                          }}
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                        {batchFiles.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between p-3 rounded-none bg-slate-50 border border-slate-100 group/item"
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <svg
+                                className="w-5 h-5 text-blue-400 shrink-0"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span
+                                className="text-sm font-medium text-slate-700 truncate"
+                                title={file.name}
+                              >
+                                {file.name}
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              className="text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline cursor-pointer mr-1"
+                              className="text-slate-300 hover:text-rose-500 p-1 transition-colors cursor-pointer"
                               onClick={() =>
-                                navigate(`/publication-check/results/${job.id}`)
+                                setBatchFiles((prev) =>
+                                  prev.filter((_, i) => i !== index),
+                                )
                               }
                             >
-                              Open
-                            </button>
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center justify-center"
-                              onClick={() => handleRemoveBatchJob(job.id)}
-                              title={job.status === "queued" || job.status === "processing" ? "Cancel job" : "Remove job"}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
                               </svg>
                             </button>
                           </div>
-                        </div>
-                        {job.status !== "completed" ? (
-                          <div className="px-4 py-3">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                {job.status === "failed" ? "FAILED" : job.stage || "PROCESSING"}
-                              </span>
-                              <span className="text-xs font-bold text-slate-700">
-                                {job.progress}%
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                              <div
-                                className={`h-2.5 rounded-full transition-all duration-500 ease-out ${job.status === "failed" ? "bg-red-500" : "bg-blue-600"}`}
-                                style={{
-                                  width: `${Math.min(100, Math.max(0, job.progress || 0))}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-                        ) : null}
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  <div className="mt-8">
+                    <button
+                      className="w-full inline-flex items-center justify-center rounded-none bg-blue-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-blue-200 transition-all disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
+                      disabled={batchFiles.length === 0 || batchSubmitting}
+                      onClick={() => handleBatchUpload(batchFiles)}
+                    >
+                      {batchSubmitting ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Starting Verification...
+                        </>
+                      ) : (
+                        `Start Verification (${batchFiles.length})`
+                      )}
+                    </button>
+                    {batchError && (
+                      <p className="mt-3 text-sm font-medium text-[#E60028] text-center">
+                        {batchError}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+
+              {/* Right Column: Job Status List */}
+              <div className="p-8 sm:p-10 flex flex-col h-full bg-slate-100">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h4 className="text-xl font-bold text-[#000054] mb-1">
+                      Recent Batch Jobs
+                    </h4>
+                    <p className="text-sm text-slate-500">
+                      Track your background processes
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="p-2 rounded-none hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer group"
+                      onClick={loadBatchJobs}
+                      title="Refresh status"
+                    >
+                      <svg
+                        className={`w-5 h-5 ${batchLoading ? "animate-spin" : "group-active:rotate-180 transition-transform"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    </button>
+                    <span className="bg-[#E60028] w-8 h-1 rounded-none mt-2"></span>
+                  </div>
+                </div>
+
+
+                <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                  {batchLoading && batchJobs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                      <div className="animate-pulse space-y-4 w-full">
+                        <div className="h-16 bg-slate-100 rounded-none"></div>
+                        <div className="h-16 bg-slate-100 rounded-none"></div>
+                        <div className="h-16 bg-slate-100 rounded-none"></div>
+                      </div>
+                    </div>
+                  ) : batchJobs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 mb-4 rounded-none bg-slate-100 flex items-center justify-center">
+                        <svg
+                          className="w-8 h-8 text-slate-300"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-slate-500">
+                        No batch jobs yet
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Upload files to see them here
+                      </p>
+                    </div>
+                  ) : (
+                    batchJobs.map((job) => (
+                      <div
+                        key={job.id}
+                        className="group relative flex items-center gap-4 p-5 rounded-none bg-white border border-slate-200 hover:border-blue-300/50 hover:shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all duration-500"
+                      >
+                        <div className="w-10 h-10 rounded-none bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                          <svg
+                            className="w-5 h-5 text-slate-400 group-hover:text-blue-500"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="flex-grow min-w-0">
+                          <p
+                            className="text-sm font-extrabold text-slate-800 truncate pr-8 group-hover:text-blue-700 transition-colors"
+                            title={job.originalFileName}
+                          >
+                            {job.originalFileName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {String(job.status).toLowerCase() === "completed" ||
+                            String(job.stage).toLowerCase() === "done" ? (
+                              <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-100">
+                                <span className="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
+                                Completed
+                              </span>
+                            ) : String(job.status).toLowerCase() ===
+                              "failed" ? (
+                              <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-none border border-rose-100">
+                                <span className="w-1.5 h-1.5 rounded-none bg-rose-500"></span>
+                                Failed
+                              </span>
+                            ) : (
+                              <div className="flex flex-col gap-1.5 w-full">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-600 uppercase tracking-widest">
+                                    <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse"></span>
+                                    {job.stage || "Processing"}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-blue-600/60">
+                                    {job.progress || 0}%
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-blue-100/50 rounded-none overflow-hidden">
+                                  <div
+                                    className="h-full bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                    style={{ width: `${job.progress || 0}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="hidden group-hover:flex items-center px-3 py-1.5 rounded-none bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-600 hover:text-white transition-all cursor-pointer whitespace-nowrap"
+                            onClick={() =>
+                              navigate(`/publication-check/results/${job.id}`)
+                            }
+                          >
+                            View Results
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-none text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                            onClick={() => handleRemoveBatchJob(job.id)}
+                            title="Remove job"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
-          ) : null}
+          )}
         </div>
+
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          @keyframes bounce-slow {
+            0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+            50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
+          }
+          .animate-bounce-slow {
+            animation: bounce-slow 2s infinite;
+          }
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+          }
+        `,
+          }}
+        />
 
         <Dialog
           open={Boolean(removeConfirmJob)}
@@ -690,7 +881,7 @@ function CVUpload() {
         </Dialog>
 
         {showSingleUpload && errorInfo && (
-          <div className="w-full max-w-2xl mb-6 p-4 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
+          <div className="w-full max-w-2xl mb-6 p-4 rounded-none border border-red-300 bg-red-50 text-red-700 text-sm mx-4">
             <p className="font-semibold mb-1">Verification Error</p>
             <p>{errorInfo.message}</p>
             {errorInfo.retryable && (
@@ -711,7 +902,7 @@ function CVUpload() {
           <div
             className={`$
               isDragActive ? "bg-blue-100" : "bg-white"
-            } border-dashed border-2 border-gray-400 rounded-2xl sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
+            } border-dashed border-2 border-gray-400 rounded-none sm:rounded-[3vw] md:rounded-[5vw] flex flex-col items-center justify-center w-full max-w-4xl mx-4 min-h-[300px] sm:min-h-[400px] md:h-2/3 p-6 sm:p-8`}
             {...getRootProps()}
           >
             <input {...getInputProps()} />
@@ -736,7 +927,7 @@ function CVUpload() {
 
       {showSingleUpload && processing && uploadedFile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-6xl bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="w-full max-w-6xl bg-white rounded-none shadow-lg overflow-hidden">
             {/* Header */}
             <div className="bg-gray-50 px-6 py-4 border-b">
               <h3 className="text-lg font-semibold text-gray-800">
@@ -764,7 +955,7 @@ function CVUpload() {
                   {/* Large Circular Progress */}
                   <div className="relative w-32 h-32 mx-auto mb-6">
                     {/* Background circle with subtle animation */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 animate-pulse"></div>
+                    <div className="absolute inset-0 rounded-none bg-gradient-to-r from-blue-100 to-purple-100 animate-pulse"></div>
 
                     <svg
                       className="w-full h-full transform -rotate-90 relative z-10"
@@ -804,7 +995,7 @@ function CVUpload() {
                     </div>
 
                     {/* Rotating outer ring */}
-                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-300 rounded-full animate-spin opacity-30"></div>
+                    <div className="absolute inset-0  border-transparent border-t-blue-300 rounded-none animate-spin opacity-30"></div>
                   </div>
 
                   {/* Status Text with animations */}
@@ -848,14 +1039,14 @@ function CVUpload() {
                       }`}
                     >
                       <div
-                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                        className={`w-4 h-4 rounded-none mr-3 transition-all duration-500 ${
                           progress >= 20
                             ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
                             : "bg-gray-300"
                         }`}
                       >
                         {progress >= 20 && (
-                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                          <div className="w-full h-full rounded-none bg-green-400 animate-ping opacity-75"></div>
                         )}
                       </div>
                       <span
@@ -878,14 +1069,14 @@ function CVUpload() {
                       }`}
                     >
                       <div
-                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                        className={`w-4 h-4 rounded-none mr-3 transition-all duration-500 ${
                           progress >= 50
                             ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
                             : "bg-gray-300"
                         }`}
                       >
                         {progress >= 50 && (
-                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                          <div className="w-full h-full rounded-none bg-green-400 animate-ping opacity-75"></div>
                         )}
                       </div>
                       <span
@@ -908,14 +1099,14 @@ function CVUpload() {
                       }`}
                     >
                       <div
-                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                        className={`w-4 h-4 rounded-none mr-3 transition-all duration-500 ${
                           progress >= 80
                             ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
                             : "bg-gray-300"
                         }`}
                       >
                         {progress >= 80 && (
-                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                          <div className="w-full h-full rounded-none bg-green-400 animate-ping opacity-75"></div>
                         )}
                       </div>
                       <span
@@ -938,14 +1129,14 @@ function CVUpload() {
                       }`}
                     >
                       <div
-                        className={`w-4 h-4 rounded-full mr-3 transition-all duration-500 ${
+                        className={`w-4 h-4 rounded-none mr-3 transition-all duration-500 ${
                           progress >= 100
                             ? "bg-green-500 scale-110 shadow-lg shadow-green-500/30"
                             : "bg-gray-300"
                         }`}
                       >
                         {progress >= 100 && (
-                          <div className="w-full h-full rounded-full bg-green-400 animate-ping opacity-75"></div>
+                          <div className="w-full h-full rounded-none bg-green-400 animate-ping opacity-75"></div>
                         )}
                       </div>
                       <span
