@@ -20,6 +20,10 @@ const axios = require("axios");
 const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // CONFIGURATION AND CONSTANTS
 //=============================================================================
@@ -48,13 +52,14 @@ const verifyWithScopus = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 3
+  maxResultsToCheck = 3,
 ) => {
   try {
     // Step 1: Search Scopus database for the publication
     const searchResults = await searchScopusDatabase(title, maxResultsToCheck);
 
     if (!searchResults.entries.length) {
+      debugLog("no_results", { title, doi });
       return createScopusResponse("unable to verify", null, searchResults);
     }
 
@@ -62,17 +67,22 @@ const verifyWithScopus = async (
     const matchedPublication = findMatchingPublication(
       searchResults.entries,
       title,
-      doi
+      doi,
     );
 
     if (!matchedPublication) {
+      debugLog("no_match", {
+        title,
+        doi,
+        results: searchResults.entries.length,
+      });
       return createScopusResponse("unable to verify", null, searchResults);
     }
 
     // Step 3: Extract and process author information
     const authorInfo = extractAuthorInformation(
       matchedPublication,
-      candidateName
+      candidateName,
     );
 
     // Step 4: Build detailed response with Scopus-specific data
@@ -82,6 +92,14 @@ const verifyWithScopus = async (
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
+
+    debugLog("match", {
+      title,
+      doi,
+      verificationStatus,
+      authorMatch: authorInfo.hasAuthorMatch,
+      authorId: authorInfo.authorId,
+    });
 
     return createScopusResponse(verificationStatus, details, searchResults);
   } catch (err) {
@@ -107,10 +125,12 @@ const searchScopusDatabase = async (title, maxResults) => {
     const scopusQuery = title;
 
     const scopusApiUrl = `https://api.elsevier.com/content/search/scopus?apiKey=${scopusAPIKey}&insttoken=${scopusInsttoken}&query=TITLE-ABS-KEY(${encodeURIComponent(
-      scopusQuery
+      scopusQuery,
     )})&page=1&sortBy=relevance&view=COMPLETE&count=${maxResults}`;
 
-    const { data: scopusResult } = await axios.get(scopusApiUrl, { timeout: 1500 });
+    const { data: scopusResult } = await axios.get(scopusApiUrl, {
+      timeout: 1500,
+    });
     const entries = scopusResult?.["search-results"]?.entry || [];
 
     return {
@@ -137,10 +157,13 @@ const searchScopusDatabase = async (title, maxResults) => {
  * @private
  */
 const findMatchingPublication = (entries, title, doi) => {
-  return entries.find((item) => {
+  let best = { similarity: 0, ratio: 0, title: null };
+  let matched = null;
+  for (const item of entries) {
     // DOI match takes highest precedence
     if (doi && item["prism:doi"]?.toLowerCase() === doi.toLowerCase()) {
-      return true;
+      matched = item;
+      break;
     }
 
     // Title-based matching
@@ -150,7 +173,7 @@ const findMatchingPublication = (entries, title, doi) => {
 
       const similarity = getTitleSimilarity(
         normalizedTitle,
-        normalizedItemTitle
+        normalizedItemTitle,
       );
 
       // Check title length ratio to ensure reasonable match
@@ -158,17 +181,35 @@ const findMatchingPublication = (entries, title, doi) => {
         Math.min(normalizedTitle.length, normalizedItemTitle.length) /
         Math.max(normalizedTitle.length, normalizedItemTitle.length);
 
+      if (similarity > best.similarity) {
+        best = {
+          similarity,
+          ratio: titleLengthRatio,
+          title: item["dc:title"],
+        };
+      }
+
       // Only verify if the similarity is very high and titles have reasonable length
       if (
         similarity >= TITLE_SIMILARITY_THRESHOLD &&
         titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
       ) {
-        return true;
+        matched = item;
+        break;
       }
     }
 
-    return false;
-  });
+    if (!matched && DEBUG_VERIFY) {
+      debugLog("best_candidate", {
+        title,
+        bestTitle: best.title,
+        bestSimilarity: best.similarity,
+        bestRatio: best.ratio,
+      });
+    }
+
+    return matched;
+  }
 };
 
 /**
@@ -266,7 +307,7 @@ const extractAuthorInformation = (publication, candidateName) => {
 const buildPublicationDetails = (publication, authorInfo) => {
   // Extract Scopus link from the links array
   const scopusLink = publication.link?.find(
-    (link) => link["@ref"] === "scopus"
+    (link) => link["@ref"] === "scopus",
   )?.["@href"];
   return {
     ...publication,

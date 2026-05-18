@@ -35,6 +35,10 @@ const {
 const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
 const { deleteFromSupabase } = require("../utils/supabaseStorage");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // MODULE EXPORTS
 //=============================================================================
@@ -67,6 +71,13 @@ async function verifyCV(file, prioritySource, options = {}) {
   const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
+    debugLog("start", {
+      jobId,
+      storedFileName,
+      originalName: file.originalname,
+      fileSize: file.size,
+      prioritySource,
+    });
     const checkCancellation = async (stage) => {
       if (typeof shouldCancel === "function" && (await shouldCancel())) {
         if (io && jobId) {
@@ -95,6 +106,11 @@ async function verifyCV(file, prioritySource, options = {}) {
     const pdfStartTime = Date.now();
     cvText = await extractTextFromSupabasePDF(storedFileName);
     const pdfEndTime = Date.now();
+    debugLog("pdf_extracted", {
+      jobId,
+      durationMs: pdfEndTime - pdfStartTime,
+      textLength: cvText.length,
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 10, step: "pdf_extracted" });
 
@@ -167,6 +183,11 @@ async function verifyCV(file, prioritySource, options = {}) {
     const nameCancellation = await checkCancellation("name_extracted");
     if (nameCancellation) return nameCancellation;
     const nameEndTime = Date.now();
+    debugLog("name_extracted", {
+      jobId,
+      durationMs: nameEndTime - nameStartTime,
+      candidateName,
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 30, step: "name_extracted" });
 
@@ -202,6 +223,17 @@ async function verifyCV(file, prioritySource, options = {}) {
     );
     if (publicationCancellation) return publicationCancellation;
     const pubEndTime = Date.now();
+    debugLog("publications_extracted", {
+      jobId,
+      durationMs: pubEndTime - pubStartTime,
+      publicationCount: Array.isArray(publications) ? publications.length : 0,
+      titles: Array.isArray(publications)
+        ? publications
+            .map((p) => p?.title)
+            .filter(Boolean)
+            .slice(0, 10)
+        : [],
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", {
         progress: 50,
@@ -237,6 +269,10 @@ async function verifyCV(file, prioritySource, options = {}) {
       console.error("Batch OpenAlex verification failed:", err);
       // Continue without batch results
     }
+    debugLog("openalex_batch_complete", {
+      jobId,
+      batchResults: Object.keys(openAlexBatchResults).length,
+    });
 
     // Verify each publication with both Google Scholar and Scopus
     if (io && jobId)
@@ -254,11 +290,33 @@ async function verifyCV(file, prioritySource, options = {}) {
 
       const pub = publications[i];
       const preFetchedOpenAlex = openAlexBatchResults[pub.title];
+      debugLog("publication_start", {
+        jobId,
+        index: i + 1,
+        total: publications.length,
+        title: pub.title,
+        hasPrefetch: Boolean(preFetchedOpenAlex),
+        prefetchStatus: preFetchedOpenAlex?.status || null,
+      });
       const result = await processPublicationVerification(
         pub,
         candidateName,
         preFetchedOpenAlex,
       );
+      debugLog("publication_done", {
+        jobId,
+        index: i + 1,
+        title: pub.title,
+        status: result?.verification?.displayData?.status,
+        sources: {
+          googleScholar: result?.verification?.google_scholar?.status,
+          scopus: result?.verification?.scopus?.status,
+          openalex: result?.verification?.openalex?.status,
+          pubmed: result?.verification?.pubmed?.status,
+        },
+        authorMatch: result?.authorVerification?.hasAuthorMatch,
+        authorIds: result?.authorVerification?.authorIds,
+      });
       verificationResults.push(result);
       if (io && jobId) {
         // Progress between 60 and 80%
@@ -306,6 +364,12 @@ async function verifyCV(file, prioritySource, options = {}) {
       }
     }); // Only proceed with aggregation if we have at least one author ID
 
+    debugLog("author_ids_collected", {
+      jobId,
+      authorIds: allAuthorIds,
+      verifiedWithAuthorMatchCount: verifiedWithAuthorMatch.length,
+    });
+
     let aggregatedAuthorDetails = null;
     if (io && jobId)
       io.to(jobId).emit("progress", {
@@ -327,6 +391,13 @@ async function verifyCV(file, prioritySource, options = {}) {
           prioritySource,
         );
         const aggregationEndTime = Date.now();
+
+        debugLog("author_aggregation", {
+          jobId,
+          durationMs: aggregationEndTime - aggregationStartTime,
+          hasDetails: Boolean(rawAuthorDetails),
+          prioritySource,
+        });
 
         if (rawAuthorDetails) {
           // Transform the result to match the expected structure
@@ -368,7 +439,19 @@ async function verifyCV(file, prioritySource, options = {}) {
       secondStageAuthorMatch = checkAuthorNameMatch(candidateName, [
         aggregatedAuthorDetails.author.name,
       ]);
+      debugLog("second_stage_author_match", {
+        jobId,
+        candidateName,
+        aggregatedAuthorName: aggregatedAuthorDetails.author.name,
+        matched: secondStageAuthorMatch,
+      });
     } else {
+      debugLog("second_stage_author_match", {
+        jobId,
+        candidateName,
+        aggregatedAuthorName: null,
+        matched: false,
+      });
     }
 
     // If second stage fails (no aggregated data OR name mismatch), update all verified publications
@@ -389,6 +472,11 @@ async function verifyCV(file, prioritySource, options = {}) {
           r.verification.displayData.status ===
           "verified but not same author name",
       ).length;
+      debugLog("second_stage_downgrade", {
+        jobId,
+        beforeCount,
+        afterCount,
+      });
     }
 
     if (io && jobId)
@@ -415,6 +503,7 @@ async function verifyCV(file, prioritySource, options = {}) {
       authorDetails: aggregatedAuthorDetails,
     };
   } catch (error) {
+    debugLog("error", { jobId, message: error?.message });
     throw error;
   } finally {
     if (!keepFile && storedFileName) {

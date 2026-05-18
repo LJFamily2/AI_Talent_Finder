@@ -16,6 +16,10 @@
 const axios = require("axios");
 const { getTitleSimilarity } = require("./textUtils");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // CONFIGURATION AND CACHE
 //=============================================================================
@@ -58,12 +62,13 @@ const extractNameParts = (name) => {
     lastName = "",
     middleNames = [];
 
-  const normalizedName = normalizeName(name);
+  const rawName = String(name || "").trim();
+  const normalizedName = normalizeName(rawName);
 
-  if (normalizedName.includes(",")) {
-    // Handle "Lastname, Firstname" format
-    const parts = normalizedName.split(",").map((part) => part.trim());
-    lastName = parts[0];
+  if (rawName.includes(",")) {
+    // Handle "Lastname, Firstname" format using raw comma separation
+    const parts = rawName.split(",").map((part) => normalizeName(part));
+    lastName = parts[0] || "";
 
     if (parts.length > 1 && parts[1]) {
       const firstParts = parts[1].split(" ").filter(Boolean);
@@ -72,12 +77,27 @@ const extractNameParts = (name) => {
     }
   } else {
     // Standard "Firstname [Middle] Lastname" format
-    let parts = normalizedName.split(" ").filter(Boolean);
+    const parts = normalizedName.split(" ").filter(Boolean);
+    const rawParts = rawName.split(/\s+/).filter(Boolean);
 
-    // Special handling for initials with dots (e.g., "B.F. Goldfarb")
-    if (parts.length >= 2 && parts[0].includes(".") && parts[0].length <= 4) {
+    // Special handling for spaced initials with dots (e.g., "T. N. Chang")
+    const initialToken = rawParts[0] || "";
+    const hasInitialTokens =
+      rawParts.length >= 2 &&
+      /^[A-Za-z]\.?$/.test(initialToken) &&
+      /^[A-Za-z]\.?$/.test(rawParts[1]);
+
+    if (hasInitialTokens) {
+      const initials = rawParts
+        .slice(0, -1)
+        .map((token) => token.replace(/\./g, ""))
+        .filter(Boolean);
+      firstName = initials[0] || "";
+      middleNames = initials.slice(1);
+      lastName = normalizeName(rawParts[rawParts.length - 1] || "");
+    } else if (parts.length >= 2 && rawParts[0]?.includes(".")) {
       // This looks like initials - split them up
-      const initialsStr = parts[0];
+      const initialsStr = rawParts[0];
       const initialParts = initialsStr.split(".").filter(Boolean);
 
       if (initialParts.length > 1) {
@@ -93,13 +113,12 @@ const extractNameParts = (name) => {
     } else {
       // Check for concatenated initials (e.g., "BD Goldstein" -> firstName: "B", middleNames: ["D"])
       // Only consider it concatenated initials if it's 2-4 letters AND all uppercase in original form
-      const originalParts = name.split(" ").filter(Boolean);
       if (
         parts.length === 2 &&
         parts[0].length >= 2 &&
         parts[0].length <= 4 &&
-        originalParts.length >= 1 &&
-        /^[A-Z]+$/.test(originalParts[0])
+        rawParts.length >= 1 &&
+        /^[A-Z]+$/.test(rawParts[0])
       ) {
         // This looks like concatenated initials
         const initialsStr = parts[0];
@@ -172,24 +191,73 @@ const checkAuthorNameMatch = (candidateName, authorList) => {
   }
 
   const candidate = extractNameParts(candidateName);
+  debugLog("candidate", {
+    raw: candidateName,
+    parsed: candidate,
+  });
   // Check each author in the list
   for (const authorName of authorList) {
     if (!authorName || typeof authorName !== "string") continue;
 
     const author = extractNameParts(authorName);
 
+    debugLog("author_check", {
+      raw: authorName,
+      parsed: author,
+    });
+
     // Try different matching strategies in order of confidence
-    if (
-      tryExactMatch(candidate, author) ||
-      tryLastNameAndInitialMatch(candidate, author) ||
-      tryBothInitialsMatch(candidate, author) ||
-      tryFullNameMatch(candidate, author) ||
-      trySurnameInitialsMatch(candidate, author, authorName)
-    ) {
+    if (tryExactMatch(candidate, author)) {
+      debugLog("match", {
+        strategy: "exact",
+        candidate: candidateName,
+        author: authorName,
+      });
+      return true;
+    }
+    if (tryLastNameAndInitialMatch(candidate, author)) {
+      debugLog("match", {
+        strategy: "last_initial",
+        candidate: candidateName,
+        author: authorName,
+      });
+      return true;
+    }
+    if (tryBothInitialsMatch(candidate, author)) {
+      debugLog("match", {
+        strategy: "both_initials",
+        candidate: candidateName,
+        author: authorName,
+      });
+      return true;
+    }
+    if (tryInitialsSequenceMatch(candidate, author)) {
+      debugLog("match", {
+        strategy: "initials_sequence",
+        candidate: candidateName,
+        author: authorName,
+      });
+      return true;
+    }
+    if (tryFullNameMatch(candidate, author)) {
+      debugLog("match", {
+        strategy: "full_name",
+        candidate: candidateName,
+        author: authorName,
+      });
+      return true;
+    }
+    if (trySurnameInitialsMatch(candidate, author, authorName)) {
+      debugLog("match", {
+        strategy: "surname_initials",
+        candidate: candidateName,
+        author: authorName,
+      });
       return true;
     }
   }
 
+  debugLog("no_match", { candidate: candidateName });
   return false;
 };
 
@@ -266,6 +334,29 @@ const tryBothInitialsMatch = (candidate, author) => {
     return checkMiddleInitialsMatchFlexible(candidate, author);
   }
   return false;
+};
+
+/**
+ * Attempts matching when initials sequences align (e.g., "T. N. Chang" vs "Te Ning Chang")
+ * @param {Object} candidate - Parsed candidate name object
+ * @param {Object} author - Parsed author name object
+ * @returns {boolean} True if match found
+ * @private
+ */
+const tryInitialsSequenceMatch = (candidate, author) => {
+  if (candidate.lastName !== author.lastName) return false;
+
+  const candidateInitials = `${candidate.firstInitial}${candidate.middleInitials.join("")}`;
+  const authorInitials = `${author.firstInitial}${author.middleInitials.join("")}`;
+
+  if (!candidateInitials || !authorInitials) return false;
+
+  if (candidate.firstInitial !== author.firstInitial) return false;
+
+  return (
+    candidateInitials.startsWith(authorInitials) ||
+    authorInitials.startsWith(candidateInitials)
+  );
 };
 
 /**
@@ -364,7 +455,7 @@ const checkMiddleInitialsMatch = (candidate, author) => {
     return (
       author.middleInitials.length === candidate.middleInitials.length &&
       author.middleInitials.every(
-        (initial, index) => candidate.middleInitials[index] === initial
+        (initial, index) => candidate.middleInitials[index] === initial,
       )
     );
   }
@@ -393,7 +484,7 @@ const checkMiddleInitialsMatchFlexible = (candidate, author) => {
     return (
       author.middleInitials.length === candidate.middleInitials.length &&
       author.middleInitials.every(
-        (initial, index) => candidate.middleInitials[index] === initial
+        (initial, index) => candidate.middleInitials[index] === initial,
       )
     );
   }
@@ -423,7 +514,7 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
     const cachedAuthor = authorCache.get(authorId);
     const matchingArticle = findMatchingArticle(
       cachedAuthor.articles,
-      searchTitle
+      searchTitle,
     );
 
     if (matchingArticle) {
@@ -441,7 +532,7 @@ const getAuthorDetails = async (authorId, serpApiKey, searchTitle) => {
     // Find the matching article in the author's publications
     const matchingArticle = findMatchingArticle(
       authorResult.articles,
-      searchTitle
+      searchTitle,
     );
 
     if (matchingArticle) {
@@ -494,7 +585,7 @@ const findMatchingArticle = (articles, title) => {
     // Try fuzzy matching using getTitleSimilarity
     const similarity = getTitleSimilarity(
       normalizedArticleTitle,
-      normalizedSearchTitle
+      normalizedSearchTitle,
     );
     if (similarity > 70) return true;
 

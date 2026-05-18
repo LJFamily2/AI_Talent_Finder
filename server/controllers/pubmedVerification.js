@@ -22,6 +22,10 @@ const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 const xml2js = require("xml2js");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 module.exports = {
   verifyWithPubMed,
 };
@@ -66,22 +70,24 @@ async function verifyWithPubMed(
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 3
+  maxResultsToCheck = 3,
 ) {
   try {
     // Step 1: Search PubMed for the publication
     const searchResults = await searchPubMed(title, maxResultsToCheck);
 
     if (!searchResults.idList || searchResults.idList.length === 0) {
+      debugLog("no_results", { title, doi });
       return createPubMedResponse("unable to verify", null, searchResults);
     }
 
     // Step 2: Get publication details for each ID
     const publicationDetails = await getPublicationDetails(
-      searchResults.idList
+      searchResults.idList,
     );
 
     if (!publicationDetails || publicationDetails.length === 0) {
+      debugLog("no_details", { title, doi, ids: searchResults.idList.length });
       return createPubMedResponse("unable to verify", null, searchResults);
     }
 
@@ -89,17 +95,18 @@ async function verifyWithPubMed(
     const matchedPublication = findMatchingPublication(
       publicationDetails,
       title,
-      doi
+      doi,
     );
 
     if (!matchedPublication) {
+      debugLog("no_match", { title, doi, results: publicationDetails.length });
       return createPubMedResponse("unable to verify", null, searchResults);
     }
 
     // Step 4: Extract and process author information
     const authorInfo = extractAuthorInformation(
       matchedPublication,
-      candidateName
+      candidateName,
     );
 
     // Step 5: Build detailed response with PubMed-specific data
@@ -109,6 +116,13 @@ async function verifyWithPubMed(
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
+
+    debugLog("match", {
+      title,
+      doi,
+      verificationStatus,
+      authorMatch: authorInfo.hasAuthorMatch,
+    });
 
     return createPubMedResponse(verificationStatus, details, searchResults);
   } catch (err) {
@@ -148,9 +162,9 @@ const searchPubMed = async (title, maxResults) => {
     // Use proximity search only
     const proximityQuery = buildProximityQuery(title);
     let searchUrl = `${PUBMED_SEARCH_URL}?term=${encodeURIComponent(
-      proximityQuery
+      proximityQuery,
     )}&retmax=${maxResults}`;
-    
+
     if (apiKey) {
       searchUrl += `&api_key=${apiKey}`;
     }
@@ -257,7 +271,7 @@ const parseDocSum = (docSum) => {
         case "AuthorList":
           if (item.Item && Array.isArray(item.Item)) {
             publication.authors = item.Item.map((author) => author._).filter(
-              Boolean
+              Boolean,
             );
           }
           break;
@@ -304,10 +318,14 @@ const parseDocSum = (docSum) => {
  * @private
  */
 const findMatchingPublication = (results, title, doi) => {
-  return results.find((item) => {
+  let best = { similarity: 0, ratio: 0, title: null };
+  let matched = null;
+
+  for (const item of results) {
     // DOI match takes highest precedence
     if (doi && item.doi && item.doi.toLowerCase() === doi.toLowerCase()) {
-      return true;
+      matched = item;
+      break;
     }
 
     // Title-based matching
@@ -317,21 +335,41 @@ const findMatchingPublication = (results, title, doi) => {
 
       const similarity = getTitleSimilarity(
         normalizedTitle,
-        normalizedItemTitle
+        normalizedItemTitle,
       );
 
       const lengthRatio =
         Math.min(normalizedTitle.length, normalizedItemTitle.length) /
         Math.max(normalizedTitle.length, normalizedItemTitle.length);
 
-      return (
+      if (similarity > best.similarity) {
+        best = {
+          similarity,
+          ratio: lengthRatio,
+          title: item.title,
+        };
+      }
+
+      if (
         similarity >= TITLE_SIMILARITY_THRESHOLD &&
         lengthRatio >= MIN_TITLE_LENGTH_RATIO
-      );
+      ) {
+        matched = item;
+        break;
+      }
     }
+  }
 
-    return false;
-  });
+  if (!matched && DEBUG_VERIFY) {
+    debugLog("best_candidate", {
+      title,
+      bestTitle: best.title,
+      bestSimilarity: best.similarity,
+      bestRatio: best.ratio,
+    });
+  }
+
+  return matched;
 };
 
 /**
@@ -350,6 +388,13 @@ const extractAuthorInformation = (publication, candidateName) => {
   if (candidateName && extractedAuthors.length > 0) {
     hasAuthorMatch = checkAuthorNameMatch(candidateName, extractedAuthors);
   }
+
+  debugLog("authors_extracted", {
+    title: publication.title,
+    candidateName,
+    authors: extractedAuthors,
+    hasAuthorMatch,
+  });
 
   return {
     extractedAuthors,

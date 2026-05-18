@@ -18,6 +18,10 @@ const axios = require("axios");
 const { getTitleSimilarity, normalizeTitle } = require("../utils/textUtils");
 const { checkAuthorNameMatch } = require("../utils/authorUtils");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // CONFIGURATION AND CONSTANTS
 //=============================================================================
@@ -53,13 +57,14 @@ const verifyWithOpenAlex = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 3
+  maxResultsToCheck = 3,
 ) => {
   try {
     // Step 1: Search OpenAlex for the publication
     const searchResults = await searchOpenAlex(title, maxResultsToCheck);
 
     if (!searchResults.results || searchResults.results.length === 0) {
+      debugLog("no_results", { title, doi });
       return createOpenAlexResponse("unable to verify", null, searchResults);
     }
 
@@ -67,17 +72,22 @@ const verifyWithOpenAlex = async (
     const matchedPublication = findMatchingPublication(
       searchResults.results,
       title,
-      doi
+      doi,
     );
 
     if (!matchedPublication) {
+      debugLog("no_match", {
+        title,
+        doi,
+        results: searchResults.results.length,
+      });
       return createOpenAlexResponse("unable to verify", null, searchResults);
     }
 
     // Step 3: Extract and process author information
     const authorInfo = extractAuthorInformation(
       matchedPublication,
-      candidateName
+      candidateName,
     );
 
     // Step 4: Build detailed response with OpenAlex-specific data
@@ -87,6 +97,14 @@ const verifyWithOpenAlex = async (
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
+
+    debugLog("match", {
+      title,
+      doi,
+      verificationStatus,
+      authorMatch: authorInfo.hasAuthorMatch,
+      authorId: authorInfo.authorId,
+    });
 
     return createOpenAlexResponse(verificationStatus, details, searchResults);
   } catch (err) {
@@ -123,7 +141,7 @@ const verifyWithOpenAlexBatch = async (titles, candidateName) => {
     const perPage = Math.min(validTitles.length * 5, 200);
 
     let openAlexApiUrl = `https://api.openalex.org/works?per-page=${perPage}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics,cited_by_count&filter=title.search:${encodeURIComponent(
-      titleQuery
+      titleQuery,
     )}`;
 
     if (apiKey) {
@@ -144,7 +162,7 @@ const verifyWithOpenAlexBatch = async (titles, candidateName) => {
       if (matchedPublication) {
         const authorInfo = extractAuthorInformation(
           matchedPublication,
-          candidateName
+          candidateName,
         );
         const details = buildPublicationDetails(matchedPublication, authorInfo);
         const verificationStatus = authorInfo.hasAuthorMatch
@@ -154,14 +172,20 @@ const verifyWithOpenAlexBatch = async (titles, candidateName) => {
         verificationMap[title] = createOpenAlexResponse(
           verificationStatus,
           details,
-          { results: [matchedPublication] }
+          { results: [matchedPublication] },
         );
+        debugLog("batch_match", {
+          title,
+          verificationStatus,
+          authorMatch: authorInfo.hasAuthorMatch,
+        });
       } else {
         verificationMap[title] = createOpenAlexResponse(
           "unable to verify",
           null,
-          null
+          null,
         );
+        debugLog("batch_no_match", { title });
       }
     }
 
@@ -214,7 +238,7 @@ const searchOpenAlex = async (title, maxResults) => {
     const query = `"${sanitizedTitle}"`;
 
     const openAlexApiUrl = `https://api.openalex.org/works?per-page=${maxResults}&select=id,doi,title,display_name,publication_year,type,type_crossref,authorships,topics,cited_by_count&filter=title.search:${encodeURIComponent(
-      query
+      query,
     )}&api_key=${apiKey}`;
 
     const { data: openAlexResult } = await axios.get(openAlexApiUrl, {
@@ -236,22 +260,25 @@ const searchOpenAlex = async (title, maxResults) => {
  * @private
  */
 const findMatchingPublication = (results, title, doi) => {
-  return results.find((item) => {
+  let best = { similarity: 0, ratio: 0, title: null };
+  let matched = null;
+  for (const item of results) {
     // DOI match takes highest precedence
     if (doi && item.doi?.toLowerCase() === doi.toLowerCase()) {
-      return true;
+      matched = item;
+      break;
     }
 
     // Title-based matching
     if (title && (item.title || item.display_name)) {
       const normalizedTitle = normalizeTitle(title);
       const normalizedItemTitle = normalizeTitle(
-        item.title || item.display_name
+        item.title || item.display_name,
       );
 
       const similarity = getTitleSimilarity(
         normalizedTitle,
-        normalizedItemTitle
+        normalizedItemTitle,
       );
 
       // Check title length ratio to ensure reasonable match
@@ -259,17 +286,35 @@ const findMatchingPublication = (results, title, doi) => {
         Math.min(normalizedTitle.length, normalizedItemTitle.length) /
         Math.max(normalizedTitle.length, normalizedItemTitle.length);
 
+      if (similarity > best.similarity) {
+        best = {
+          similarity,
+          ratio: titleLengthRatio,
+          title: item.title || item.display_name,
+        };
+      }
+
       // Only verify if the similarity is very high and titles have reasonable length
       if (
         similarity >= TITLE_SIMILARITY_THRESHOLD &&
         titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
       ) {
-        return true;
+        matched = item;
+        break;
       }
     }
+  }
 
-    return false;
-  });
+  if (!matched && DEBUG_VERIFY) {
+    debugLog("best_candidate", {
+      title,
+      bestTitle: best.title,
+      bestSimilarity: best.similarity,
+      bestRatio: best.ratio,
+    });
+  }
+
+  return matched;
 };
 
 /**
@@ -315,6 +360,14 @@ const extractAuthorInformation = (publication, candidateName) => {
       }
     }
   }
+
+  debugLog("authors_extracted", {
+    title: publication.title || publication.display_name,
+    candidateName,
+    authors: extractedAuthors,
+    hasAuthorMatch,
+    authorId,
+  });
 
   return {
     extractedAuthors,
