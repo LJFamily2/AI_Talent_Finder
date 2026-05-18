@@ -54,6 +54,86 @@ function serializeJob(job) {
   };
 }
 
+function buildComparisonSummary(job) {
+  const result = job?.result || null;
+  const displayItems = Array.isArray(result?.results)
+    ? result.results
+        .map((item) => item?.verification?.displayData)
+        .filter(Boolean)
+    : [];
+
+  const statusCounts = {
+    verified: 0,
+    verifiedDifferentAuthor: 0,
+    notVerified: 0,
+  };
+  const yearCounts = {};
+  const typeCounts = {};
+  let totalCitations = 0;
+
+  displayItems.forEach((item) => {
+    const status = String(item.status || "").toLowerCase();
+    if (status.startsWith("verified but not same")) {
+      statusCounts.verifiedDifferentAuthor += 1;
+    } else if (status.startsWith("verified")) {
+      statusCounts.verified += 1;
+    } else {
+      statusCounts.notVerified += 1;
+    }
+
+    const year = parseInt(item.year, 10);
+    if (!Number.isNaN(year)) {
+      yearCounts[year] = (yearCounts[year] || 0) + 1;
+    }
+
+    const type = String(item.type || "")
+      .trim()
+      .toLowerCase();
+    if (type) {
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    }
+
+    const cited = parseInt(item.citedBy, 10);
+    if (!Number.isNaN(cited)) {
+      totalCitations += cited;
+    }
+  });
+
+  const topTypes = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([type, count]) => ({ type, count }));
+
+  const yearlyTrend = Object.entries(yearCounts)
+    .map(([year, count]) => ({ year: Number(year), count }))
+    .sort((a, b) => a.year - b.year);
+
+  return {
+    jobId: job._id.toString(),
+    originalFileName: job.originalFileName,
+    status: job.status,
+    stage: job.stage,
+    progress: job.progress,
+    prioritySource: job.prioritySource,
+    createdAt: job.createdAt,
+    completedAt: job.completedAt,
+    candidateName: result?.candidateName || null,
+    totals: {
+      publications: displayItems.length,
+      verified: statusCounts.verified,
+      verifiedDifferentAuthor: statusCounts.verifiedDifferentAuthor,
+      notVerified: statusCounts.notVerified,
+    },
+    citations: {
+      total: totalCitations,
+    },
+    authorMetrics: result?.authorDetails?.metrics || null,
+    authorName: result?.authorDetails?.author?.name || null,
+    topTypes,
+    yearlyTrend,
+  };
+}
+
 async function safeUpdateJob(jobId, update) {
   try {
     await VerificationJob.updateOne({ _id: jobId }, update);
@@ -537,6 +617,61 @@ async function listBatchJobs(req, res) {
   }
 }
 
+async function getBatchJobComparison(req, res) {
+  try {
+    const rawIds = req.query.ids;
+    const ids = Array.isArray(rawIds)
+      ? rawIds
+      : typeof rawIds === "string"
+        ? rawIds.split(",")
+        : [];
+
+    const uniqueIds = [...new Set(ids.map((id) => String(id).trim()))].filter(
+      Boolean,
+    );
+
+    if (uniqueIds.length === 0) {
+      return res.status(400).json({
+        error: "No job IDs provided",
+        message: "Provide 1 to 3 job IDs for comparison.",
+      });
+    }
+
+    if (uniqueIds.length > 3) {
+      return res.status(400).json({
+        error: "Too many jobs",
+        message: "You can only compare up to 3 CVs at a time.",
+      });
+    }
+
+    const jobs = await VerificationJob.find({
+      _id: { $in: uniqueIds },
+      userId: req.user._id,
+      jobType: "publication-check",
+    })
+      .select(
+        "originalFileName status stage progress prioritySource createdAt completedAt result",
+      )
+      .lean();
+
+    const summaries = jobs.map((job) => buildComparisonSummary(job));
+    const foundIds = new Set(jobs.map((job) => job._id.toString()));
+    const missingIds = uniqueIds.filter((id) => !foundIds.has(id));
+
+    return res.json({
+      success: true,
+      data: summaries,
+      missingIds,
+    });
+  } catch (error) {
+    console.error("[Publication Check] Failed to load comparison:", error);
+    return res.status(500).json({
+      error: "Unable to load comparison",
+      message: error.message,
+    });
+  }
+}
+
 async function getBatchJob(req, res) {
   try {
     const job = await VerificationJob.findOne({
@@ -692,6 +827,7 @@ async function getBatchJobPdf(req, res) {
 module.exports = {
   startBatchVerification,
   listBatchJobs,
+  getBatchJobComparison,
   getBatchJob,
   getBatchJobPdf,
   cancelBatchJob,

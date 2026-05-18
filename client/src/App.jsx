@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import { CssBaseline } from "@mui/material";
 import CVUpload from "./pages/CVUpload";
 import CVVerification from "./pages/CVVerification";
+import CVCompare from "./pages/CVCompare";
 import ResearcherProfile from "./pages/ResearcherProfile";
 import SearchAuthor from "./pages/SearchAuthor";
 
@@ -41,6 +42,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CVVerification />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/publication-check/compare"
+            element={
+              <ProtectedRoute>
+                <CVCompare />
               </ProtectedRoute>
             }
           />

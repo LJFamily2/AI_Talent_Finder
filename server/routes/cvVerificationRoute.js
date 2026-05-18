@@ -5,16 +5,17 @@ const { verifyCV } = require("../controllers/cvVerificationController");
 const {
   startBatchVerification,
   listBatchJobs,
+  getBatchJobComparison,
   getBatchJob,
   getBatchJobPdf,
   cancelBatchJob,
   removeBatchJob,
 } = require("../controllers/publicationCheckJobController");
 const { protect } = require("../middleware/auth");
-const { 
-  uploadToSupabase, 
+const {
+  uploadToSupabase,
   deleteFromSupabase,
-  generateStoredFileName
+  generateStoredFileName,
 } = require("../utils/supabaseStorage");
 const router = express.Router();
 
@@ -72,11 +73,14 @@ router.post("/verify-cv", (req, res) => {
     const { error: uploadError } = await uploadToSupabase(
       req.file.buffer,
       storedFileName,
-      req.file.mimetype
+      req.file.mimetype,
     );
 
     if (uploadError) {
-      console.error("[CV Verification Route] Supabase Upload Error:", uploadError);
+      console.error(
+        "[CV Verification Route] Supabase Upload Error:",
+        uploadError,
+      );
       return res.status(500).json({
         error: "Upload failed",
         message: "Failed to upload file to cloud storage",
@@ -228,6 +232,7 @@ router.post("/batch-verify", protect, (req, res) => {
 });
 
 router.get("/batch-jobs", protect, listBatchJobs);
+router.get("/batch-jobs/compare", protect, getBatchJobComparison);
 router.get("/batch-jobs/:jobId", protect, getBatchJob);
 router.get("/batch-jobs/:jobId/pdf", protect, getBatchJobPdf);
 router.post("/batch-jobs/:jobId/cancel", protect, cancelBatchJob);

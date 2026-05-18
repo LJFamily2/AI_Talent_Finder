@@ -15,6 +15,8 @@ import {
   DialogContentText,
   DialogTitle,
   Button,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
 function CVUpload() {
@@ -31,6 +33,12 @@ function CVUpload() {
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState(null);
   const [removeConfirmJob, setRemoveConfirmJob] = useState(null);
+  const [compareIds, setCompareIds] = useState([]);
+  const [compareToast, setCompareToast] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const fileRef = useRef(null); // Store file reference for socket callbacks
@@ -55,6 +63,12 @@ function CVUpload() {
   useEffect(() => {
     loadBatchJobs();
   }, [loadBatchJobs]);
+
+  useEffect(() => {
+    setCompareIds((prev) =>
+      prev.filter((id) => batchJobs.some((job) => job.id === id)),
+    );
+  }, [batchJobs]);
 
   const joinedJobsRef = useRef(new Set());
 
@@ -222,6 +236,35 @@ function CVUpload() {
   const handleRemoveBatchJob = useCallback((jobId) => {
     setRemoveConfirmJob(jobId);
   }, []);
+
+  const showCompareToast = useCallback((message, severity = "info") => {
+    setCompareToast({ open: true, message, severity });
+  }, []);
+
+  const toggleCompareJob = useCallback(
+    (job) => {
+      const isCompleted =
+        String(job.status).toLowerCase() === "completed" ||
+        String(job.stage).toLowerCase() === "done";
+
+      if (!isCompleted) {
+        showCompareToast("Only completed jobs can be compared.", "warning");
+        return;
+      }
+
+      setCompareIds((prev) => {
+        if (prev.includes(job.id)) {
+          return prev.filter((id) => id !== job.id);
+        }
+        if (prev.length >= 3) {
+          showCompareToast("You can compare up to 3 CVs.", "warning");
+          return prev;
+        }
+        return [...prev, job.id];
+      });
+    },
+    [showCompareToast],
+  );
 
   const confirmRemoveBatchJob = useCallback(async () => {
     if (!removeConfirmJob) return;
@@ -411,6 +454,11 @@ function CVUpload() {
     multiple: false,
     maxFiles: 1,
   });
+
+  const compareSelectedJobs = batchJobs.filter((job) =>
+    compareIds.includes(job.id),
+  );
+  const compareReady = compareSelectedJobs.length >= 2;
 
   return (
     <div className="w-full min-h-screen">
@@ -688,7 +736,6 @@ function CVUpload() {
                   </div>
                 </div>
 
-
                 <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
                   {batchLoading && batchJobs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-slate-400">
@@ -723,100 +770,124 @@ function CVUpload() {
                       </p>
                     </div>
                   ) : (
-                    batchJobs.map((job) => (
-                      <div
-                        key={job.id}
-                        className="group relative flex items-center gap-4 p-5 rounded-none bg-white border border-slate-200 hover:border-blue-300/50 hover:shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all duration-500"
-                      >
-                        <div className="w-10 h-10 rounded-none bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
-                          <svg
-                            className="w-5 h-5 text-slate-400 group-hover:text-blue-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
+                    batchJobs.map((job) => {
+                      const isSelected = compareIds.includes(job.id);
+                      const isCompleted =
+                        String(job.status).toLowerCase() === "completed" ||
+                        String(job.stage).toLowerCase() === "done";
 
-                        <div className="flex-grow min-w-0">
-                          <p
-                            className="text-sm font-extrabold text-slate-800 truncate pr-8 group-hover:text-blue-700 transition-colors"
-                            title={job.originalFileName}
-                          >
-                            {job.originalFileName}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {String(job.status).toLowerCase() === "completed" ||
-                            String(job.stage).toLowerCase() === "done" ? (
-                              <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-100">
-                                <span className="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-                                Completed
-                              </span>
-                            ) : String(job.status).toLowerCase() ===
-                              "failed" ? (
-                              <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-none border border-rose-100">
-                                <span className="w-1.5 h-1.5 rounded-none bg-rose-500"></span>
-                                Failed
-                              </span>
-                            ) : (
-                              <div className="flex flex-col gap-1.5 w-full">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-600 uppercase tracking-widest">
-                                    <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse"></span>
-                                    {job.stage || "Processing"}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-blue-600/60">
-                                    {job.progress || 0}%
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full bg-blue-100/50 rounded-none overflow-hidden">
-                                  <div
-                                    className="h-full bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                    style={{ width: `${job.progress || 0}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            className="hidden group-hover:flex items-center px-3 py-1.5 rounded-none bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-600 hover:text-white transition-all cursor-pointer whitespace-nowrap"
-                            onClick={() =>
-                              navigate(`/publication-check/results/${job.id}`)
-                            }
-                          >
-                            View Results
-                          </button>
-                          <button
-                            type="button"
-                            className="p-1.5 rounded-none text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                            onClick={() => handleRemoveBatchJob(job.id)}
-                            title="Remove job"
-                          >
+                      return (
+                        <div
+                          key={job.id}
+                          className={`group relative flex items-center gap-4 p-5 rounded-none border transition-all duration-500 hover:border-blue-300/50 hover:shadow-[0_10px_30px_rgba(0,0,0,0.04)] ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50/40"
+                              : "bg-white border-slate-200"
+                          }`}
+                        >
+                          <div className="w-10 h-10 rounded-none bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
                             <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                              className="w-5 h-5 text-slate-400 group-hover:text-blue-500"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
                             >
                               <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                fillRule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                clipRule="evenodd"
                               />
                             </svg>
-                          </button>
+                          </div>
+
+                          <div className="flex-grow min-w-0">
+                            <p
+                              className="text-sm font-extrabold text-slate-800 truncate pr-8 group-hover:text-blue-700 transition-colors"
+                              title={job.originalFileName}
+                            >
+                              {job.originalFileName}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {String(job.status).toLowerCase() ===
+                                "completed" ||
+                              String(job.stage).toLowerCase() === "done" ? (
+                                <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-100">
+                                  <span className="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
+                                  Completed
+                                </span>
+                              ) : String(job.status).toLowerCase() ===
+                                "failed" ? (
+                                <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-none border border-rose-100">
+                                  <span className="w-1.5 h-1.5 rounded-none bg-rose-500"></span>
+                                  Failed
+                                </span>
+                              ) : (
+                                <div className="flex flex-col gap-1.5 w-full">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-600 uppercase tracking-widest">
+                                      <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse"></span>
+                                      {job.stage || "Processing"}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-600/60">
+                                      {job.progress || 0}%
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 w-full bg-blue-100/50 rounded-none overflow-hidden">
+                                    <div
+                                      className="h-full bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                      style={{ width: `${job.progress || 0}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="hidden group-hover:flex items-center px-3 py-1.5 rounded-none bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-600 hover:text-white transition-all cursor-pointer whitespace-nowrap"
+                              onClick={() =>
+                                navigate(`/publication-check/results/${job.id}`)
+                              }
+                            >
+                              View Results
+                            </button>
+                            <button
+                              type="button"
+                              className={`hidden group-hover:flex items-center px-3 py-1.5 rounded-none text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                isSelected
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white"
+                              } ${isCompleted ? "" : "opacity-60 cursor-not-allowed"}`}
+                              onClick={() => toggleCompareJob(job)}
+                              disabled={!isCompleted}
+                            >
+                              {isSelected ? "Selected" : "Compare"}
+                            </button>
+                            <button
+                              type="button"
+                              className="p-1.5 rounded-none text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                              onClick={() => handleRemoveBatchJob(job.id)}
+                              title="Remove job"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -898,6 +969,95 @@ function CVUpload() {
             </button>
           </div>
         )}
+
+        {compareIds.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 z-40 w-[92%] max-w-2xl -translate-x-1/2 rounded-none border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  Compare CVs
+                </p>
+                <p className="text-sm font-semibold text-slate-700">
+                  {compareSelectedJobs.length} selected · pick up to 3
+                </p>
+                <p className="text-xs text-slate-400">
+                  Select more from the list by clicking Compare.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-xs font-semibold text-slate-400 hover:text-rose-500"
+                onClick={() => setCompareIds([])}
+              >
+                Clear all
+              </button>
+            </div>
+
+            <div className="px-4 py-3">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {compareSelectedJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between rounded-none border border-blue-100 bg-blue-50/60 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className="text-xs font-semibold text-slate-700 truncate"
+                        title={job.originalFileName}
+                      >
+                        {job.originalFileName}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        {job.status || "completed"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs text-slate-400 hover:text-rose-500"
+                      onClick={() =>
+                        setCompareIds((prev) =>
+                          prev.filter((id) => id !== job.id),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="mt-3 w-full rounded-none bg-[#000054] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#000066] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!compareReady}
+                onClick={() =>
+                  navigate(
+                    `/publication-check/compare?ids=${compareIds.join(",")}`,
+                  )
+                }
+              >
+                Compare now
+              </button>
+            </div>
+          </div>
+        )}
+
+        <Snackbar
+          open={compareToast.open}
+          autoHideDuration={4000}
+          onClose={() => setCompareToast((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert
+            onClose={() =>
+              setCompareToast((prev) => ({ ...prev, open: false }))
+            }
+            severity={compareToast.severity}
+            sx={{ width: "100%" }}
+          >
+            {compareToast.message}
+          </Alert>
+        </Snackbar>
         {showSingleUpload && (
           <div
             className={`$
