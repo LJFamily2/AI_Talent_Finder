@@ -14,7 +14,22 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const isNodeRuntime = typeof process !== "undefined" && !!process.versions?.node;
+let realtimeTransport;
+
+if (isNodeRuntime) {
+  try {
+    realtimeTransport = require("ws");
+  } catch (error) {
+    console.warn(
+      "[Supabase Storage] ws package is not installed; realtime transport fallback is unavailable.",
+    );
+  }
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: realtimeTransport ? { transport: realtimeTransport } : undefined,
+});
 
 /**
  * Uploads a file buffer to Supabase Storage
