@@ -60,7 +60,7 @@ const apiRequest = async (endpoint, options = {}) => {
  */
 export const getResearcherProfile = async (researcherId) => {
   return await apiRequest(
-    `/api/researcher/${encodeURIComponent(researcherId)}`
+    `/api/researcher/${encodeURIComponent(researcherId)}`,
   );
 };
 
@@ -74,12 +74,12 @@ export const getResearcherProfile = async (researcherId) => {
 export const getResearcherWorks = async (
   researcherId,
   page = 1,
-  perPage = 20
+  perPage = 20,
 ) => {
   return await apiRequest(
     `/api/researcher/${encodeURIComponent(researcherId)}/works?page=${Number(
-      page
-    )}&perPage=${Number(perPage)}`
+      page,
+    )}&perPage=${Number(perPage)}`,
   );
 };
 
@@ -116,18 +116,25 @@ export const exportResearcherProfile = async (researcherId) => {
  * @returns {Promise<Object>} Contact information (email, phone, linkedin)
  */
 export const findResearcherContact = async (
-  researcherName,
+  researcherNameOrContext,
   affiliation = "",
   orcid = "",
-  researchAreas = []
+  researchAreas = [],
 ) => {
+  const payload =
+    researcherNameOrContext &&
+    typeof researcherNameOrContext === "object" &&
+    !Array.isArray(researcherNameOrContext)
+      ? researcherNameOrContext
+      : {
+          researcherName: researcherNameOrContext,
+          affiliation,
+          orcid,
+          researchAreas,
+        };
+
   return await apiRequest("/api/contact/find", {
     method: "POST",
-    body: JSON.stringify({
-      researcherName,
-      affiliation,
-      orcid,
-      researchAreas,
-    }),
+    body: JSON.stringify(payload),
   });
 };

@@ -211,6 +211,95 @@ export default function ResearcherProfile() {
     }
   };
 
+  const buildContactSearchPayload = () => {
+    const {
+      basic_info: { name = "", affiliations: pastAffiliationsList = [] } = {},
+      identifiers: { orcid = "" } = {},
+      research_areas: { fields = [], topics: legacyTopics = [] } = {},
+    } = researcher || {};
+
+    const currentAffiliations = Array.isArray(researcher?.current_affiliations)
+      ? researcher.current_affiliations
+      : [];
+
+    const affiliation =
+      currentAffiliations.length > 0 ? currentAffiliations[0].display_name : "";
+
+    const affiliations = [
+      ...currentAffiliations.map((aff) => aff.display_name).filter(Boolean),
+      ...pastAffiliationsList
+        .map((aff) => aff?.institution?.display_name || aff?.display_name)
+        .filter(Boolean),
+    ];
+
+    const researchAreas = Array.isArray(fields)
+      ? fields.map((field) => field.display_name).filter(Boolean)
+      : [];
+
+    const topics =
+      Array.isArray(fields) && fields.length > 0
+        ? fields.flatMap((field) =>
+            Array.isArray(field.topics)
+              ? field.topics
+                  .map((topic) => topic.display_name || topic.name)
+                  .filter(Boolean)
+              : [],
+          )
+        : Array.isArray(legacyTopics)
+          ? legacyTopics
+              .map((topic) =>
+                typeof topic === "string"
+                  ? topic
+                  : topic.display_name || topic.name,
+              )
+              .filter(Boolean)
+          : [];
+
+    const topPublications = Array.isArray(works)
+      ? [...works]
+          .filter((work) => work && (work.title || work.display_name))
+          .sort((a, b) => (b.cited_by_count || 0) - (a.cited_by_count || 0))
+          .slice(0, 3)
+          .map((work) => ({
+            title: work.title || work.display_name,
+            year: work.publication_year,
+            venue: work.primary_location?.source?.display_name || "",
+          }))
+      : [];
+
+    const compactList = (items) =>
+      Array.from(
+        new Set(
+          items
+            .map((item) => (typeof item === "string" ? item.trim() : item))
+            .filter(Boolean),
+        ),
+      );
+
+    return {
+      researcherName: name,
+      affiliation,
+      orcid,
+      researchAreas: compactList(researchAreas).slice(0, 5),
+      profileContext: {
+        name,
+        affiliation,
+        affiliations: compactList(affiliations).slice(0, 5),
+        department: currentAffiliations[0]?.department || "",
+        country:
+          researcher?.basic_info?.country ||
+          researcher?.basic_info?.country_code ||
+          "",
+        researchAreas: compactList(researchAreas).slice(0, 5),
+        topics: compactList(topics).slice(0, 5),
+        ids: {
+          orcid,
+        },
+        topPublications,
+      },
+    };
+  };
+
   // Contact finder functions
   const handleContactSearch = async (forceRefresh = false) => {
     if (!researcher) return;
@@ -266,32 +355,8 @@ export default function ResearcherProfile() {
     setContactInfo(null);
 
     try {
-      const {
-        basic_info: { name = "" } = {},
-        identifiers: { orcid = "" } = {},
-      } = researcher;
-
-      // Get current affiliation
-      const currentAffiliations =
-        Array.isArray(researcher.current_affiliations) &&
-        researcher.current_affiliations.length > 0
-          ? researcher.current_affiliations
-          : [];
-      const affiliation =
-        currentAffiliations.length > 0
-          ? currentAffiliations[0].display_name
-          : "";
-
-      // Get research areas
-      const { research_areas: { fields = [] } = {} } = researcher;
-      const researchAreas = fields.map((field) => field.display_name);
-
-      const contactData = await findResearcherContact(
-        name,
-        affiliation,
-        orcid,
-        researchAreas,
-      );
+      const contactPayload = buildContactSearchPayload();
+      const contactData = await findResearcherContact(contactPayload);
 
       setContactInfo(contactData);
 
@@ -352,7 +417,83 @@ export default function ResearcherProfile() {
   };
 
   // Helper function to get profile type and display name
-  const getProfileInfo = (url) => {
+  const getProfileInfo = (url, explicitType) => {
+    const normalizedType = explicitType
+      ? String(explicitType).toLowerCase()
+      : "";
+
+    if (normalizedType.includes("linkedin")) {
+      return { type: "LinkedIn", icon: "💼", displayName: "LinkedIn Profile" };
+    }
+
+    if (normalizedType.includes("google scholar")) {
+      return {
+        type: "Google Scholar",
+        icon: "📚",
+        displayName: "Google Scholar Profile",
+      };
+    }
+
+    if (normalizedType.includes("researchgate")) {
+      return {
+        type: "ResearchGate",
+        icon: "🔬",
+        displayName: "ResearchGate Profile",
+      };
+    }
+
+    if (normalizedType.includes("orcid")) {
+      return { type: "ORCID", icon: "🆔", displayName: "ORCID Profile" };
+    }
+
+    if (normalizedType.includes("academia")) {
+      return {
+        type: "Academia.edu",
+        icon: "🎓",
+        displayName: "Academia.edu Profile",
+      };
+    }
+
+    if (normalizedType.includes("semantic scholar")) {
+      return {
+        type: "Semantic Scholar",
+        icon: "🧠",
+        displayName: "Semantic Scholar Profile",
+      };
+    }
+
+    if (normalizedType.includes("openalex")) {
+      return {
+        type: "OpenAlex",
+        icon: "🌐",
+        displayName: "OpenAlex Profile",
+      };
+    }
+
+    if (normalizedType.includes("dblp")) {
+      return { type: "DBLP", icon: "📘", displayName: "DBLP Profile" };
+    }
+
+    if (normalizedType.includes("scopus")) {
+      return { type: "Scopus", icon: "📖", displayName: "Scopus Profile" };
+    }
+
+    if (normalizedType.includes("web of science")) {
+      return {
+        type: "Web of Science",
+        icon: "🔎",
+        displayName: "Web of Science Profile",
+      };
+    }
+
+    if (normalizedType.includes("publons")) {
+      return {
+        type: "Publons",
+        icon: "🧾",
+        displayName: "Publons Profile",
+      };
+    }
+
     if (url.includes("linkedin.com")) {
       return { type: "LinkedIn", icon: "💼", displayName: "LinkedIn Profile" };
     } else if (url.includes("scholar.google.com")) {
@@ -374,6 +515,34 @@ export default function ResearcherProfile() {
         type: "Academia.edu",
         icon: "🎓",
         displayName: "Academia.edu Profile",
+      };
+    } else if (url.includes("semanticscholar.org")) {
+      return {
+        type: "Semantic Scholar",
+        icon: "🧠",
+        displayName: "Semantic Scholar Profile",
+      };
+    } else if (url.includes("openalex.org")) {
+      return {
+        type: "OpenAlex",
+        icon: "🌐",
+        displayName: "OpenAlex Profile",
+      };
+    } else if (url.includes("dblp.org")) {
+      return { type: "DBLP", icon: "📘", displayName: "DBLP Profile" };
+    } else if (url.includes("scopus.com")) {
+      return { type: "Scopus", icon: "📖", displayName: "Scopus Profile" };
+    } else if (url.includes("webofscience.com")) {
+      return {
+        type: "Web of Science",
+        icon: "🔎",
+        displayName: "Web of Science Profile",
+      };
+    } else if (url.includes("publons.com")) {
+      return {
+        type: "Publons",
+        icon: "🧾",
+        displayName: "Publons Profile",
       };
     } else if (
       url.includes(".edu") ||
@@ -623,6 +792,12 @@ export default function ResearcherProfile() {
 
   // Use current works directly (no client-side pagination since we're doing server-side pagination)
   const currentWorks = formattedWorks;
+
+  const normalizedContactLinks = Array.isArray(contactInfo?.links)
+    ? contactInfo.links
+        .map((link) => (typeof link === "string" ? { url: link } : link))
+        .filter((link) => link && link.url)
+    : [];
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -1266,13 +1441,23 @@ export default function ResearcherProfile() {
                     </Typography>
                   </div>
                 )}
-              {contactInfo.links && contactInfo.links.length > 0 ? (
+              {normalizedContactLinks.length > 0 ? (
                 <>
-                  {contactInfo.links.map((link, index) => {
-                    const profileInfo = getProfileInfo(link);
+                  {normalizedContactLinks.map((link, index) => {
+                    const profileInfo = getProfileInfo(link.url, link.type);
+                    const metaParts = [];
+                    if (link.evidence) {
+                      metaParts.push(`Evidence: ${link.evidence}`);
+                    }
+                    if (typeof link.confidence === "number") {
+                      metaParts.push(
+                        `Confidence: ${Math.round(link.confidence * 100)}%`,
+                      );
+                    }
+
                     return (
                       <div
-                        key={index}
+                        key={`${link.url}-${index}`}
                         className="border-l-4 border-blue-500 pl-4 py-2"
                       >
                         <Typography
@@ -1282,13 +1467,25 @@ export default function ResearcherProfile() {
                           {profileInfo.icon} {profileInfo.displayName}
                         </Typography>
                         <a
-                          href={link}
+                          href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline break-all"
                         >
-                          <Typography variant="body2">{link}</Typography>
+                          <Typography variant="body2">{link.url}</Typography>
                         </a>
+                        {metaParts.length > 0 && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              display: "block",
+                              marginTop: 0.5,
+                            }}
+                          >
+                            {metaParts.join(" \u2022 ")}
+                          </Typography>
+                        )}
                       </div>
                     );
                   })}

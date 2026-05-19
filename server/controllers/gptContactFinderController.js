@@ -26,15 +26,212 @@ const openai = new OpenAI({
 });
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const PROFILE_DOMAINS = [
+  "linkedin.com",
+  "scholar.google.com",
+  "researchgate.net",
+  "orcid.org",
+  "academia.edu",
+  "scopus.com",
+  "publons.com",
+  "webofscience.com",
+  "semanticscholar.org",
+  "openalex.org",
+  "dblp.org",
+];
+
+const PROFILE_TYPES = [
+  "LinkedIn",
+  "Google Scholar",
+  "ResearchGate",
+  "ORCID",
+  "Academia.edu",
+  "Institutional",
+  "Semantic Scholar",
+  "OpenAlex",
+  "DBLP",
+  "Scopus",
+  "Web of Science",
+  "Publons",
+  "Other",
+];
+
+function compactList(items) {
+  const normalizedItems = Array.isArray(items) ? items : items ? [items] : [];
+
+  return Array.from(
+    new Set(
+      normalizedItems
+        .map((item) => (typeof item === "string" ? item.trim() : item))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function extractOrcidId(orcid) {
+  if (!orcid || typeof orcid !== "string") {
+    return "";
+  }
+
+  const match = orcid.match(/(\d{4}-\d{4}-\d{4}-\d{3}[0-9X])/i);
+  return match ? match[1] : "";
+}
+
+function normalizeContactContext(payload = {}) {
+  const profileContext = payload.profileContext || {};
+  const name =
+    payload.researcherName || payload.name || profileContext.name || "";
+  const affiliation = payload.affiliation || profileContext.affiliation || "";
+  const researchAreas = compactList(
+    payload.researchAreas || profileContext.researchAreas || [],
+  );
+  const topics = compactList(profileContext.topics || []);
+  const affiliations = compactList(
+    (profileContext.affiliations || []).concat(
+      affiliation ? [affiliation] : [],
+    ),
+  );
+  const orcid = payload.orcid || profileContext?.ids?.orcid || "";
+  const topPublications = Array.isArray(profileContext.topPublications)
+    ? profileContext.topPublications
+        .filter((pub) => pub && (pub.title || pub.display_name))
+        .slice(0, 3)
+        .map((pub) => ({
+          title: pub.title || pub.display_name,
+          year: pub.year || pub.publication_year,
+          venue: pub.venue || "",
+        }))
+    : [];
+
+  return {
+    name,
+    affiliation,
+    affiliations,
+    department: profileContext.department || "",
+    country: profileContext.country || "",
+    researchAreas,
+    topics,
+    ids: {
+      orcid,
+      orcidId: extractOrcidId(orcid),
+    },
+    topPublications,
+  };
+}
+
+function buildSearchQuery(context) {
+  const areaTerms = context.researchAreas.slice(0, 3).join(" ");
+  const topicTerms = context.topics.slice(0, 2).join(" ");
+  const publicationTerms = context.topPublications
+    .slice(0, 2)
+    .map((pub) => pub.title)
+    .filter((title) => title && title.length <= 80)
+    .map((title) => `"${title}"`)
+    .join(" ");
+
+  const idTerms = compactList([
+    context.ids.orcidId,
+    context.ids.orcidId ? "ORCID" : "",
+  ]).join(" ");
+
+  const searchTerms = compactList([
+    context.name,
+    context.affiliation,
+    context.department,
+    context.country,
+    areaTerms,
+    topicTerms,
+    idTerms,
+    publicationTerms,
+    "LinkedIn",
+    "Google Scholar",
+    "ResearchGate",
+    "ORCID",
+    "faculty profile",
+    "university profile",
+  ]);
+
+  return searchTerms.join(" ");
+}
+
+function inferTypeFromUrl(url) {
+  if (url.includes("linkedin.com")) return "LinkedIn";
+  if (url.includes("scholar.google.com")) return "Google Scholar";
+  if (url.includes("researchgate.net")) return "ResearchGate";
+  if (url.includes("orcid.org")) return "ORCID";
+  if (url.includes("academia.edu")) return "Academia.edu";
+  if (url.includes("semanticscholar.org")) return "Semantic Scholar";
+  if (url.includes("openalex.org")) return "OpenAlex";
+  if (url.includes("dblp.org")) return "DBLP";
+  if (url.includes("scopus.com")) return "Scopus";
+  if (url.includes("webofscience.com")) return "Web of Science";
+  if (url.includes("publons.com")) return "Publons";
+
+  const isInstitutional =
+    url.includes(".edu") || url.includes(".ac.") || url.includes("university");
+  return isInstitutional ? "Institutional" : "Other";
+}
+
+function normalizeType(explicitType, url) {
+  if (explicitType && typeof explicitType === "string") {
+    const matched = PROFILE_TYPES.find(
+      (type) => type.toLowerCase() === explicitType.toLowerCase(),
+    );
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return inferTypeFromUrl(url);
+}
+
+function isValidProfileUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.protocol.startsWith("http")) {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const hasValidDomain = PROFILE_DOMAINS.some((domain) =>
+      hostname.includes(domain),
+    );
+    const isInstitutional =
+      hostname.includes(".edu") || hostname.includes(".ac.");
+
+    return hasValidDomain || isInstitutional;
+  } catch (error) {
+    return false;
+  }
+}
+
+function safeJsonParse(text) {
+  if (!text || typeof text !== "string") {
+    return null;
+  }
+
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+
+  const candidate = text.slice(start, end + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    return null;
+  }
+}
 
 /**
  * Find profile links for a researcher using Tavily → GPT-4 → Regex Parser flow
  */
 async function findResearcherContact(req, res) {
   try {
-    const { researcherName, affiliation, orcid, researchAreas } = req.body;
+    const context = normalizeContactContext(req.body);
 
-    if (!researcherName) {
+    if (!context.name) {
       return res.status(400).json({
         success: false,
         error: "Researcher name is required",
@@ -46,11 +243,7 @@ async function findResearcherContact(req, res) {
 
     // STEP 1: Tavily Web Search with error handling
     try {
-      tavilyResults = await performTavilySearch(
-        researcherName,
-        affiliation,
-        researchAreas
-      );
+      tavilyResults = await performTavilySearch(context);
     } catch (error) {
       console.error("Tavily search failed:", error.message);
       searchError = error.message;
@@ -58,7 +251,7 @@ async function findResearcherContact(req, res) {
       // Create minimal fallback data for GPT processing
       tavilyResults = {
         results: [],
-        query: `${researcherName} ${affiliation || ""} profile information`,
+        query: `${context.name} ${context.affiliation || ""} profile information`,
         error: error.message,
       };
     }
@@ -66,7 +259,7 @@ async function findResearcherContact(req, res) {
     // STEP 2: GPT-4 Processing (even with limited/no search results)
     let gptResponse;
     try {
-      gptResponse = await processWithGPT(tavilyResults);
+      gptResponse = await processWithGPT(tavilyResults, context);
     } catch (error) {
       console.error("GPT processing failed:", error.message);
 
@@ -86,11 +279,9 @@ async function findResearcherContact(req, res) {
       success: true,
       data: contactInfo,
       metadata: {
-        searchQuery: `${researcherName} ${
-          affiliation || ""
-        } profile information`,
+        searchQuery: tavilyResults?.query || buildSearchQuery(context),
         tavilyResultsCount: tavilyResults?.results?.length || 0,
-        processingFlow: "Tavily → GPT-4 → Regex Parser → JSON",
+        processingFlow: "Tavily → GPT → JSON Parser → Validation",
         searchStatus: searchError
           ? "Tavily search failed, GPT used limited data"
           : "Full search completed",
@@ -112,24 +303,12 @@ async function findResearcherContact(req, res) {
 /**
  * STEP 1: Perform Tavily web search
  */
-async function performTavilySearch(researcherName, affiliation, researchAreas) {
+async function performTavilySearch(context) {
   if (!TAVILY_API_KEY) {
     throw new Error("Tavily API key not configured");
   }
 
-  // Build comprehensive search query for profiles
-  const searchTerms = [
-    researcherName,
-    affiliation || "",
-    "LinkedIn",
-    "Google Scholar",
-    "ResearchGate",
-    "ORCID",
-    "profile",
-    `${researchAreas.join(" ")}`,
-  ].filter(Boolean);
-
-  const query = searchTerms.join(" ");
+  const query = buildSearchQuery(context);
 
   try {
     const tavilyResponse = await axios.post(
@@ -137,21 +316,8 @@ async function performTavilySearch(researcherName, affiliation, researchAreas) {
       {
         query: query,
         include_raw_content: true,
-        max_results: 5,
+        max_results: 7,
         search_depth: "basic",
-        include_domains: [
-          "university.edu",
-          "ac.uk",
-          "edu.au",
-          "linkedin.com",
-          "researchgate.net",
-          "scholar.google.com",
-          "orcid.org",
-          "academia.edu",
-          "scopus.com",
-          "publons.com",
-          "webofscience.com",
-        ],
       },
       {
         headers: {
@@ -160,7 +326,7 @@ async function performTavilySearch(researcherName, affiliation, researchAreas) {
         },
         timeout: 30000,
         validateStatus: (status) => status >= 200 && status < 300,
-      }
+      },
     );
 
     return tavilyResponse.data;
@@ -173,7 +339,7 @@ async function performTavilySearch(researcherName, affiliation, researchAreas) {
 /**
  * STEP 2: Process Tavily results with GPT-4
  */
-async function processWithGPT(tavilyResults) {
+async function processWithGPT(tavilyResults, context) {
   // Filter and clean Tavily results to remove unnecessary fields
   const filteredResults = {
     query: tavilyResults.query,
@@ -181,55 +347,44 @@ async function processWithGPT(tavilyResults) {
       tavilyResults.results?.map((result) => ({
         url: result.url,
         title: result.title,
+        snippet: result.content ? result.content.slice(0, 200) : "",
       })) || [],
   };
 
-  // Extract researcher name from the query (first part before affiliation/research areas)
-  const researcherName = tavilyResults.query.split(" ").slice(0, 2).join(" "); // Take first 2 words as name
-
   const gptPrompt = `
+CONTEXT:
+${JSON.stringify(context, null, 2)}
+
 TAVILY SEARCH RESULTS:
 ${JSON.stringify(filteredResults, null, 2)}
 
-RESEARCHER TO FIND: "${researcherName}"
+TASK: Identify all profile links that belong to the researcher in CONTEXT.
 
-TASK: Identify all profile links that belong to the researcher "${researcherName}" from the search results above.
+MATCHING RULES:
+1. Prefer exact name matches in title, URL, or snippet.
+2. Allow partial/variant matches only if affiliation, department, or ORCID confirms the identity.
+3. Use only URLs from the search results.
+4. Exclude directory pages, search pages, and profiles of different people.
+5. Each link must include evidence that references the name plus a secondary signal.
 
-NAME MATCHING RULES (STRICT):
-1. The profile title OR URL must clearly contain the researcher's name "${researcherName}"
-2. Accept exact matches or very close variations (e.g., "David" ↔ "Dave" for the same person)
-3. REJECT profiles that belong to different people with similar but different names
-4. Check both the URL path and the title for name confirmation
-
-VALIDATION CHECKLIST:
-- Does the title mention "${researcherName}" or a clear variation?
-- Does the URL contain the researcher's name or initials?
-- Is this profile clearly for the same person we're searching for?
-
-VALID PROFILE TYPES:
-- LinkedIn profiles (linkedin.com/in/...) - must have researcher's name in title or URL
-- Google Scholar profiles (scholar.google.com/citations...) - must have researcher's name
-- ResearchGate profiles (researchgate.net/profile/...) - must have researcher's name
-- ORCID profiles (orcid.org/...) - must have researcher's name
-- Institutional faculty pages - must clearly be the researcher's personal page
-- Academia.edu profiles - must have researcher's name
-
-EXCLUDE:
-- General search pages (like scholar.google.com without specific profile)
-- Directory pages
-- Profiles of different people with similar names
-- Non-profile links
-
-OUTPUT FORMAT (EXACTLY):
-🔗 Profile Links
-
-Links: [array of profile URLs, one per line, or "No profile links found"]
+OUTPUT JSON ONLY:
+{
+  "links": [
+    {
+      "url": "https://...",
+      "type": "LinkedIn | Google Scholar | ResearchGate | ORCID | Academia.edu | Institutional | Semantic Scholar | OpenAlex | DBLP | Scopus | Web of Science | Publons | Other",
+      "evidence": "Short reason referencing name + affiliation/ID",
+      "confidence": 0.0
+    }
+  ]
+}
+If no links, return {"links": []}.
 `;
 
   const models = [
-    "nvidia/nemotron-nano-12b-v2-vl:free",
-    "google/gemini-2.0-flash-exp:free",
-    "meta-llama/llama-3-8b-instruct:free",
+    "deepseek/deepseek-v4-flash:free",
+    "openrouter/owl-alpha",
+    "nvidia/nemotron-3-super-120b-a12b:free",
   ];
 
   let lastError;
@@ -242,7 +397,7 @@ Links: [array of profile URLs, one per line, or "No profile links found"]
           {
             role: "system",
             content:
-              "You are a professional profile verification specialist. Your task is to identify profile URLs that belong to the EXACT researcher specified in the query. Be extremely careful about name matching - reject any profiles that belong to different people, even if names are similar. Always cross-reference the researcher's name with both the URL and title before including any profile. Only include official academic and professional profiles. Never fabricate URLs that weren't in the search results.",
+              "You are a professional profile verification specialist. Identify profile URLs that belong to the researcher in the provided context. Be careful about name matching and require corroborating evidence (affiliation, department, ORCID, or publication). Only include URLs present in the search results. Output valid JSON only.",
           },
           {
             role: "user",
@@ -272,62 +427,43 @@ function parseContactResponseAdvanced(response) {
   };
 
   try {
-    // Extract profile links from GPT response
-    const linksMatch = response.match(/Links:\s*([\s\S]*?)(?:\n\n|$)/i);
-
-    if (linksMatch) {
-      const linksSection = linksMatch[1].trim();
-
-      // Check if no links found
-      if (linksSection.toLowerCase().includes("no profile links found")) {
-        contactInfo.links = [];
-      } else {
-        // Split by lines and filter out empty lines
-        const urls = linksSection
-          .split("\n")
-          .map((line) => {
-            // Remove quotes, trim whitespace, and remove leading "- " if present
-            let cleanLine = line
-              .trim()
-              .replace(/^- /, "")
-              .replace(/^["']|["']$/g, "");
-            return cleanLine;
-          })
-          .filter((line) => {
-            // Check if line contains a URL (starts with http or https)
-            return (
-              line &&
-              (line.startsWith("http://") || line.startsWith("https://"))
-            );
-          })
-          .filter((url) => {
-            // Validate that it's a proper profile URL
-            const validDomains = [
-              "linkedin.com",
-              "scholar.google.com",
-              "researchgate.net",
-              "orcid.org",
-              "academia.edu",
-              "scopus.com",
-              "publons.com",
-              "webofscience.com",
-            ];
-
-            // Also include university/institutional domains
-            const isUniversityDomain =
-              url.includes(".edu") ||
-              url.includes(".ac.") ||
-              url.includes("university");
-            const hasValidDomain = validDomains.some((domain) =>
-              url.includes(domain)
-            );
-
-            return hasValidDomain || isUniversityDomain;
-          });
-
-        contactInfo.links = urls;
-      }
+    const parsed = safeJsonParse(response);
+    if (!parsed || !Array.isArray(parsed.links)) {
+      return contactInfo;
     }
+
+    const normalizedLinks = parsed.links
+      .map((link) => {
+        const url =
+          typeof link === "string"
+            ? link
+            : typeof link?.url === "string"
+              ? link.url
+              : "";
+        const cleanUrl = typeof url === "string" ? url.trim() : "";
+        if (!cleanUrl || !isValidProfileUrl(cleanUrl)) {
+          return null;
+        }
+
+        const evidence =
+          typeof link?.evidence === "string"
+            ? link.evidence.trim().slice(0, 180)
+            : "";
+        const confidence =
+          typeof link?.confidence === "number"
+            ? Math.max(0, Math.min(1, link.confidence))
+            : undefined;
+
+        return {
+          url: cleanUrl,
+          type: normalizeType(link?.type, cleanUrl),
+          evidence,
+          confidence,
+        };
+      })
+      .filter(Boolean);
+
+    contactInfo.links = normalizedLinks;
   } catch (error) {
     console.error("Error in profile links parsing:", error);
     contactInfo.links = [];
