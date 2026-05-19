@@ -19,7 +19,16 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml: {
           order: "pre",
           handler(html) {
-            const backendUrl = env.VITE_BACKEND_URL || "http://localhost:5000";
+            const sanitizeEnvUrl = (value, fallback) => {
+              const raw = (value ?? fallback).toString().trim();
+              // Strip wrapping quotes, backslashes, and spaces from both ends
+              return raw.replace(/^[\\'"\s]+|[\\'"\s]+$/g, "");
+            };
+
+            const backendUrl = sanitizeEnvUrl(
+              env.VITE_BACKEND_URL,
+              "http://localhost:5000"
+            );
 
             // Generate WebSocket URLs based on backend URL
             const wsUrl = backendUrl.replace(/^https?:/, "ws:");
