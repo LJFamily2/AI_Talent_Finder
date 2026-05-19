@@ -21,7 +21,8 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const {
   initializeHeaderClassifier,
@@ -36,9 +37,10 @@ module.exports = {
 };
 
 async function verifyCVWithAI(file, prioritySource = "ai") {
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-lite-preview-06-17",
@@ -97,13 +99,13 @@ async function verifyCVWithAI(file, prioritySource = "ai") {
     console.error("[AI CV Verification] Error:", error);
     throw error;
   } finally {
-    if (file && file.path) {
+    if (storedFileName) {
       try {
-        fs.unlinkSync(file.path);
-        console.log("[AI CV Verification] File cleaned up");
+        await deleteFromSupabase(storedFileName);
+        console.log("[AI CV Verification] File cleaned up from Supabase");
       } catch (cleanupError) {
         console.warn(
-          "[AI CV Verification] File cleanup failed:",
+          "[AI CV Verification] File cleanup from Supabase failed:",
           cleanupError.message
         );
       }

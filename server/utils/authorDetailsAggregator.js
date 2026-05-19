@@ -14,6 +14,10 @@ const axios = require("axios");
 const { strictAuthorNameVerification } = require("./authorUtils");
 require("dotenv").config();
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // CONFIGURATION AND CONSTANTS
 //=============================================================================
@@ -43,13 +47,13 @@ const DEFAULT_PRIORITY_ORDER = ["scopus", "openalex", "googleScholar"];
 const getNextBestSource = (
   verifiedSources,
   prioritySource,
-  customPriorityOrder = null
+  customPriorityOrder = null,
 ) => {
   const priorityOrder = customPriorityOrder || DEFAULT_PRIORITY_ORDER;
 
   // Remove the failed priority source from consideration
   const availableOrder = priorityOrder.filter(
-    (source) => source !== prioritySource
+    (source) => source !== prioritySource,
   );
 
   // Find the first available source in priority order
@@ -61,7 +65,7 @@ const getNextBestSource = (
 
   // Fallback: use any remaining verified source not in the priority list
   const remainingSources = Object.keys(verifiedSources).filter(
-    (source) => !priorityOrder.includes(source)
+    (source) => !priorityOrder.includes(source),
   );
 
   return remainingSources.length > 0 ? remainingSources[0] : null;
@@ -81,8 +85,13 @@ const getNextBestSource = (
 const aggregateAuthorDetails = async (
   authorIds,
   candidateName,
-  prioritySource
+  prioritySource,
 ) => {
+  debugLog("start", {
+    candidateName,
+    prioritySource,
+    authorIds,
+  });
   const authorDetails = {
     author: {
       name: null,
@@ -120,7 +129,16 @@ const aggregateAuthorDetails = async (
           const authorName = `${preferredName["given-name"]} ${preferredName.surname}`;
 
           // Use strict verification to ensure names match
-          if (strictAuthorNameVerification(candidateName, authorName)) {
+          const strictMatch = strictAuthorNameVerification(
+            candidateName,
+            authorName,
+          );
+          debugLog("scopus_strict_check", {
+            candidateName,
+            authorName,
+            matched: strictMatch,
+          });
+          if (strictMatch) {
             mergeScopusData(authorDetails, scopusAuthorData, prioritySource);
             verifiedSources.scopus = true;
           }
@@ -141,7 +159,16 @@ const aggregateAuthorDetails = async (
         const authorName = openAlexAuthorData.display_name;
 
         // Use strict verification to ensure names match
-        if (strictAuthorNameVerification(candidateName, authorName)) {
+        const strictMatch = strictAuthorNameVerification(
+          candidateName,
+          authorName,
+        );
+        debugLog("openalex_strict_check", {
+          candidateName,
+          authorName,
+          matched: strictMatch,
+        });
+        if (strictMatch) {
           mergeOpenAlexData(authorDetails, openAlexAuthorData, prioritySource);
           verifiedSources.openalex = true;
         }
@@ -155,7 +182,7 @@ const aggregateAuthorDetails = async (
   if (authorIds.google_scholar) {
     try {
       const googleScholarData = await fetchGoogleScholarAuthor(
-        authorIds.google_scholar
+        authorIds.google_scholar,
       );
 
       // Verify author name match before merging data
@@ -163,11 +190,20 @@ const aggregateAuthorDetails = async (
         const authorName = googleScholarData.author.name;
 
         // Use strict verification to ensure names match
-        if (strictAuthorNameVerification(candidateName, authorName)) {
+        const strictMatch = strictAuthorNameVerification(
+          candidateName,
+          authorName,
+        );
+        debugLog("scholar_strict_check", {
+          candidateName,
+          authorName,
+          matched: strictMatch,
+        });
+        if (strictMatch) {
           mergeGoogleScholarData(
             authorDetails,
             googleScholarData,
-            prioritySource
+            prioritySource,
           );
           verifiedSources.googleScholar = true;
         }
@@ -179,20 +215,35 @@ const aggregateAuthorDetails = async (
 
   // If no sources were verified at all, return null
   if (Object.keys(verifiedSources).length === 0) {
+    debugLog("no_verified_sources", { candidateName, authorIds });
     return null;
   } // Check if the priority source was verified - if not, use alternative source
   if (prioritySource && !verifiedSources[prioritySource]) {
     const alternativeSource = getNextBestSource(
       verifiedSources,
-      prioritySource
+      prioritySource,
     );
 
     if (alternativeSource) {
+      debugLog("priority_fallback", {
+        from: prioritySource,
+        to: alternativeSource,
+      });
       prioritySource = alternativeSource;
     } else {
+      debugLog("priority_no_fallback", {
+        prioritySource,
+        verifiedSources: Object.keys(verifiedSources),
+      });
       return null;
     }
   }
+
+  debugLog("complete", {
+    candidateName,
+    prioritySource,
+    verifiedSources: Object.keys(verifiedSources),
+  });
 
   return authorDetails;
 };
@@ -251,7 +302,7 @@ const fetchScopusAuthor = async (authorId) => {
 const mergeGoogleScholarData = (
   authorDetails,
   googleScholarData,
-  prioritySource
+  prioritySource,
 ) => {
   const isPreferredSource = prioritySource === "googleScholar";
   // Basic author info
@@ -287,7 +338,7 @@ const mergeGoogleScholarData = (
     if (googleScholarData.cited_by.table) {
       // Total citation count
       const citationsItem = googleScholarData.cited_by.table.find(
-        (item) => item.citations
+        (item) => item.citations,
       );
       if (
         citationsItem &&
@@ -301,7 +352,7 @@ const mergeGoogleScholarData = (
 
       // H-index
       const hIndex = googleScholarData.cited_by.table.find(
-        (item) => item.h_index
+        (item) => item.h_index,
       );
       if (hIndex && hIndex.h_index && hIndex.h_index.all) {
         if (isPreferredSource || authorDetails.h_index === null) {
@@ -311,7 +362,7 @@ const mergeGoogleScholarData = (
 
       // i10-index
       const i10Index = googleScholarData.cited_by.table.find(
-        (item) => item.i10_index
+        (item) => item.i10_index,
       );
       if (i10Index && i10Index.i10_index && i10Index.i10_index.all) {
         if (isPreferredSource || authorDetails.i10_index === null) {
@@ -393,7 +444,7 @@ const mergeScopusData = (authorDetails, scopusAuthorData, prioritySource) => {
     if (affiliationHistory && affiliationHistory.affiliation) {
       parseAndAddScopusAffiliation(
         authorDetails,
-        affiliationHistory.affiliation
+        affiliationHistory.affiliation,
       );
     }
   }
@@ -405,7 +456,7 @@ const mergeScopusData = (authorDetails, scopusAuthorData, prioritySource) => {
   ) {
     const citationCount = parseInt(
       authorProfile.coredata["citation-count"],
-      10
+      10,
     );
     if (isPreferredSource || authorDetails.citationCount === null) {
       authorDetails.citationCount = citationCount;
@@ -428,7 +479,7 @@ const mergeScopusData = (authorDetails, scopusAuthorData, prioritySource) => {
   ) {
     const documentCount = parseInt(
       authorProfile.coredata["document-count"],
-      10
+      10,
     );
     if (isPreferredSource || authorDetails.documentCount === null) {
       authorDetails.documentCount = documentCount;
@@ -459,7 +510,7 @@ const parseAndAddScopusAffiliation = (authorDetails, affiliation) => {
       affiliationData = affiliation;
     } else if (Array.isArray(affiliation)) {
       affiliation.forEach((aff) =>
-        parseAndAddScopusAffiliation(authorDetails, aff)
+        parseAndAddScopusAffiliation(authorDetails, aff),
       );
       return;
     }
@@ -477,7 +528,7 @@ const parseAndAddScopusAffiliation = (authorDetails, affiliation) => {
 
       // Check if this affiliation is already in the history
       const isDuplicate = authorDetails.author.affiliationHistory.some(
-        (aff) => aff.name === newAffiliation.name
+        (aff) => aff.name === newAffiliation.name,
       );
 
       if (!isDuplicate && newAffiliation.name) {
@@ -523,7 +574,7 @@ const fetchOpenAlexAuthor = async (authorId) => {
 const mergeOpenAlexData = (
   authorDetails,
   openAlexAuthorData,
-  prioritySource
+  prioritySource,
 ) => {
   const isPreferredSource = prioritySource === "openalex";
 
@@ -572,7 +623,7 @@ const mergeOpenAlexData = (
 
         // Check if this affiliation is already in the history
         const isDuplicate = authorDetails.author.affiliationHistory.some(
-          (aff) => aff.name === newAffiliation.name
+          (aff) => aff.name === newAffiliation.name,
         );
 
         if (!isDuplicate) {

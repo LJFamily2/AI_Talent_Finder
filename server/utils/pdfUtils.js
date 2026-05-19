@@ -1,86 +1,87 @@
 // utils/pdfUtils.js
-const fs = require("fs");
-const pdfParse = require("pdf-parse");
-const pdfjsLib = require("pdfjs-dist");
-const { createWorker } = require("tesseract.js");
-const { createCanvas } = require("canvas");
+const path = require("path");
+const { fork } = require("child_process");
+
+// Child process timeout (120 seconds)
+const WORKER_TIMEOUT_MS = 120000;
 
 async function extractTextFromPDF(filePath) {
   console.log("[CV Verification] Starting PDF text extraction...");
 
-  // 1. Try with pdf-parse first (fast path)
-  try {
-    const dataBuffer = fs.readFileSync(filePath);
-    const pdfData = await pdfParse(dataBuffer);
+  return new Promise((resolve, reject) => {
+    const workerPath = path.join(__dirname, "pdfWorker.js");
+    const child = fork(workerPath, [], {
+      silent: true, // Don't inherit parent's stdio
+      execArgv: [], // No special node flags
+    });
 
-    if (pdfData.text && pdfData.text.trim().length > 30) {
-      return pdfData.text;
-    } else {
-      console.log(
-        "[CV Verification] pdf-parse returned little text, falling back to OCR..."
+    let settled = false;
+    let timeoutId = null;
+
+    const settle = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      fn(value);
+      // Kill child process if still running (ignore errors)
+      try {
+        child.kill();
+      } catch (e) {
+        // Ignore kill errors
+      }
+    };
+
+    // Set timeout to prevent hung processes
+    timeoutId = setTimeout(() => {
+      settle(reject, new Error("PDF extraction timed out after 120 seconds"));
+    }, WORKER_TIMEOUT_MS);
+
+    child.on("message", (message) => {
+      if (message?.success) {
+        settle(resolve, message.text || "");
+        return;
+      }
+
+      settle(
+        reject,
+        new Error(
+          message?.error ||
+            "Error: Failed to extract text from PDF (both pdf-parse & OCR failed).",
+        ),
       );
-    }
-  } catch (err) {
-    console.warn(
-      "[CV Verification] pdf-parse failed, falling back to OCR...",
-      err
-    );
-  }
+    });
 
-  // 2. Fallback OCR using pdfjs-dist + one persistent tesseract worker
-  try {
-    const data = new Uint8Array(fs.readFileSync(filePath));
-    const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+    child.on("error", (error) => {
+      settle(reject, error);
+    });
 
-    const worker = await createWorker("eng");
-    let ocrResults = [];
+    child.on("exit", (code, signal) => {
+      if (!settled) {
+        if (code !== 0 && code !== null) {
+          settle(
+            reject,
+            new Error(`PDF worker exited unexpectedly with code ${code}`),
+          );
+        } else if (signal) {
+          settle(
+            reject,
+            new Error(`PDF worker was terminated by signal ${signal}`),
+          );
+        }
+        // If code is 0 and we haven't settled, that's unexpected - should have
+        // received a message first. Reject to be safe.
+        else {
+          settle(
+            reject,
+            new Error("PDF worker exited without sending a result"),
+          );
+        }
+      }
+    });
 
-    // Process pages in parallel (limit concurrency for memory)
-    const concurrency = 2; // tune this based on CPU cores
-    const pageNumbers = Array.from(
-      { length: pdfDoc.numPages },
-      (_, i) => i + 1
-    );
-
-    async function processPage(pageNum) {
-      console.log(`[CV Verification] OCR processing page ${pageNum}`);
-
-      const page = await pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 1.5 }); // reduce scale for speed/accuracy tradeoff
-
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext("2d");
-      await page.render({ canvasContext: context, viewport }).promise;
-
-      const imgBuffer = canvas.toBuffer("image/png");
-
-      const {
-        data: { text },
-      } = await worker.recognize(imgBuffer);
-      return text.trim();
-    }
-
-    // Concurrency control
-    while (pageNumbers.length > 0) {
-      const batch = pageNumbers.splice(0, concurrency);
-      const results = await Promise.all(batch.map(processPage));
-      ocrResults.push(...results);
-    }
-
-    await worker.terminate();
-
-    const finalText = ocrResults.join("\n");
-    if (!finalText.trim()) {
-      throw new Error("OCR returned no text");
-    }
-
-    return finalText;
-  } catch (err) {
-    console.error("[CV Verification] OCR failed:", err);
-    throw new Error(
-      "Error: Failed to extract text from PDF (both pdf-parse & OCR failed)."
-    );
-  }
+    // Send the file path to the child process
+    child.send({ filePath });
+  });
 }
 
 module.exports = { extractTextFromPDF };

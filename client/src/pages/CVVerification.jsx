@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ResearcherSection from "../components/ResearcherSection";
 import {
   Pagination,
@@ -10,12 +10,21 @@ import {
   Radio,
   Checkbox,
   Button,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Header from "../components/Header";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import { io } from "socket.io-client";
 import SimplePDFViewer from "../components/SimplePDFViewer";
+import api from "../config/api";
 // import { sampleResearcher } from './seed';      // sample researcher data
 
 export default function CVVerification() {
@@ -41,22 +50,331 @@ export default function CVVerification() {
 
   // PDF viewing state
   const [showPDFModal, setShowPDFModal] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const pdfObjectUrlRef = useRef(null);
+  const [jobRecord, setJobRecord] = useState(null);
+  const [jobLoading, setJobLoading] = useState(false);
+  const [jobError, setJobError] = useState(null);
+  const socketRef = useRef(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastSeverity, setToastSeverity] = useState("info");
 
   // Navigation and state logic
   const location = useLocation();
   const navigate = useNavigate();
+  const { jobId } = useParams();
 
-  const publications = location.state?.publications;
+  const transientPublications = location.state?.publications;
   const originalFile = location.state?.originalFile;
 
-  if (!publications) {
-    navigate("/upload-cv");
-    return null;
+  const closePdfModal = () => {
+    setShowPDFModal(false);
+    setPdfError(null);
+    setPdfLoading(false);
+    setPdfBlobUrl(null);
+    if (pdfObjectUrlRef.current) {
+      URL.revokeObjectURL(pdfObjectUrlRef.current);
+      pdfObjectUrlRef.current = null;
+    }
+  };
+
+  const loadPdfForJob = async () => {
+    if (!jobId || pdfLoading) return;
+
+    setPdfError(null);
+    setPdfLoading(true);
+
+    try {
+      const response = await api.get(`/api/cv/batch-jobs/${jobId}/pdf`);
+
+      const url = response.data.url;
+      if (!url) {
+        throw new Error("No PDF URL returned from server.");
+      }
+
+      setPdfBlobUrl(url);
+    } catch (error) {
+      setPdfError(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Unable to load the PDF.",
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const openPdfModal = () => {
+    setShowPDFModal(true);
+    if (!originalFile) {
+      void loadPdfForJob();
+    }
+  };
+
+  useEffect(() => {
+    if (!jobId || transientPublications) {
+      setJobRecord(null);
+      setJobLoading(false);
+      setJobError(null);
+      return;
+    }
+
+    let active = true;
+    let poller = null;
+
+    const loadJob = async () => {
+      setJobLoading(true);
+      try {
+        const response = await api.get(`/api/cv/batch-jobs/${jobId}`);
+        if (!active) return;
+
+        const record = response.data.data || null;
+        setJobRecord(record);
+        setJobError(null);
+
+        if (
+          record &&
+          (record.status === "completed" || record.status === "failed")
+        ) {
+          setJobLoading(false);
+          if (poller) {
+            clearInterval(poller);
+            poller = null;
+          }
+        }
+      } catch (error) {
+        if (!active) return;
+        setJobError(
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.message ||
+            "Unable to load this verification job.",
+        );
+        setJobLoading(false);
+        if (poller) {
+          clearInterval(poller);
+          poller = null;
+        }
+      }
+    };
+
+    loadJob();
+    poller = setInterval(loadJob, 4000);
+
+    return () => {
+      active = false;
+      if (poller) {
+        clearInterval(poller);
+      }
+    };
+  }, [jobId, transientPublications]);
+
+  // Socket: join job room to receive real-time updates when viewing a saved job
+  useEffect(() => {
+    if (!jobId || transientPublications) return;
+
+    // Connect socket if not connected
+    if (!socketRef.current) {
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+      socketRef.current = io(backendUrl, { withCredentials: true });
+    }
+
+    const socket = socketRef.current;
+
+    const onJoined = (data) => {
+      setToastMessage(`Connected to job ${data.jobId.substring(0, 8)}...`);
+      setToastSeverity("success");
+      setToastOpen(true);
+    };
+
+    const onProgress = (data) => {
+      setJobRecord((prev) => ({
+        ...(prev || {}),
+        progress: data.progress ?? prev?.progress ?? 0,
+        stage: data.step ?? prev?.stage,
+      }));
+      setJobLoading(false);
+      setToastMessage(`Progress: ${data.progress}% - ${data.step}`);
+      setToastSeverity("info");
+      setToastOpen(true);
+    };
+
+    const onComplete = (payload) => {
+      const result = payload?.result || payload;
+      setJobRecord((prev) => ({
+        ...(prev || {}),
+        result: result || prev?.result || null,
+        status: result?.success === false ? "failed" : "completed",
+        progress: 100,
+        stage: "done",
+      }));
+      if (result && result.success === false) {
+        setJobError(result.error || "Verification failed");
+        setToastMessage(`Verification complete: ${result.error || "Failed"}`);
+        setToastSeverity("error");
+      } else {
+        setJobError(null);
+        setToastMessage("Verification completed successfully!");
+        setToastSeverity("success");
+      }
+      setToastOpen(true);
+      setJobLoading(false);
+    };
+
+    const onError = (data) => {
+      const errorMsg = data?.error || data || "An error occurred";
+      setJobError(errorMsg);
+      setToastMessage(`Error: ${errorMsg}`);
+      setToastSeverity("error");
+      setToastOpen(true);
+      setJobLoading(false);
+    };
+
+    socket.on("joined", onJoined);
+    socket.on("progress", onProgress);
+    socket.on("complete", onComplete);
+    socket.on("error", onError);
+
+    socket.emit("joinJob", jobId);
+
+    return () => {
+      if (!socket) return;
+      socket.off("joined", onJoined);
+      socket.off("progress", onProgress);
+      socket.off("complete", onComplete);
+      socket.off("error", onError);
+    };
+  }, [jobId, transientPublications]);
+
+  const publications = transientPublications || jobRecord?.result || null;
+
+  // If the verification completed but returned a failure payload, show a clear
+  // announcement to the user and allow returning to the publication check.
+  if (publications && publications.success === false) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Header />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-red-600">
+              Publication Check
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+              Verification failed
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">
+              {publications.error ||
+                "An unknown error occurred during verification."}
+            </p>
+            <div className="mt-4">
+              <button
+                className="mr-3 rounded-full bg-[#000054] px-5 py-2.5 text-sm font-semibold text-white"
+                onClick={() => navigate("/publication-check")}
+              >
+                Back to publication check
+              </button>
+              {publications.retryable ? (
+                <button
+                  className="rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white"
+                  onClick={() => navigate("/publication-check")}
+                >
+                  Try again
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const allDisplayData = publications.results.map(
-    (r) => r.verification.displayData
-  );
+  if (jobId && jobLoading && !jobRecord && !jobError) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Header />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+              Publication Check
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+              Loading your saved verification job
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">
+              This job is running in the background and will update here as soon
+              as the results are ready.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobId && jobError) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Header />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-red-600">
+              Publication Check
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+              Unable to load this job
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">{jobError}</p>
+            <button
+              className="mt-5 rounded-full bg-[#000054] px-5 py-2.5 text-sm font-semibold text-white"
+              onClick={() => navigate("/publication-check")}
+            >
+              Back to publication check
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobId && jobRecord && jobRecord.status === "completed" && !publications) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Header />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">
+              Publication Check
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+              No saved verification results were found
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">
+              This job completed, but the saved result payload is missing or
+              could not be loaded.
+            </p>
+            <button
+              className="mt-5 rounded-full bg-[#000054] px-5 py-2.5 text-sm font-semibold text-white"
+              onClick={() => navigate("/publication-check")}
+            >
+              Back to publication check
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!jobId && !publications) {
+    return <Navigate to="/publication-check" replace />;
+  }
+
+  const allDisplayData = Array.isArray(publications?.results)
+    ? publications.results.map((r) => r.verification.displayData)
+    : [];
 
   // Helper: normalize and pretty-print publication type
   const formatType = (t) => {
@@ -70,12 +388,12 @@ export default function CVVerification() {
     // Sentence case: capitalize only the first character
     return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   };
-  const researcherData = publications.authorDetails;
+  const researcherData = publications?.authorDetails;
 
   // Type Selection - Handle toggle
   const handleTypeChange = (type) => {
     setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
     );
     setPage(1);
   };
@@ -131,12 +449,12 @@ export default function CVVerification() {
     .sort((a, b) =>
       sortOrder === "Newest"
         ? b.year.localeCompare(a.year)
-        : a.year.localeCompare(b.year)
+        : a.year.localeCompare(b.year),
     );
 
   const paginated = filtered.slice(
     (page - 1) * itemsPerPage,
-    page * itemsPerPage
+    page * itemsPerPage,
   );
 
   return (
@@ -355,7 +673,7 @@ export default function CVVerification() {
             <Button
               variant="outlined"
               startIcon={<PictureAsPdfIcon />}
-              onClick={() => setShowPDFModal(true)}
+              onClick={openPdfModal}
               size="small"
               sx={{ ml: 2 }}
             >
@@ -455,7 +773,7 @@ export default function CVVerification() {
                 Uploaded CV
               </h3>
               <button
-                onClick={() => setShowPDFModal(false)}
+                onClick={closePdfModal}
                 className="text-gray-500 hover:text-gray-700 text-xl font-semibold px-2"
               >
                 ×
@@ -466,10 +784,19 @@ export default function CVVerification() {
             <div className="h-[80vh] p-4">
               {originalFile ? (
                 <SimplePDFViewer file={originalFile} className="h-full" />
+              ) : pdfLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-600">Loading PDF...</p>
+                </div>
+              ) : pdfBlobUrl ? (
+                <SimplePDFViewer file={pdfBlobUrl} className="h-full" />
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <p className="text-gray-600 mb-4">No PDF file available</p>
+                    {pdfError ? (
+                      <p className="text-sm text-red-600">{pdfError}</p>
+                    ) : null}
                     <p className="text-sm text-gray-500">
                       Debug: originalFile = {JSON.stringify(originalFile)}
                     </p>
@@ -484,6 +811,20 @@ export default function CVVerification() {
           </div>
         </div>
       )}
+      <Snackbar
+        open={toastOpen}
+        autoHideDuration={4000}
+        onClose={() => setToastOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setToastOpen(false)}
+          severity={toastSeverity}
+          sx={{ width: "100%" }}
+        >
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

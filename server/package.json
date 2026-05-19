@@ -13,6 +13,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.105.4",
     "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.0",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "jest": "^30.0.4",
     "mongodb-memory-server": "^10.1.4",
+    "morgan": "^1.10.1",
     "nodemon": "^3.1.10",
     "supertest": "^7.1.3"
   }

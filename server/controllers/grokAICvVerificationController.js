@@ -16,7 +16,8 @@
 
 const fs = require("fs");
 const OpenAI = require("openai");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
 const { aggregateAuthorDetails } = require("../utils/authorDetailsAggregator");
 const {
   initializeHeaderClassifier,
@@ -64,13 +65,14 @@ module.exports = {
  * @returns {Promise<Object>} Verification results in traditional format
  */
 async function verifyCVWithGrok(file, prioritySource = "grok") {
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
 
   try {
     console.log("[Grok CV Verification] Starting CV verification process");
 
     // Parse PDF to text (with OCR fallback)
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
 
     if (!cvText || cvText.trim().length === 0) {
       throw new Error("Failed to extract text from CV file");
@@ -154,14 +156,14 @@ async function verifyCVWithGrok(file, prioritySource = "grok") {
     console.error("[Grok CV Verification] Error during verification:", error);
     throw new Error(`CV verification failed: ${error.message}`);
   } finally {
-    // Clean up temporary file
-    if (file && file.path && fs.existsSync(file.path)) {
+    // Clean up temporary file from Supabase
+    if (storedFileName) {
       try {
-        fs.unlinkSync(file.path);
-        console.log("[Grok CV Verification] Cleaned up temporary file");
+        await deleteFromSupabase(storedFileName);
+        console.log("[Grok CV Verification] Cleaned up temporary file from Supabase");
       } catch (cleanupError) {
         console.warn(
-          "[Grok CV Verification] Failed to clean up temporary file:",
+          "[Grok CV Verification] Failed to clean up temporary file from Supabase:",
           cleanupError
         );
       }

@@ -15,7 +15,6 @@
  * @version 1.0.0
  */
 
-const fs = require("fs");
 const OpenAI = require("openai");
 const {
   verifyWithGoogleScholar,
@@ -33,7 +32,12 @@ const {
   extractCandidateNameWithAI,
   extractPublicationsFromCV,
 } = require("../utils/aiHelpers");
-const { extractTextFromPDF } = require("../utils/pdfUtils");
+const { extractTextFromSupabasePDF } = require("../utils/supabasePdfUtils");
+const { deleteFromSupabase } = require("../utils/supabaseStorage");
+
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
 
 //=============================================================================
 // MODULE EXPORTS
@@ -63,18 +67,55 @@ module.exports = {
  */
 
 async function verifyCV(file, prioritySource, options = {}) {
-  const { jobId, io } = options;
+  const { jobId, io, shouldCancel, keepFile = false } = options;
+  const storedFileName = file.storedFileName || file.filename;
   let cvText = "";
   try {
+    debugLog("start", {
+      jobId,
+      storedFileName,
+      originalName: file.originalname,
+      fileSize: file.size,
+      prioritySource,
+    });
+    const checkCancellation = async (stage) => {
+      if (typeof shouldCancel === "function" && (await shouldCancel())) {
+        if (io && jobId) {
+          io.to(jobId).emit("error", {
+            error: "Verification cancelled",
+            code: "JOB_CANCELLED",
+            retryable: false,
+            stage,
+          });
+        }
+
+        return {
+          success: false,
+          cancelled: true,
+          code: "JOB_CANCELLED",
+          error: "Verification cancelled",
+          stage: "canceled",
+          retryable: false,
+        };
+      }
+
+      return null;
+    };
+
     // Parse PDF to text (with OCR fallback)
     const pdfStartTime = Date.now();
-    cvText = await extractTextFromPDF(file.path);
+    cvText = await extractTextFromSupabasePDF(storedFileName);
     const pdfEndTime = Date.now();
+    debugLog("pdf_extracted", {
+      jobId,
+      durationMs: pdfEndTime - pdfStartTime,
+      textLength: cvText.length,
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 10, step: "pdf_extracted" });
 
-    // Clean up uploaded file
-    fs.unlinkSync(file.path);
+    const pdfCancellation = await checkCancellation("pdf_extracted");
+    if (pdfCancellation) return pdfCancellation;
 
     // Initialize OpenAI client (OpenRouter)
     const openai = new OpenAI({
@@ -138,7 +179,15 @@ async function verifyCV(file, prioritySource, options = {}) {
         retryable: true,
       };
     }
+
+    const nameCancellation = await checkCancellation("name_extracted");
+    if (nameCancellation) return nameCancellation;
     const nameEndTime = Date.now();
+    debugLog("name_extracted", {
+      jobId,
+      durationMs: nameEndTime - nameStartTime,
+      candidateName,
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", { progress: 30, step: "name_extracted" });
 
@@ -168,7 +217,23 @@ async function verifyCV(file, prioritySource, options = {}) {
         retryable: true,
       };
     }
+
+    const publicationCancellation = await checkCancellation(
+      "publications_extracted",
+    );
+    if (publicationCancellation) return publicationCancellation;
     const pubEndTime = Date.now();
+    debugLog("publications_extracted", {
+      jobId,
+      durationMs: pubEndTime - pubStartTime,
+      publicationCount: Array.isArray(publications) ? publications.length : 0,
+      titles: Array.isArray(publications)
+        ? publications
+            .map((p) => p?.title)
+            .filter(Boolean)
+            .slice(0, 10)
+        : [],
+    });
     if (io && jobId)
       io.to(jobId).emit("progress", {
         progress: 50,
@@ -188,6 +253,9 @@ async function verifyCV(file, prioritySource, options = {}) {
 
       // Process in chunks
       for (let i = 0; i < titles.length; i += batchSize) {
+        const chunkCancellation = await checkCancellation("openalex_batch");
+        if (chunkCancellation) return chunkCancellation;
+
         const chunk = titles.slice(i, i + batchSize);
         const batchResult = await verifyWithOpenAlexBatch(chunk, candidateName);
         Object.assign(openAlexBatchResults, batchResult);
@@ -201,6 +269,10 @@ async function verifyCV(file, prioritySource, options = {}) {
       console.error("Batch OpenAlex verification failed:", err);
       // Continue without batch results
     }
+    debugLog("openalex_batch_complete", {
+      jobId,
+      batchResults: Object.keys(openAlexBatchResults).length,
+    });
 
     // Verify each publication with both Google Scholar and Scopus
     if (io && jobId)
@@ -211,13 +283,40 @@ async function verifyCV(file, prioritySource, options = {}) {
     const verificationStartTime = Date.now();
     const verificationResults = [];
     for (let i = 0; i < publications.length; i++) {
+      const loopCancellation = await checkCancellation(
+        "publication_verification",
+      );
+      if (loopCancellation) return loopCancellation;
+
       const pub = publications[i];
       const preFetchedOpenAlex = openAlexBatchResults[pub.title];
+      debugLog("publication_start", {
+        jobId,
+        index: i + 1,
+        total: publications.length,
+        title: pub.title,
+        hasPrefetch: Boolean(preFetchedOpenAlex),
+        prefetchStatus: preFetchedOpenAlex?.status || null,
+      });
       const result = await processPublicationVerification(
         pub,
         candidateName,
-        preFetchedOpenAlex
+        preFetchedOpenAlex,
       );
+      debugLog("publication_done", {
+        jobId,
+        index: i + 1,
+        title: pub.title,
+        status: result?.verification?.displayData?.status,
+        sources: {
+          googleScholar: result?.verification?.google_scholar?.status,
+          scopus: result?.verification?.scopus?.status,
+          openalex: result?.verification?.openalex?.status,
+          pubmed: result?.verification?.pubmed?.status,
+        },
+        authorMatch: result?.authorVerification?.hasAuthorMatch,
+        authorIds: result?.authorVerification?.authorIds,
+      });
       verificationResults.push(result);
       if (io && jobId) {
         // Progress between 60 and 80%
@@ -245,7 +344,7 @@ async function verifyCV(file, prioritySource, options = {}) {
     const verifiedWithAuthorMatch = verificationResults.filter(
       (result) =>
         result.authorVerification.hasAuthorMatch &&
-        Object.keys(result.authorVerification.authorIds || {}).length > 0
+        Object.keys(result.authorVerification.authorIds || {}).length > 0,
     );
 
     // Collect author IDs from each source
@@ -265,6 +364,12 @@ async function verifyCV(file, prioritySource, options = {}) {
       }
     }); // Only proceed with aggregation if we have at least one author ID
 
+    debugLog("author_ids_collected", {
+      jobId,
+      authorIds: allAuthorIds,
+      verifiedWithAuthorMatchCount: verifiedWithAuthorMatch.length,
+    });
+
     let aggregatedAuthorDetails = null;
     if (io && jobId)
       io.to(jobId).emit("progress", {
@@ -273,14 +378,26 @@ async function verifyCV(file, prioritySource, options = {}) {
       });
     if (Object.values(allAuthorIds).some((id) => id)) {
       try {
+        const aggregationCancellation = await checkCancellation(
+          "aggregation_started",
+        );
+        if (aggregationCancellation) return aggregationCancellation;
+
         // Use the aggregator to get comprehensive author details
         const aggregationStartTime = Date.now();
         const rawAuthorDetails = await aggregateAuthorDetails(
           allAuthorIds,
           candidateName,
-          prioritySource
+          prioritySource,
         );
         const aggregationEndTime = Date.now();
+
+        debugLog("author_aggregation", {
+          jobId,
+          durationMs: aggregationEndTime - aggregationStartTime,
+          hasDetails: Boolean(rawAuthorDetails),
+          prioritySource,
+        });
 
         if (rawAuthorDetails) {
           // Transform the result to match the expected structure
@@ -301,6 +418,11 @@ async function verifyCV(file, prioritySource, options = {}) {
         // Fallback to using Google Scholar author details if available
       }
     }
+
+    const beforeWrapUpCancellation = await checkCancellation(
+      "aggregation_complete",
+    );
+    if (beforeWrapUpCancellation) return beforeWrapUpCancellation;
     if (io && jobId)
       io.to(jobId).emit("progress", {
         progress: 95,
@@ -317,13 +439,25 @@ async function verifyCV(file, prioritySource, options = {}) {
       secondStageAuthorMatch = checkAuthorNameMatch(candidateName, [
         aggregatedAuthorDetails.author.name,
       ]);
+      debugLog("second_stage_author_match", {
+        jobId,
+        candidateName,
+        aggregatedAuthorName: aggregatedAuthorDetails.author.name,
+        matched: secondStageAuthorMatch,
+      });
     } else {
+      debugLog("second_stage_author_match", {
+        jobId,
+        candidateName,
+        aggregatedAuthorName: null,
+        matched: false,
+      });
     }
 
     // If second stage fails (no aggregated data OR name mismatch), update all verified publications
     if (!secondStageAuthorMatch) {
       const beforeCount = verificationResults.filter(
-        (r) => r.verification.displayData.status === "verified"
+        (r) => r.verification.displayData.status === "verified",
       ).length;
 
       verificationResults.forEach((result) => {
@@ -336,8 +470,13 @@ async function verifyCV(file, prioritySource, options = {}) {
       const afterCount = verificationResults.filter(
         (r) =>
           r.verification.displayData.status ===
-          "verified but not same author name"
+          "verified but not same author name",
       ).length;
+      debugLog("second_stage_downgrade", {
+        jobId,
+        beforeCount,
+        afterCount,
+      });
     }
 
     if (io && jobId)
@@ -350,21 +489,33 @@ async function verifyCV(file, prioritySource, options = {}) {
         (r) =>
           r.verification.displayData.status === "verified" ||
           r.verification.displayData.status ===
-            "verified but not same author name"
+            "verified but not same author name",
       ).length,
       verifiedWithAuthorMatch: verificationResults.filter(
-        (r) => r.verification.displayData.status === "verified"
+        (r) => r.verification.displayData.status === "verified",
       ).length,
       verifiedButDifferentAuthor: verificationResults.filter(
         (r) =>
           r.verification.displayData.status ===
-          "verified but not same author name"
+          "verified but not same author name",
       ).length,
       results: verificationResults,
       authorDetails: aggregatedAuthorDetails,
     };
   } catch (error) {
+    debugLog("error", { jobId, message: error?.message });
     throw error;
+  } finally {
+    if (!keepFile && storedFileName) {
+      try {
+        await deleteFromSupabase(storedFileName);
+      } catch (cleanupError) {
+        console.error(
+          "[CV Verification] Failed to clean up upload from Supabase:",
+          cleanupError,
+        );
+      }
+    }
   }
 }
 
@@ -383,7 +534,7 @@ const extractAuthorInfo = (
   scholarResult = {},
   scopusResult = {},
   openAlexResult = {},
-  pubmedResult = {}
+  pubmedResult = {},
 ) => {
   // Try Google Scholar author info first
   if (scholarResult.details?.publication_info?.summary) {
@@ -421,7 +572,7 @@ const extractPublicationType = (
   scholarResult,
   scopusResult,
   openAlexResult,
-  pubmedResult
+  pubmedResult,
 ) => {
   // Fallback to other sources, but use pubmedResult.details?.pubTypes instead of .source
   const type =
@@ -447,7 +598,7 @@ const extractPublicationYear = (
   scholarResult,
   scopusResult,
   openAlexResult,
-  pubmedResult
+  pubmedResult,
 ) => {
   const currentYear = new Date().getFullYear();
 
@@ -501,20 +652,20 @@ const extractPublicationYear = (
 const extractCitationCount = (scholarResult, scopusResult, openAlexResult) => {
   // Get citation counts from sources
   const scholarCitations = parseInt(
-    scholarResult.details?.inline_links?.cited_by?.total || "0"
+    scholarResult.details?.inline_links?.cited_by?.total || "0",
   );
   const scopusCitations = parseInt(
-    scopusResult.details?.["citedby-count"] || "0"
+    scopusResult.details?.["citedby-count"] || "0",
   );
   const openAlexCitations = parseInt(
-    openAlexResult?.details?.cited_by_count || "0"
+    openAlexResult?.details?.cited_by_count || "0",
   );
 
   // Return the higher citation count
   return Math.max(
     scholarCitations,
     scopusCitations,
-    openAlexCitations
+    openAlexCitations,
   ).toString();
 };
 
@@ -532,7 +683,7 @@ const extractBestLink = (
   scopusLink,
   openAlexLink,
   pubmedLink,
-  fallbackLink
+  fallbackLink,
 ) => {
   if (scopusLink) return scopusLink;
   if (openAlexLink) return openAlexLink;
@@ -553,7 +704,7 @@ const determineVerificationStatus = (
   scholarResult,
   scopusResult,
   openAlexResult,
-  pubmedResult
+  pubmedResult,
 ) => {
   // If any source shows verified with author match
   if (
@@ -587,7 +738,7 @@ const determineVerificationStatus = (
 const processPublicationVerification = async (
   pub,
   candidateName,
-  preFetchedOpenAlex = null
+  preFetchedOpenAlex = null,
 ) => {
   const overallStartTime = Date.now();
 
@@ -611,7 +762,7 @@ const processPublicationVerification = async (
         const result = await verifyWithGoogleScholar(
           pub.title,
           pub.doi,
-          candidateName
+          candidateName,
         );
         const end = Date.now();
         return result;
@@ -625,7 +776,7 @@ const processPublicationVerification = async (
         const result = await verifyWithScopus(
           pub.title,
           pub.doi,
-          candidateName
+          candidateName,
         );
         const end = Date.now();
         return result;
@@ -648,7 +799,7 @@ const processPublicationVerification = async (
         const result = await verifyWithPubMed(
           pub.title,
           pub.doi,
-          candidateName
+          candidateName,
         );
         const end = Date.now();
         return result;
@@ -738,37 +889,37 @@ const processPublicationVerification = async (
           scholarResult,
           scopusResult,
           openAlexResult,
-          pubmedResult
+          pubmedResult,
         ),
         type: extractPublicationType(
           scholarResult,
           scopusResult,
           openAlexResult,
-          pubmedResult
+          pubmedResult,
         ),
         year: extractPublicationYear(
           scholarResult,
           scopusResult,
           openAlexResult,
-          pubmedResult
+          pubmedResult,
         ),
         citedBy: extractCitationCount(
           scholarResult,
           scopusResult,
-          openAlexResult
+          openAlexResult,
         ),
         link: extractBestLink(
           scholarLink,
           scopusLink,
           openAlexLink,
           pubmedLink,
-          fallbackLink
+          fallbackLink,
         ),
         status: determineVerificationStatus(
           scholarResult,
           scopusResult,
           openAlexResult,
-          pubmedResult
+          pubmedResult,
         ),
       },
     },

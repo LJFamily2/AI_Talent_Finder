@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
   Typography,
   IconButton,
   Tooltip,
@@ -134,6 +135,7 @@ export default function ResearcherProfile() {
   const [contactClickCount, setContactClickCount] = useState(0);
   const [contactLastClickTime, setContactLastClickTime] = useState(null);
   const [contactRateLimitTime, setContactRateLimitTime] = useState(null);
+  const [exportError, setExportError] = useState(null);
 
   // Refresh button rate limiting state (separate from search)
   const [refreshClickCount, setRefreshClickCount] = useState(0);
@@ -158,7 +160,7 @@ export default function ResearcherProfile() {
         setWorksLoading(false);
       }
     },
-    [slug, worksPerPage]
+    [slug, worksPerPage],
   );
 
   const handleExportMenuClick = (event) => {
@@ -195,7 +197,7 @@ export default function ResearcherProfile() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Failed to export profile. Please try again.");
+      setExportError("Failed to export profile. Please try again.");
     }
   };
 
@@ -205,7 +207,7 @@ export default function ResearcherProfile() {
       await exportResearcherById(slug);
     } catch (error) {
       console.error("PDF export failed:", error);
-      alert("Failed to export PDF. Please try again.");
+      setExportError("Failed to export PDF. Please try again.");
     }
   };
 
@@ -233,8 +235,8 @@ export default function ResearcherProfile() {
       if (refreshRateLimitTime && now < refreshRateLimitTime) {
         setContactError(
           `Refresh rate limit exceeded. Try again in ${Math.ceil(
-            (refreshRateLimitTime - now) / 1000 / 60
-          )} minutes.`
+            (refreshRateLimitTime - now) / 1000 / 60,
+          )} minutes.`,
         );
         setContactDialogOpen(true);
         return;
@@ -250,8 +252,8 @@ export default function ResearcherProfile() {
         setRefreshRateLimitTime(resetTime);
         setContactError(
           `Refresh rate limit exceeded. Try again in ${Math.ceil(
-            (resetTime - now) / 1000 / 60
-          )} minutes.`
+            (resetTime - now) / 1000 / 60,
+          )} minutes.`,
         );
         setContactDialogOpen(true);
         return;
@@ -288,7 +290,7 @@ export default function ResearcherProfile() {
         name,
         affiliation,
         orcid,
-        researchAreas
+        researchAreas,
       );
 
       setContactInfo(contactData);
@@ -343,6 +345,10 @@ export default function ResearcherProfile() {
     setContactDialogOpen(false);
     setContactInfo(null);
     setContactError(null);
+  };
+
+  const handleExportErrorClose = () => {
+    setExportError(null);
   };
 
   // Helper function to get profile type and display name
@@ -570,7 +576,7 @@ export default function ResearcherProfile() {
     topics = legacyTopics.map((t) =>
       typeof t === "string"
         ? { display_name: t }
-        : { display_name: t.display_name || t.name || "" }
+        : { display_name: t.display_name || t.name || "" },
     );
   }
 
@@ -582,7 +588,7 @@ export default function ResearcherProfile() {
 
   const pastAffiliations = affiliations.filter(
     (aff) =>
-      aff.institution?.display_name !== (currentInstDisplayName || currentInst)
+      aff.institution?.display_name !== (currentInstDisplayName || currentInst),
   );
 
   const citationYears = counts_by_year
@@ -1060,7 +1066,7 @@ export default function ResearcherProfile() {
               title={
                 refreshRateLimitTime && Date.now() < refreshRateLimitTime
                   ? `Refresh rate limited: ${Math.ceil(
-                      (refreshRateLimitTime - Date.now()) / 1000 / 60
+                      (refreshRateLimitTime - Date.now()) / 1000 / 60,
                     )} min remaining`
                   : "Refresh AI scanning"
               }
@@ -1254,7 +1260,7 @@ export default function ResearcherProfile() {
                       {Math.ceil(
                         (5 * 60 * 1000 - (Date.now() - contactCacheTime)) /
                           1000 /
-                          60
+                          60,
                       )}{" "}
                       more minutes
                     </Typography>
@@ -1309,7 +1315,7 @@ export default function ResearcherProfile() {
                     </Typography>
                     <a
                       href={`https://www.google.com/search?q=${encodeURIComponent(
-                        researcher?.basic_info?.name || ""
+                        researcher?.basic_info?.name || "",
                       )} LinkedIn`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1358,6 +1364,23 @@ export default function ResearcherProfile() {
               minWidth: { xs: "100%", sm: "auto" },
             }}
           >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(exportError)}
+        onClose={handleExportErrorClose}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Export failed</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{exportError}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleExportErrorClose} variant="contained">
             Close
           </Button>
         </DialogActions>

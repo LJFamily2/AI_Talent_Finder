@@ -21,6 +21,10 @@ const {
   getAuthorDetails,
 } = require("../utils/authorUtils");
 
+const DEBUG_VERIFY = false;
+
+const debugLog = () => {};
+
 //=============================================================================
 // CONFIGURATION AND CONSTANTS
 //=============================================================================
@@ -68,17 +72,18 @@ const verifyWithGoogleScholar = async (
   title,
   doi,
   candidateName = null,
-  maxResultsToCheck = 3
+  maxResultsToCheck = 3,
 ) => {
   try {
     // Step 1: Search Google Scholar for the publication
     const searchResults = await searchGoogleScholar(title, maxResultsToCheck);
 
     if (!searchResults.organicResults.length) {
+      debugLog("no_results", { title, doi });
       return createVerificationResponse(
         "unable to verify",
         null,
-        searchResults.rawResult
+        searchResults.rawResult,
       );
     }
 
@@ -86,25 +91,38 @@ const verifyWithGoogleScholar = async (
     const matchedPublication = findMatchingPublication(
       searchResults.organicResults,
       title,
-      doi
+      doi,
     );
 
     if (!matchedPublication) {
+      debugLog("no_match", {
+        title,
+        doi,
+        results: searchResults.organicResults.length,
+      });
       return createVerificationResponse(
         "unable to verify",
         null,
-        searchResults.rawResult
+        searchResults.rawResult,
       );
     } // Step 3: Extract author information from the matched publication
     const authorInfo = extractAuthorInformation(
       matchedPublication,
-      candidateName
+      candidateName,
     );
 
     // Step 4: Determine verification status and return result
     const verificationStatus = authorInfo.hasAuthorMatch
       ? "verified"
       : "verified but not same author name";
+
+    debugLog("match", {
+      title,
+      doi,
+      verificationStatus,
+      authorMatch: authorInfo.hasAuthorMatch,
+      authorId: authorInfo.matchedAuthorId,
+    });
 
     return createVerificationResponse(
       verificationStatus,
@@ -114,7 +132,7 @@ const verifyWithGoogleScholar = async (
         hasAuthorMatch: authorInfo.hasAuthorMatch,
         authorId: authorInfo.matchedAuthorId, // Include author ID for aggregation
       },
-      searchResults.rawResult
+      searchResults.rawResult,
     );
   } catch (err) {
     return createVerificationResponse("unable to verify", null, null);
@@ -136,10 +154,12 @@ const searchGoogleScholar = async (title, maxResults) => {
   try {
     const serpApiKey = process.env.GOOGLE_SCHOLAR_API_KEY;
     const scholarApiUrl = `https://serpapi.com/search?engine=google_scholar&q=${encodeURIComponent(
-      title
+      title,
     )}&hl=en&api_key=${serpApiKey}&num=${maxResults}`;
 
-    const { data: scholarResult } = await axios.get(scholarApiUrl, { timeout: 1500 });
+    const { data: scholarResult } = await axios.get(scholarApiUrl, {
+      timeout: 1500,
+    });
     const organicResults =
       scholarResult?.organic_results || scholarResult?.items || [];
 
@@ -165,10 +185,14 @@ const searchGoogleScholar = async (title, maxResults) => {
  */
 
 const findMatchingPublication = (results, title, doi) => {
-  return results.find((item) => {
+  let best = { similarity: 0, ratio: 0, title: null };
+  let matched = null;
+
+  for (const item of results) {
     // DOI match takes highest precedence
     if (doi && item.link?.toLowerCase().includes(doi.toLowerCase())) {
-      return true;
+      matched = item;
+      break;
     }
 
     // Title-based matching
@@ -181,7 +205,8 @@ const findMatchingPublication = (results, title, doi) => {
         normalizedItemTitle.includes(normalizedTitle) ||
         normalizedTitle.includes(normalizedItemTitle)
       ) {
-        return true;
+        matched = item;
+        break;
       }
 
       const titleLengthRatio =
@@ -191,19 +216,37 @@ const findMatchingPublication = (results, title, doi) => {
       // Check similarity score
       const similarity = getTitleSimilarity(
         normalizedTitle,
-        normalizedItemTitle
+        normalizedItemTitle,
       );
+
+      if (similarity > best.similarity) {
+        best = {
+          similarity,
+          ratio: titleLengthRatio,
+          title: item.title,
+        };
+      }
 
       if (
         similarity >= TITLE_SIMILARITY_THRESHOLD &&
         titleLengthRatio >= MIN_TITLE_LENGTH_RATIO
       ) {
-        return true;
+        matched = item;
+        break;
       }
     }
+  }
 
-    return false;
-  });
+  if (!matched && DEBUG_VERIFY) {
+    debugLog("best_candidate", {
+      title,
+      bestTitle: best.title,
+      bestSimilarity: best.similarity,
+      bestRatio: best.ratio,
+    });
+  }
+
+  return matched;
 };
 
 /**
@@ -221,7 +264,7 @@ const extractAuthorInformation = (publication, candidateName) => {
   // Extract authors from publication summary
   if (publication.publication_info?.summary) {
     const authorNames = parseAuthorNamesFromSummary(
-      publication.publication_info.summary
+      publication.publication_info.summary,
     );
     extractedAuthors.push(...authorNames);
   }
@@ -233,19 +276,28 @@ const extractAuthorInformation = (publication, candidateName) => {
         extractedAuthors.push(author.name);
       }
     });
-
-    // Check for author match and get author ID
-    if (candidateName && extractedAuthors.length > 0) {
-      hasAuthorMatch = checkAuthorNameMatch(candidateName, extractedAuthors);
-
-      if (hasAuthorMatch) {
-        matchedAuthorId = findMatchedAuthorId(
-          publication.publication_info.authors,
-          candidateName
-        );
-      }
-    }
   }
+
+  // Check for author match using all extracted names (summary + authors array)
+  if (candidateName && extractedAuthors.length > 0) {
+    hasAuthorMatch = checkAuthorNameMatch(candidateName, extractedAuthors);
+  }
+
+  // If there's a match, try to find the author ID from authors array
+  if (hasAuthorMatch && publication.publication_info?.authors?.length > 0) {
+    matchedAuthorId = findMatchedAuthorId(
+      publication.publication_info.authors,
+      candidateName,
+    );
+  }
+
+  debugLog("authors_extracted", {
+    title: publication.title,
+    candidateName,
+    authors: extractedAuthors,
+    hasAuthorMatch,
+    matchedAuthorId,
+  });
 
   return {
     extractedAuthors,
@@ -310,7 +362,7 @@ const fetchAuthorDetails = async (authorId, apiKey, publicationTitle) => {
     const authorInfo = await getAuthorDetails(
       authorId,
       apiKey,
-      publicationTitle
+      publicationTitle,
     );
     return authorInfo ? authorInfo.details : null;
   } catch (error) {
